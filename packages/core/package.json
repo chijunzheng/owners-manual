@@ -11,5 +11,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --build"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
   }
 }

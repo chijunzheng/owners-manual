@@ -1,0 +1,209 @@
+# Self-hosted Langfuse v3 for owners-manual (issue #4).
+#
+# Langfuse is the sole system of record for traces, datasets, scores, and
+# annotation queues (CONTEXT.md "Evaluation"); Langfuse Cloud is an env-var
+# fallback via LANGFUSE_HOST (see infra/langfuse/README.md).
+#
+# DATA LOCATION CONTRACT
+#   Every stateful store bind-mounts its data from ${LANGFUSE_DATA_ROOT}, which
+#   defaults to ~/.owners-manual/langfuse-data — deliberately OUTSIDE this
+#   Google-Drive-synced repo. Letting Postgres/ClickHouse files sync through
+#   Google Drive corrupts them. The data-root-guard service below refuses to
+#   start the stack if the resolved data root points back inside the repo.
+#
+# Secrets here are LOCAL-ONLY dev defaults. Override every "# CHANGEME" value in
+# an untracked .env (gitignored) before exposing this beyond localhost. All
+# stores bind to 127.0.0.1 only; just langfuse-web (3000) is reachable.
+#
+# Usage:
+#   cp infra/langfuse/.env.example .env   # then fill in CHANGEME values
+#   docker compose -f infra/langfuse/docker-compose.yml --env-file .env up -d
+#   docker compose -f infra/langfuse/docker-compose.yml ps   # wait for healthy
+
+x-langfuse-shared-env: &langfuse-shared-env
+  DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+  SALT: ${SALT:-changeme-local-salt}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+  TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: ${LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES:-false}
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
+  CLICKHOUSE_CLUSTER_ENABLED: 'false'
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: ${LANGFUSE_S3_EVENT_UPLOAD_BUCKET:-langfuse}
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-miniosecret}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: 'true'
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: ${LANGFUSE_S3_EVENT_UPLOAD_BUCKET:-langfuse}
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-miniosecret}
+  # Media uploads use PRESIGNED URLs that are handed to clients on the HOST (the
+  # browser / hello-trace process), where the in-network "minio" hostname does
+  # not resolve. So this must be the host-published address (127.0.0.1:9090 ->
+  # minio:9000 below), unlike the event endpoint which is written server-side.
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: ${LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT:-http://127.0.0.1:9090}
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: 'true'
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  REDIS_HOST: redis
+  REDIS_PORT: '6379'
+  REDIS_AUTH: ${REDIS_AUTH:-myredissecret}
+  REDIS_TLS_ENABLED: 'false'
+
+services:
+  # Fails fast if the data root resolves inside the synced repo/Drive. Runs to
+  # completion before web/worker start (they depend on it succeeding). The
+  # resolved path is injected as RESOLVED_DATA_ROOT so the echoed and the
+  # checked value are identical (compose interpolates the default exactly once).
+  data-root-guard:
+    image: docker.io/busybox:1.37
+    environment:
+      RESOLVED_DATA_ROOT: ${LANGFUSE_DATA_ROOT:-${HOME}/.owners-manual/langfuse-data}
+    command:
+      - sh
+      - -ec
+      - |
+        echo "Langfuse data root: $$RESOLVED_DATA_ROOT"
+        case "$$RESOLVED_DATA_ROOT" in
+          */owners-manual/*|*/My\ Drive/*|*/CloudStorage/*|*/Dropbox/*|*/OneDrive/*)
+            echo "REFUSING TO START: data root is inside the owners-manual repo or a synced Drive." >&2
+            echo "Set LANGFUSE_DATA_ROOT to a path outside any owners-manual directory and any cloud-synced folder (default ~/.owners-manual/langfuse-data)." >&2
+            exit 1 ;;
+          "")
+            echo "REFUSING TO START: data root resolved to an empty string." >&2
+            exit 1 ;;
+        esac
+        echo "Data root is outside the synced repo. OK."
+    restart: 'no'
+
+  langfuse-worker:
+    image: docker.io/langfuse/langfuse-worker:3
+    restart: always
+    depends_on: &langfuse-depends-on
+      data-root-guard:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:3030:3030
+    environment:
+      <<: *langfuse-shared-env
+
+  langfuse-web:
+    image: docker.io/langfuse/langfuse:3
+    restart: always
+    depends_on: *langfuse-depends-on
+    ports:
+      - 3000:3000
+    environment:
+      <<: *langfuse-shared-env
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme-local-nextauth}
+      # Optional headless bootstrap of org/project/user + project keys. Leave the
+      # *_INIT_* vars blank to create the first user through the UI instead.
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-}
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-}
+    healthcheck:
+      # The Langfuse server binds to the container's eth0 IP only (not loopback),
+      # so probe via the container hostname, which resolves to that IPv4 address.
+      test:
+        [
+          'CMD-SHELL',
+          'wget --no-verbose --tries=1 --spider "http://$$(hostname):3000/api/public/health" || exit 1',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:24.12
+    restart: always
+    user: '101:101'
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
+    volumes:
+      - ${LANGFUSE_DATA_ROOT:-${HOME}/.owners-manual/langfuse-data}/clickhouse/data:/var/lib/clickhouse
+      - ${LANGFUSE_DATA_ROOT:-${HOME}/.owners-manual/langfuse-data}/clickhouse/logs:/var/log/clickhouse-server
+    ports:
+      - 127.0.0.1:8123:8123
+      - 127.0.0.1:9000:9000
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 1s
+
+  minio:
+    image: docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: always
+    entrypoint: sh
+    # Pre-create the langfuse bucket, then start the server.
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret}
+    volumes:
+      - ${LANGFUSE_DATA_ROOT:-${HOME}/.owners-manual/langfuse-data}/minio:/data
+    ports:
+      - 127.0.0.1:9090:9000
+      - 127.0.0.1:9091:9001
+    healthcheck:
+      test: ['CMD-SHELL', 'mc ready local || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: docker.io/redis:7
+    restart: always
+    command: >
+      --requirepass ${REDIS_AUTH:-myredissecret}
+      --maxmemory-policy noeviction
+    volumes:
+      - ${LANGFUSE_DATA_ROOT:-${HOME}/.owners-manual/langfuse-data}/redis:/data
+    ports:
+      - 127.0.0.1:6379:6379
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_AUTH:-myredissecret} ping | grep -q PONG']
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  postgres:
+    image: docker.io/postgres:17
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - ${LANGFUSE_DATA_ROOT:-${HOME}/.owners-manual/langfuse-data}/postgres:/var/lib/postgresql/data
+    ports:
+      - 127.0.0.1:5432:5432
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      interval: 3s
+      timeout: 3s
+      retries: 10

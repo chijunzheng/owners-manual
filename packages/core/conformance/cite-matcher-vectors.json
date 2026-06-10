@@ -1,0 +1,403 @@
+{
+  "$schema": "./cite-matcher-vectors.schema.json",
+  "version": 1,
+  "description": "Cross-language conformance vectors for the hierarchical cite matcher (owners-manual issue #7). ONE file, two suites: the TypeScript core library and the Python eval grader both load this exact file and must agree on every expected verdict. See README.md 'Evaluation' (cite-grading paragraph) and CONTEXT.md (document tree, citable unit, pin-cite). A citable path is an ordered list of {kind,label} segments rooted in a documentId; a descendant cite satisfies a required ancestor (full), a bare ancestor cited against a required subsection scores partial, a cite that resolves to no tree path is unresolvable, and a cite that resolves to an unrelated real path (sibling / cousin / cross-document) is a no-match.",
+  "verdicts": {
+    "exact": "Candidate citable path equals the required citable path.",
+    "descendant-satisfies-ancestor": "Candidate is a proper descendant of the required path; a cited subsection satisfies a required section. Full satisfaction.",
+    "ancestor-partial": "Candidate is a proper ancestor of the required path; a bare section cited against a required subsection. Partial satisfaction.",
+    "no-match": "Candidate resolves to a real tree path but it is neither the required path nor on its ancestor/descendant line (sibling, cousin, or a path in a different document).",
+    "unresolvable": "Candidate does not resolve to any node in any known document tree."
+  },
+  "documents": [
+    {
+      "documentId": "RTA",
+      "title": "Residential Tenancies Act, 2006",
+      "tree": {
+        "kind": "document",
+        "documentId": "RTA",
+        "label": "RTA",
+        "children": [
+          {
+            "kind": "section",
+            "label": "49",
+            "children": [
+              {
+                "kind": "subsection",
+                "label": "1",
+                "children": [
+                  { "kind": "clause", "label": "a", "children": [] },
+                  { "kind": "clause", "label": "b", "children": [] }
+                ]
+              },
+              {
+                "kind": "subsection",
+                "label": "2",
+                "children": []
+              }
+            ]
+          },
+          {
+            "kind": "section",
+            "label": "50",
+            "children": [
+              {
+                "kind": "subsection",
+                "label": "1",
+                "children": []
+              }
+            ]
+          },
+          {
+            "kind": "section",
+            "label": "62",
+            "children": [
+              {
+                "kind": "subsection",
+                "label": "1",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "documentId": "DECLARATION",
+      "title": "Designed-fixture condominium declaration",
+      "tree": {
+        "kind": "document",
+        "documentId": "DECLARATION",
+        "label": "DECLARATION",
+        "children": [
+          {
+            "kind": "part",
+            "label": "IV",
+            "children": [
+              {
+                "kind": "section",
+                "label": "12",
+                "children": [
+                  {
+                    "kind": "subsection",
+                    "label": "3",
+                    "children": [{ "kind": "clause", "label": "a", "children": [] }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "exact-section",
+      "describe": "Section cited against the same required section.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "candidate": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "expected": "exact"
+    },
+    {
+      "id": "exact-subsection",
+      "describe": "Subsection cited against the same required subsection.",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "expected": "exact"
+    },
+    {
+      "id": "exact-clause-deep",
+      "describe": "Deeply nested clause cited against the identical required clause.",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "expected": "exact"
+    },
+    {
+      "id": "descendant-subsection-satisfies-section",
+      "describe": "Citing s. 49(1) satisfies a required s. 49 (descendant covers ancestor).",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "expected": "descendant-satisfies-ancestor"
+    },
+    {
+      "id": "descendant-clause-satisfies-section",
+      "describe": "Citing s. 49(1)(a) satisfies a required s. 49 across two levels of nesting.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "expected": "descendant-satisfies-ancestor"
+    },
+    {
+      "id": "descendant-clause-satisfies-subsection",
+      "describe": "Citing s. 49(1)(a) satisfies a required s. 49(1) (clause under the required subsection).",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "expected": "descendant-satisfies-ancestor"
+    },
+    {
+      "id": "ancestor-section-against-required-subsection",
+      "describe": "Bare s. 49 cited against a required s. 49(1) scores partial (ancestor of the requirement).",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "candidate": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "expected": "ancestor-partial"
+    },
+    {
+      "id": "ancestor-subsection-against-required-clause",
+      "describe": "Bare s. 49(1) cited against a required s. 49(1)(a) scores partial.",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "expected": "ancestor-partial"
+    },
+    {
+      "id": "ancestor-section-against-required-clause-deep",
+      "describe": "Bare s. 49 cited against a required s. 49(1)(a) is still partial (ancestor two levels up).",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "candidate": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "expected": "ancestor-partial"
+    },
+    {
+      "id": "no-match-sibling-section",
+      "describe": "Citing s. 50 against required s. 49: a real, resolvable sibling that is off the required line.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "candidate": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "50" }] },
+      "expected": "no-match"
+    },
+    {
+      "id": "no-match-sibling-subsection",
+      "describe": "Citing s. 49(2) against required s. 49(1): sibling subsection, both resolve, neither contains the other.",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "2" }
+        ]
+      },
+      "expected": "no-match"
+    },
+    {
+      "id": "no-match-cousin-clause",
+      "describe": "Citing s. 49(1)(b) against required s. 49(1)(a): sibling clauses, real but unrelated.",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "b" }
+        ]
+      },
+      "expected": "no-match"
+    },
+    {
+      "id": "no-match-cross-document-same-coordinates",
+      "describe": "Citing DECLARATION s. 12 against a required RTA s. 62: a path that resolves in its own document but belongs to a different document than the requirement.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "62" }] },
+      "candidate": {
+        "documentId": "DECLARATION",
+        "segments": [
+          { "kind": "part", "label": "IV" },
+          { "kind": "section", "label": "12" }
+        ]
+      },
+      "expected": "no-match"
+    },
+    {
+      "id": "unresolvable-nonexistent-section",
+      "describe": "Hallucination bait: citing s. 999, which exists in no tree.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "62" }] },
+      "candidate": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "999" }] },
+      "expected": "unresolvable"
+    },
+    {
+      "id": "unresolvable-nonexistent-subsection-under-real-section",
+      "describe": "Citing s. 49(9): the section exists but the subsection does not, so the full path resolves to nothing.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "49" }] },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "49" },
+          { "kind": "subsection", "label": "9" }
+        ]
+      },
+      "expected": "unresolvable"
+    },
+    {
+      "id": "unresolvable-unknown-document",
+      "describe": "Citing a section in a document that is not among the known trees at all.",
+      "required": { "documentId": "RTA", "segments": [{ "kind": "section", "label": "62" }] },
+      "candidate": {
+        "documentId": "CONDO_ACT",
+        "segments": [{ "kind": "section", "label": "117" }]
+      },
+      "expected": "unresolvable"
+    },
+    {
+      "id": "unresolvable-clause-under-leaf-subsection",
+      "describe": "Citing s. 62(1)(a): s. 62(1) is a leaf subsection with no clauses, so the deepest segment overshoots a real node and the path resolves to nothing.",
+      "required": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "62" },
+          { "kind": "subsection", "label": "1" }
+        ]
+      },
+      "candidate": {
+        "documentId": "RTA",
+        "segments": [
+          { "kind": "section", "label": "62" },
+          { "kind": "subsection", "label": "1" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "expected": "unresolvable"
+    },
+    {
+      "id": "exact-cross-document-declaration",
+      "describe": "Exact match inside the declaration document (Part IV > s. 12 > (3) > (a)) to prove matching is not RTA-specific.",
+      "required": {
+        "documentId": "DECLARATION",
+        "segments": [
+          { "kind": "part", "label": "IV" },
+          { "kind": "section", "label": "12" },
+          { "kind": "subsection", "label": "3" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "candidate": {
+        "documentId": "DECLARATION",
+        "segments": [
+          { "kind": "part", "label": "IV" },
+          { "kind": "section", "label": "12" },
+          { "kind": "subsection", "label": "3" },
+          { "kind": "clause", "label": "a" }
+        ]
+      },
+      "expected": "exact"
+    },
+    {
+      "id": "descendant-declaration-clause-satisfies-part",
+      "describe": "Citing DECLARATION Part IV > s. 12 satisfies a required Part IV (descendant across a Part boundary).",
+      "required": {
+        "documentId": "DECLARATION",
+        "segments": [{ "kind": "part", "label": "IV" }]
+      },
+      "candidate": {
+        "documentId": "DECLARATION",
+        "segments": [
+          { "kind": "part", "label": "IV" },
+          { "kind": "section", "label": "12" }
+        ]
+      },
+      "expected": "descendant-satisfies-ancestor"
+    },
+    {
+      "id": "ancestor-declaration-part-against-required-subsection",
+      "describe": "Bare DECLARATION Part IV cited against required Part IV > s. 12 > (3) scores partial across three levels.",
+      "required": {
+        "documentId": "DECLARATION",
+        "segments": [
+          { "kind": "part", "label": "IV" },
+          { "kind": "section", "label": "12" },
+          { "kind": "subsection", "label": "3" }
+        ]
+      },
+      "candidate": {
+        "documentId": "DECLARATION",
+        "segments": [{ "kind": "part", "label": "IV" }]
+      },
+      "expected": "ancestor-partial"
+    }
+  ]
+}
