@@ -116,6 +116,12 @@ Ports (all bound to `127.0.0.1` except the web UI): web `3000`, worker `3030`,
 postgres `5432`, clickhouse `8123`/`9000`, redis `6379`, minio `9090` (S3) /
 `9091` (console).
 
+Media uploads use **presigned URLs** that Langfuse hands back to clients running
+on the host, so the media-upload endpoint points at the host-published MinIO
+address (`http://127.0.0.1:9090`), not the in-network `minio:9000` used for
+server-side event uploads. Override `LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT` if you
+remap that port.
+
 ## First run: create a project + API keys
 
 You need a project public/secret key pair for the SDKs. Two options:
@@ -131,7 +137,14 @@ You need a project public/secret key pair for the SDKs. Two options:
 
 ## Emit a hello trace from each SDK
 
-With the stack healthy and `.env` populated:
+With the stack healthy and `.env` populated, first load the keys into your
+shell. `.env` is read by Docker Compose (`--env-file`), but the SDK CLIs read
+their credentials from the **process environment**, so export the values once
+before running either command (run this from the repo root):
+
+```bash
+set -a; source .env; set +a   # export LANGFUSE_HOST / _PUBLIC_KEY / _SECRET_KEY
+```
 
 ```bash
 # TypeScript SDK
@@ -140,6 +153,9 @@ pnpm --filter @owners-manual/observability run hello-trace
 # Python SDK
 ( cd evals && uv run hello-trace )
 ```
+
+(`uv run` inherits the exported vars, so the keys carry into the `evals`
+subshell. If you start a fresh terminal, re-run the `source` step first.)
 
 Each prints the emitted trace id and a pointer into the UI. Open
 http://localhost:3000, go to **Tracing → Traces**, and filter for
