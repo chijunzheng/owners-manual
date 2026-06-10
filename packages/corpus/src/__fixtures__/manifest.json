@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-09T00:00:00.000Z",
+  "sources": [
+    {
+      "id": "clean-doc",
+      "title": "Fixture: byte-stable document, no normalization",
+      "url": "https://fixtures.test/clean-doc.html",
+      "file": "clean-doc.html",
+      "sha256": "2db778b134847219ee3037a7469b6738d4b85a152d3ae03c09d5a867d9aa3d4e",
+      "bytes": 222,
+      "consolidationDate": "2024-01-01",
+      "licence": {
+        "holder": "Fixture (committed, owned outright)",
+        "note": "Synthetic fixture for tests; not Crown copyright."
+      },
+      "normalization": "none"
+    },
+    {
+      "id": "waf-doc",
+      "title": "Fixture: document wrapped in CDN WAF noise, strip-waf normalized",
+      "url": "https://fixtures.test/waf-doc.html",
+      "file": "waf-doc.html",
+      "sha256": "db6668e575d28a171e27e52a249c22b72759bce7759a52112da2d99c69df523d",
+      "bytes": 338,
+      "consolidationDate": "2024-01-01",
+      "licence": {
+        "holder": "Fixture (committed, owned outright)",
+        "note": "Synthetic fixture for tests; not Crown copyright."
+      },
+      "normalization": "strip-waf"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-10T21:01:14.282Z",
+  "sources": [
+    {
+      "id": "rta-2006",
+      "title": "Residential Tenancies Act, 2006, S.O. 2006, c. 17",
+      "url": "https://www.ontario.ca/laws/statute/06r17",
+      "file": "tenancy/rta-2006.html",
+      "sha256": "390ddfa7599a8b581f73d567ba8ce2fd57bd6658e762283d0ce5110764253fad",
+      "bytes": 696095,
+      "consolidationDate": "2025-11-27",
+      "licence": {
+        "holder": "King's Printer for Ontario",
+        "note": "Statute/regulation text © King’s Printer for Ontario. Reproduced for personal, non-commercial research use under the Copyright & Disclaimer terms at ontario.ca/page/copyright-information. Not redistributed: corpus/raw/ is gitignored; this manifest reproduces it."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "reg-516-06",
+      "title": "O. Reg. 516/06: General (under the Residential Tenancies Act, 2006)",
+      "url": "https://www.ontario.ca/laws/regulation/060516",
+      "file": "tenancy/reg-516-06.html",
+      "sha256": "3b83dad62b21248fa8d94bc43b55952497c923ef5b0fa5882c8936f3d17a23c6",
+      "bytes": 206922,
+      "consolidationDate": "2020-11-30",
+      "licence": {
+        "holder": "King's Printer for Ontario",
+        "note": "Statute/regulation text © King’s Printer for Ontario. Reproduced for personal, non-commercial research use under the Copyright & Disclaimer terms at ontario.ca/page/copyright-information. Not redistributed: corpus/raw/ is gitignored; this manifest reproduces it."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "rent-increase-guideline",
+      "title": "Rent increase guideline (ontario.ca currency micro-source)",
+      "url": "https://www.ontario.ca/page/rent-increase-guideline",
+      "file": "tenancy/rent-increase-guideline.html",
+      "sha256": "71cfd1367377ec0ad8ede0c9b64ed295af1e7bc6870ec9d0c64f210182438641",
+      "bytes": 100558,
+      "consolidationDate": "2025-06-01",
+      "licence": {
+        "holder": "Government of Ontario",
+        "note": "Rent-increase guideline page © Government of Ontario. Currency micro-source: the page states the guideline for the current year and changes annually — re-record on each new guideline. Reproduced for personal research use; corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "condo-act-1998",
+      "title": "Condominium Act, 1998, S.O. 1998, c. 19",
+      "url": "https://www.ontario.ca/laws/statute/98c19",
+      "file": "governing/condo-act-1998.html",
+      "sha256": "a769f87cf8ac1d281a66667c3c0682b8d961920e7ae57139c4931d2f9c690bca",
+      "bytes": 717940,
+      "consolidationDate": "2025-12-31",
+      "licence": {
+        "holder": "King's Printer for Ontario",
+        "note": "Statute/regulation text © King’s Printer for Ontario. Reproduced for personal, non-commercial research use under the Copyright & Disclaimer terms at ontario.ca/page/copyright-information. Not redistributed: corpus/raw/ is gitignored; this manifest reproduces it."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "reg-48-01",
+      "title": "O. Reg. 48/01: General (under the Condominium Act, 1998)",
+      "url": "https://www.ontario.ca/laws/regulation/010048",
+      "file": "governing/reg-48-01.html",
+      "sha256": "5d0e89e7d0c35cef7435f0cdad3433fe37e0ae345dd7f510858f2620627f3500",
+      "bytes": 391736,
+      "consolidationDate": "2023-10-01",
+      "licence": {
+        "holder": "King's Printer for Ontario",
+        "note": "Statute/regulation text © King’s Printer for Ontario. Reproduced for personal, non-commercial research use under the Copyright & Disclaimer terms at ontario.ca/page/copyright-information. Not redistributed: corpus/raw/ is gitignored; this manifest reproduces it."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-01",
+      "title": "Interpretation Guideline 1: Adjourning and Rescheduling Hearings",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/01%20-%20Adjourning%20and%20Rescheduling%20Hearings_dec2020.html",
+      "file": "tenancy/ltb-guidelines/01.html",
+      "sha256": "1b84dcdb2a2b99c77f00bad2dbfecaa0ce0928951284705bd31ed52b321d0b82",
+      "bytes": 20185,
+      "consolidationDate": "2020-12-15",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-05",
+      "title": "Interpretation Guideline 5: Breach of Maintenance Obligations",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/05%20-%20Breach%20of%20Maintenance%20Obligations.html",
+      "file": "tenancy/ltb-guidelines/05.html",
+      "sha256": "1c67205cb9e2fbed6e483f6d3516b0cc5b9d12b7d09f62fbdedbed5377507229",
+      "bytes": 40507,
+      "consolidationDate": "2018-09-01",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-06",
+      "title": "Interpretation Guideline 6: Tenants' Rights",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/06%20-%20Tenants%20Rights.html",
+      "file": "tenancy/ltb-guidelines/06.html",
+      "sha256": "6fcee5eb5b255599f9c4ecdd5a1b86bb302ccfeeeb7c5e66998a987a88e55d82",
+      "bytes": 73465,
+      "consolidationDate": "2018-09-01",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-07",
+      "title": "Interpretation Guideline 7: Relief from Eviction",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/07%20-%20Relief%20from%20Eviction%20-%20Refusing%20or%20Delaying%20an%20Eviction_dec2020.html",
+      "file": "tenancy/ltb-guidelines/07.html",
+      "sha256": "8c5faca52173897e1e40b34bd89de67a542c4ed597ab141b756b1adaef3a2b74",
+      "bytes": 27540,
+      "consolidationDate": "2020-12-15",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-11",
+      "title": "Interpretation Guideline 11: Rent Arrears",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/11%20-%20Rent%20Arrears.html",
+      "file": "tenancy/ltb-guidelines/11.html",
+      "sha256": "43d8b088f8d6ed2b2ff9f0c0667aa7b65032f29adebf2de3f143f54ed2e1fa2e",
+      "bytes": 43331,
+      "consolidationDate": "2018-09-01",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-12",
+      "title": "Interpretation Guideline 12: Eviction for Personal Use",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/12%20-%20Eviction%20for%20Personal%20Use.html",
+      "file": "tenancy/ltb-guidelines/12.html",
+      "sha256": "671e11a2ed003515810ed86bc484f58eecd3d59ee38bea81c0a7250a269972f6",
+      "bytes": 52284,
+      "consolidationDate": "2018-09-01",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    },
+    {
+      "id": "ltb-guideline-14",
+      "title": "Interpretation Guideline 14: Applications for Rent Increases Above the Guideline",
+      "url": "https://tribunalsontario.ca/documents/ltb/Interpretation%20Guidelines/14%20-%20Applications%20for%20Rent%20Increases%20above%20the%20Guideline.html",
+      "file": "tenancy/ltb-guidelines/14.html",
+      "sha256": "fdb35fcddaa045423fa06dab6cc3615a6e7c3223950fe66f7eddec70aba72c2f",
+      "bytes": 56353,
+      "consolidationDate": "2018-09-01",
+      "licence": {
+        "holder": "Tribunals Ontario",
+        "note": "Landlord and Tenant Board interpretation guideline © Tribunals Ontario. Reproduced for personal, non-commercial research use. Not redistributed: corpus/raw/ is gitignored."
+      },
+      "normalization": "strip-waf"
+    }
+  ]
+}

@@ -14,7 +14,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --build",
     "lint": "eslint . && prettier --check .",
-    "lint:fix": "eslint . --fix && prettier --write ."
+    "lint:fix": "eslint . --fix && prettier --write .",
+    "corpus:fetch": "tsx packages/corpus/src/cli.ts",
+    "corpus:verify": "tsx packages/corpus/src/cli.ts --verify-only"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
