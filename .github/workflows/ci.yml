@@ -1,0 +1,78 @@
+name: CI
+
+# Phase-0 scaffold gate: runs both test suites plus linting on every PR and on
+# pushes to main. Per ADR 0003 the TypeScript product and the Python eval
+# harness are separate toolchains, so each gets its own job. No secrets and no
+# corpus text are required — the suites are placeholder smoke tests.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a fresh push doesn't queue behind
+# stale ones.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    name: TypeScript (lint, typecheck, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # action-setup reads the pnpm version from the root package.json
+      # "packageManager" field, so the version lives in one place.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (eslint + prettier)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (vitest)
+        run: pnpm test
+
+  python:
+    name: Python evals (lint, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        # setup-uv publishes exact-version tags (v8.2.0) but no moving major
+        # tag, so pin the full version rather than `v8`.
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: evals/uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Lint (ruff)
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Test (pytest)
+        run: uv run pytest

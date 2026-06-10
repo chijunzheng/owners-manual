@@ -15,3 +15,8 @@ corpus/raw/
 node_modules/
 __pycache__/
 .venv/
+
+# --- build outputs (derived; rebuilt by tsc / vitest) ---
+dist/
+*.tsbuildinfo
+coverage/
