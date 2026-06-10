@@ -54,6 +54,25 @@ describe('parseCitablePath', () => {
       } as unknown),
     ).toThrow()
   })
+
+  it('rejects a citable path missing its segments key', () => {
+    expect(() => parseCitablePath({ documentId: 'RTA' } as unknown)).toThrow()
+  })
+
+  it('rejects an unknown key on the citable path', () => {
+    expect(() =>
+      parseCitablePath({ documentId: 'RTA', segments: [], extra: 1 } as unknown),
+    ).toThrow()
+  })
+
+  it('rejects an unknown key on a segment', () => {
+    expect(() =>
+      parseCitablePath({
+        documentId: 'RTA',
+        segments: [{ kind: 'section', label: '49', extra: 1 }],
+      } as unknown),
+    ).toThrow()
+  })
 })
 
 describe('citablePathsEqual', () => {

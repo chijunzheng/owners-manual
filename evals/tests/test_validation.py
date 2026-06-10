@@ -25,9 +25,29 @@ def test_parse_citable_path_rejects_missing_document_id() -> None:
         parse_citable_path({"segments": []})
 
 
+def test_parse_citable_path_rejects_missing_segments() -> None:
+    # A path without a segments key must not silently parse as a document-root
+    # cite; TypeScript's zod schema requires segments, so Python must too.
+    with pytest.raises(ValueError):
+        parse_citable_path({"documentId": "RTA"})
+
+
 def test_parse_citable_path_rejects_non_list_segments() -> None:
     with pytest.raises(ValueError):
         parse_citable_path({"documentId": "RTA", "segments": {}})
+
+
+def test_parse_citable_path_rejects_unknown_key_on_path() -> None:
+    # zod ``.strict()`` rejects unknown keys on the path object; Python mirrors it.
+    with pytest.raises(ValueError):
+        parse_citable_path({"documentId": "RTA", "segments": [], "extra": 1})
+
+
+def test_parse_citable_path_rejects_unknown_key_on_segment() -> None:
+    with pytest.raises(ValueError):
+        parse_citable_path(
+            {"documentId": "RTA", "segments": [{"kind": "section", "label": "49", "extra": 1}]}
+        )
 
 
 def test_parse_citable_path_rejects_segment_missing_kind() -> None:
@@ -64,6 +84,39 @@ def test_parse_document_tree_rejects_non_list_children() -> None:
     with pytest.raises(ValueError):
         parse_document_tree(
             {"kind": "document", "documentId": "RTA", "label": "RTA", "children": {}}
+        )
+
+
+def test_parse_document_tree_rejects_root_missing_children() -> None:
+    # Every node requires a children key; a missing one must not be accepted as a
+    # leaf. TypeScript's zod schema and the conformance JSON Schema both require it.
+    with pytest.raises(ValueError):
+        parse_document_tree({"kind": "document", "documentId": "RTA", "label": "RTA"})
+
+
+def test_parse_document_tree_rejects_child_missing_children() -> None:
+    with pytest.raises(ValueError):
+        parse_document_tree(
+            {
+                "kind": "document",
+                "documentId": "RTA",
+                "label": "RTA",
+                "children": [{"kind": "section", "label": "1"}],
+            }
+        )
+
+
+def test_parse_document_tree_rejects_unknown_key_on_node() -> None:
+    # zod ``.strict()`` rejects unknown keys on every node; Python mirrors it.
+    with pytest.raises(ValueError):
+        parse_document_tree(
+            {
+                "kind": "document",
+                "documentId": "RTA",
+                "label": "RTA",
+                "children": [],
+                "extra": 1,
+            }
         )
 
 

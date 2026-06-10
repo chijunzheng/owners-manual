@@ -50,30 +50,49 @@ class CitablePath:
             raise ValueError("citable path must carry a non-empty document_id")
 
 
+#: The keys a citable-path mapping may carry; mirrors the zod ``.strict()`` schema.
+_PATH_KEYS = frozenset({"documentId", "segments"})
+#: The keys a segment mapping may carry; mirrors the zod ``.strict()`` schema.
+_SEGMENT_KEYS = frozenset({"kind", "label"})
+
+
 def parse_citable_path(value: dict) -> CitablePath:
     """Validate and normalize an untyped mapping into a :class:`CitablePath`."""
     if not isinstance(value, dict):
         raise ValueError(f"citable path must be a mapping, got {type(value).__name__}")
+    _reject_unknown_keys(value, _PATH_KEYS, "citable path")
     document_id = value.get("documentId")
     if not isinstance(document_id, str) or not document_id:
         raise ValueError("citable path requires a non-empty string documentId")
-    raw_segments = value.get("segments", [])
+    if "segments" not in value:
+        raise ValueError("citable path requires a segments key")
+    raw_segments = value["segments"]
     if not isinstance(raw_segments, list):
         raise ValueError("citable path segments must be a list")
-    segments = tuple(
-        CitablePathSegment(kind=_require_str(seg, "kind"), label=_require_str(seg, "label"))
-        for seg in raw_segments
-    )
+    segments = tuple(_parse_segment(seg) for seg in raw_segments)
     return CitablePath(document_id=document_id, segments=segments)
 
 
-def _require_str(mapping: object, key: str) -> str:
-    if not isinstance(mapping, dict) or key not in mapping:
+def _parse_segment(value: object) -> CitablePathSegment:
+    if not isinstance(value, dict):
+        raise ValueError(f"segment must be a mapping, got {type(value).__name__}")
+    _reject_unknown_keys(value, _SEGMENT_KEYS, "segment")
+    return CitablePathSegment(kind=_require_str(value, "kind"), label=_require_str(value, "label"))
+
+
+def _require_str(mapping: dict, key: str) -> str:
+    if key not in mapping:
         raise ValueError(f"segment is missing required key {key!r}")
     value = mapping[key]
     if not isinstance(value, str):
         raise ValueError(f"segment {key!r} must be a string")
     return value
+
+
+def _reject_unknown_keys(value: dict, allowed: frozenset[str], what: str) -> None:
+    unknown = set(value) - allowed
+    if unknown:
+        raise ValueError(f"{what} has unknown keys: {sorted(unknown)}")
 
 
 def citable_paths_equal(a: CitablePath, b: CitablePath) -> bool:

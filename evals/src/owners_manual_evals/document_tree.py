@@ -20,7 +20,11 @@ from .citable_path import (
     CitablePath,
     CitablePathSegment,
     SegmentKind,
+    _reject_unknown_keys,
 )
+
+#: The keys a document-node mapping may carry; mirrors the zod ``.strict()`` schema.
+_NODE_KEYS = frozenset({"kind", "label", "documentId", "children"})
 
 
 @dataclass(eq=False, slots=True)
@@ -61,6 +65,7 @@ def parse_document_tree(value: dict) -> DocumentTree:
 def _parse_node(value: object) -> DocumentNode:
     if not isinstance(value, dict):
         raise ValueError(f"document node must be a mapping, got {type(value).__name__}")
+    _reject_unknown_keys(value, _NODE_KEYS, "document node")
     kind = value.get("kind")
     if kind not in SEGMENT_KINDS:
         raise ValueError(f"unknown document-node kind: {kind!r}")
@@ -70,7 +75,9 @@ def _parse_node(value: object) -> DocumentNode:
     document_id = value.get("documentId")
     if document_id is not None and (not isinstance(document_id, str) or not document_id):
         raise ValueError("document node documentId, when present, must be a non-empty string")
-    raw_children = value.get("children", [])
+    if "children" not in value:
+        raise ValueError("document node requires a children key")
+    raw_children = value["children"]
     if not isinstance(raw_children, list):
         raise ValueError("document node children must be a list")
     children = tuple(_parse_node(child) for child in raw_children)

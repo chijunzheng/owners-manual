@@ -69,6 +69,24 @@ describe('parseDocumentTree', () => {
     }
     expect(() => parseDocumentTree(bad as unknown)).toThrow()
   })
+
+  it('rejects the root when it is missing its children key', () => {
+    const bad = { kind: 'document', documentId: 'RTA', label: 'RTA' }
+    expect(() => parseDocumentTree(bad as unknown)).toThrow()
+  })
+
+  it('rejects a child node that is missing its children key', () => {
+    const bad = {
+      ...sampleTree,
+      children: [{ kind: 'section', label: '1' }],
+    }
+    expect(() => parseDocumentTree(bad as unknown)).toThrow()
+  })
+
+  it('rejects an unknown key on a node', () => {
+    const bad = { ...sampleTree, extra: 1 }
+    expect(() => parseDocumentTree(bad as unknown)).toThrow()
+  })
 })
 
 describe('citable paths on every node', () => {
