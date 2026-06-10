@@ -11,3 +11,7 @@ corpus/raw
 *.md
 docs/
 corpus/
+
+# Corpus test fixtures: their exact bytes are checksummed by the manifest, so
+# reformatting them would break verification. Treated as opaque content.
+packages/corpus/src/__fixtures__/
