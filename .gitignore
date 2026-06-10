@@ -1,0 +1,17 @@
+# --- teaching workspace (/teach skill) — private, never commit ---
+MISSION.md
+NOTES.md
+RESOURCES.md
+lessons/
+learning-records/
+reference/
+
+# --- corpus: fetched at ingest, never committed (Crown copyright) ---
+corpus/raw/
+
+# --- env & deps ---
+.env
+.env.*
+node_modules/
+__pycache__/
+.venv/
