@@ -4,7 +4,14 @@ version = "0.0.0"
 description = "Python eval harness for owners-manual — golden/adversarial datasets, citation-accuracy scoring, RAGAS, Langfuse. Treats the TS service as a black box over HTTP."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+  # Langfuse is the sole system of record for traces/scores (issue #4). The v4
+  # client is OTel-native; imported lazily so unit tests need no server.
+  "langfuse>=4,<5",
+]
+
+[project.scripts]
+hello-trace = "owners_manual_evals.hello_trace_cli:main"
 
 [dependency-groups]
 dev = [

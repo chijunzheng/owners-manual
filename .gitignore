@@ -12,6 +12,9 @@ corpus/raw/
 # --- env & deps ---
 .env
 .env.*
+# but DO commit committed example env files (placeholders only, never secrets)
+!.env.example
+!**/.env.example
 node_modules/
 __pycache__/
 .venv/
