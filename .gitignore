@@ -20,3 +20,6 @@ __pycache__/
 dist/
 *.tsbuildinfo
 coverage/
+
+# Claude Code session dirs (agent worktrees etc.)
+.claude/
