@@ -42,7 +42,11 @@ x-langfuse-shared-env: &langfuse-shared-env
   LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
   LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
   LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-miniosecret}
-  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+  # Media uploads use PRESIGNED URLs that are handed to clients on the HOST (the
+  # browser / hello-trace process), where the in-network "minio" hostname does
+  # not resolve. So this must be the host-published address (127.0.0.1:9090 ->
+  # minio:9000 below), unlike the event endpoint which is written server-side.
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: ${LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT:-http://127.0.0.1:9090}
   LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: 'true'
   LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
   REDIS_HOST: redis
@@ -65,9 +69,9 @@ services:
       - |
         echo "Langfuse data root: $$RESOLVED_DATA_ROOT"
         case "$$RESOLVED_DATA_ROOT" in
-          */owners-manual/.claude/*|*/My\ Drive/*|*/CloudStorage/*|*/Dropbox/*|*/OneDrive/*)
-            echo "REFUSING TO START: data root is inside the synced repo/Drive." >&2
-            echo "Set LANGFUSE_DATA_ROOT to a path outside owners-manual and any cloud-synced folder (default ~/.owners-manual/langfuse-data)." >&2
+          */owners-manual/*|*/My\ Drive/*|*/CloudStorage/*|*/Dropbox/*|*/OneDrive/*)
+            echo "REFUSING TO START: data root is inside the owners-manual repo or a synced Drive." >&2
+            echo "Set LANGFUSE_DATA_ROOT to a path outside any owners-manual directory and any cloud-synced folder (default ~/.owners-manual/langfuse-data)." >&2
             exit 1 ;;
           "")
             echo "REFUSING TO START: data root resolved to an empty string." >&2

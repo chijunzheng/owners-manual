@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
@@ -6,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import {
   composeDataMountSpecs,
   externalDataRootEnvVar,
+  langfuseSharedEnv,
+  loadGuardScript,
   loadLangfuseCompose,
   REPO_ROOT_MARKER,
   type ComposeService,
@@ -107,6 +110,97 @@ describe('Langfuse compose contract — data volumes outside the synced repo (AC
     const command = JSON.stringify(guard.command ?? guard.entrypoint ?? '')
     // The guard must reference the repo marker it refuses to write inside of.
     expect(command).toContain(REPO_ROOT_MARKER)
+  })
+})
+
+/**
+ * Drive the data-root guard's actual shell program (same script the busybox
+ * container runs) with a candidate data root, returning whether it REFUSED
+ * (non-zero exit) and its stderr. Executing the real script — rather than
+ * re-implementing the case patterns — keeps the test honest about guard
+ * behavior.
+ */
+function runGuard(dataRoot: string): { refused: boolean; stderr: string } {
+  const script = loadGuardScript(composePath)
+  try {
+    execFileSync('sh', ['-ec', script], {
+      env: { ...process.env, RESOLVED_DATA_ROOT: dataRoot },
+      encoding: 'utf8',
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
+    return { refused: false, stderr: '' }
+  } catch (error) {
+    const err = error as { status?: number; stderr?: string }
+    return { refused: (err.status ?? 0) !== 0, stderr: err.stderr ?? '' }
+  }
+}
+
+describe('Langfuse compose contract — data-root guard refuses unsafe roots (AC3)', () => {
+  it('refuses a data root anywhere under an owners-manual directory, even on a non-synced clone', () => {
+    // Regression for the gap: a plain `git clone` outside any cloud-sync mount
+    // (e.g. ~/repos/owners-manual) must still be refused, because persisting DB
+    // files inside the repo working tree is never safe.
+    const { refused } = runGuard('/Users/dev/repos/owners-manual/langfuse-data')
+    expect(refused, 'data root inside the repo working tree was not refused').toBe(true)
+  })
+
+  it('refuses a data root directly inside the repo checkout root', () => {
+    const { refused } = runGuard('/home/ci/work/owners-manual/data')
+    expect(refused).toBe(true)
+  })
+
+  it.each([
+    ['/Users/dev/Library/CloudStorage/GoogleDrive-x/My Drive/owners-manual/data', 'My Drive'],
+    ['/Users/dev/Library/CloudStorage/GoogleDrive-x/langfuse-data', 'CloudStorage'],
+    ['/Users/dev/Dropbox/langfuse-data', 'Dropbox'],
+    ['/Users/dev/OneDrive/langfuse-data', 'OneDrive'],
+  ])('still refuses the known cloud-sync mount %s', (dataRoot) => {
+    expect(runGuard(dataRoot).refused).toBe(true)
+  })
+
+  it('refuses an empty data root', () => {
+    expect(runGuard('').refused).toBe(true)
+  })
+
+  it('accepts a safe external default outside the repo and any cloud-sync folder', () => {
+    const { refused } = runGuard('/Users/dev/.owners-manual-data/langfuse')
+    expect(refused, 'a safe external data root was wrongly refused').toBe(false)
+  })
+})
+
+describe('Langfuse compose contract — S3 endpoints reachable from their clients', () => {
+  const sharedEnv = langfuseSharedEnv(composePath)
+
+  /** The host port the compose publishes MinIO's S3 API on (the `:9000` target). */
+  function minioHostS3Port(): string {
+    const ports = service(loadLangfuseCompose(composePath), 'minio').ports ?? []
+    const s3 = ports.find((p) => /:9000$/.test(p))
+    expect(s3, 'minio does not publish its S3 API (:9000) to the host').toBeDefined()
+    const match = /(\d+):9000$/.exec(s3 as string)
+    return match?.[1] ?? ''
+  }
+
+  it('keeps the event-upload endpoint on the internal compose network (server-to-server)', () => {
+    // Event uploads are written by langfuse-web/worker inside the network, so the
+    // internal service DNS name is correct and must not change.
+    expect(sharedEnv.LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT).toBe('http://minio:9000')
+  })
+
+  it('points the media-upload endpoint at a host-reachable URL, not the in-network minio host', () => {
+    // Presigned MEDIA upload URLs are handed to clients running on the HOST,
+    // where the in-network `minio` hostname does not resolve. The endpoint must
+    // therefore be the host-published loopback address.
+    const endpoint = sharedEnv.LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT
+    expect(endpoint, 'media-upload endpoint is missing').toBeTruthy()
+    expect(
+      endpoint,
+      'media presigned URLs would point at the in-network minio host, unreachable from host clients',
+    ).not.toMatch(/\/\/minio[:/]/)
+    // Must resolve to the loopback address the compose actually publishes MinIO
+    // on. The value may be wrapped in a `${VAR:-default}` override, so match the
+    // host-reachable URL anywhere in the string rather than anchoring at start.
+    expect(endpoint).toMatch(/http:\/\/(127\.0\.0\.1|localhost):\d+/)
+    expect(endpoint).toContain(`:${minioHostS3Port()}`)
   })
 })
 

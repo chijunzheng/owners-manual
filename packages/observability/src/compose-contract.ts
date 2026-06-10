@@ -39,6 +39,8 @@ export interface ComposeService {
 export interface LangfuseCompose {
   services: Record<string, ComposeService>
   volumes?: Record<string, unknown>
+  /** Shared env anchor (`x-langfuse-shared-env`) merged into web + worker. */
+  'x-langfuse-shared-env'?: Record<string, string>
 }
 
 /** A single host->container data mount, split into source/target/type. */
@@ -99,6 +101,44 @@ export function splitVolumeEntry(entry: string): [string, string] | null {
   const [source, target] = fields
   if (!source || !target) return null
   return [source, target]
+}
+
+/**
+ * Read the `x-langfuse-shared-env` anchor (the env block merged into the web and
+ * worker services). The S3 endpoints live here. Throws if the anchor is absent.
+ */
+export function langfuseSharedEnv(composePath: string): Record<string, string> {
+  const compose = loadLangfuseCompose(composePath)
+  const shared = compose['x-langfuse-shared-env']
+  if (!shared || typeof shared !== 'object') {
+    throw new Error('compose file has no x-langfuse-shared-env anchor')
+  }
+  return shared
+}
+
+/**
+ * Extract the data-root-guard's shell script as a string runnable under a real
+ * `sh -ec`. The guard is declared as `command: [sh, -ec, <script>]`; Compose
+ * escapes shell `$` as `$$`, so this un-escapes `$$` back to `$` to recover the
+ * exact program the busybox container executes. Lets tests drive the guard's
+ * accept/refuse logic without Docker. Throws if the guard shape is unexpected.
+ */
+export function loadGuardScript(composePath: string): string {
+  const compose = loadLangfuseCompose(composePath)
+  const guard = compose.services['data-root-guard']
+  if (!guard) {
+    throw new Error('compose file has no data-root-guard service')
+  }
+  const command = guard.command
+  if (!Array.isArray(command) || command.length === 0) {
+    throw new Error('data-root-guard command is not a shell argv array')
+  }
+  const script = command[command.length - 1]
+  if (typeof script !== 'string') {
+    throw new Error('data-root-guard command has no inline script')
+  }
+  // Compose `$$` -> shell `$` (escapes one level of variable interpolation).
+  return script.replace(/\$\$/g, '$')
 }
 
 /**
