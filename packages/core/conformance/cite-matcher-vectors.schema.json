@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/chijunzheng/owners-manual/packages/core/conformance/cite-matcher-vectors.schema.json",
+  "title": "Cite-matcher conformance vectors",
+  "description": "Shape of the single cross-language conformance-vector file consumed by both the TypeScript core library and the Python eval grader for owners-manual issue #7.",
+  "type": "object",
+  "required": ["version", "verdicts", "documents", "cases"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "description": { "type": "string" },
+    "verdicts": {
+      "type": "object",
+      "description": "The closed set of verdict labels, each mapped to a human-readable definition.",
+      "additionalProperties": { "type": "string" }
+    },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "segmentKind": {
+      "type": "string",
+      "enum": ["document", "part", "section", "subsection", "clause"]
+    },
+    "node": {
+      "type": "object",
+      "required": ["kind", "label", "children"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "$ref": "#/$defs/segmentKind" },
+        "label": { "type": "string", "minLength": 1 },
+        "documentId": { "type": "string", "minLength": 1 },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": ["documentId", "tree"],
+      "additionalProperties": true,
+      "properties": {
+        "documentId": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "tree": { "$ref": "#/$defs/node" }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": ["kind", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "$ref": "#/$defs/segmentKind" },
+        "label": { "type": "string", "minLength": 1 }
+      }
+    },
+    "citablePath": {
+      "type": "object",
+      "required": ["documentId", "segments"],
+      "additionalProperties": false,
+      "properties": {
+        "documentId": { "type": "string", "minLength": 1 },
+        "segments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/segment" }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["id", "required", "candidate", "expected"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "describe": { "type": "string" },
+        "required": { "$ref": "#/$defs/citablePath" },
+        "candidate": { "$ref": "#/$defs/citablePath" },
+        "expected": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "descendant-satisfies-ancestor",
+            "ancestor-partial",
+            "no-match",
+            "unresolvable"
+          ]
+        }
+      }
+    }
+  }
+}
