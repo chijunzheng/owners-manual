@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+.venv
+__pycache__
+corpus/raw
+
+# Authored design docs and corpus prose — owned by their authoring issues,
+# not reformatted by the scaffold. Prettier checks code and configs only.
+*.md
+docs/
+corpus/

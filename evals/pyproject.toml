@@ -1,0 +1,31 @@
+[project]
+name = "owners-manual-evals"
+version = "0.0.0"
+description = "Python eval harness for owners-manual — golden/adversarial datasets, citation-accuracy scoring, RAGAS, Langfuse. Treats the TS service as a black box over HTTP."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/owners_manual_evals"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
