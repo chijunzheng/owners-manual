@@ -9,6 +9,11 @@ reference/
 # --- corpus: fetched at ingest, never committed (Crown copyright) ---
 corpus/raw/
 
+# --- BYOD inbox: real personal documents (leases, declarations, policies)
+# dropped here as private reference for fixture design / future BYOD runs.
+# NEVER committed — fixtures are synthetic by design (see corpus/fixtures/FIXTURE-DESIGN.md)
+corpus/byod-inbox/
+
 # --- env & deps ---
 .env
 .env.*
