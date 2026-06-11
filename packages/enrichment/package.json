@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@owners-manual/core": "workspace:*",
-    "@owners-manual/parser": "workspace:*"
+    "@owners-manual/parser": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "tsx": "^4.20.7"
