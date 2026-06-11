@@ -1,0 +1,426 @@
+import { describe, expect, it } from 'vitest'
+
+import type { ParsedDocument } from '@owners-manual/parser'
+
+import { fakeClaudeClient, type ClaudeRequest } from './claude-client.js'
+import { createMemoryCache } from './cache.js'
+import { citableUnitChunker, hashChunk, type Chunker } from './chunk.js'
+import { hashTree } from './tree-hash.js'
+import {
+  buildSituatingContextRequest,
+  enrichChunks,
+  parseSituatingContextResponse,
+  type ChunkEnrichment,
+} from './chunk-enrichment.js'
+
+/**
+ * Slice C of #13: chunk-level enrichment writes a SITUATING CONTEXT per chunk —
+ * prose that situates the chunk within its document, prepended later at embed
+ * time by the consumer (consumer-flags' `embeddableText`), never editing the
+ * chunk text itself. It is keyed to chunk hash + prompt version and BATCHED per
+ * document: exactly one LLM call covers every cache-missing chunk, never one
+ * call per chunk (ADR 0005). These tests pin the #13 criteria offline against
+ * the deterministic fake Claude client and a content-addressed cache:
+ *   - 100% cache hits on re-run (zero calls, all hits);
+ *   - a partial cache re-calls only the missing chunks;
+ *   - a prompt-version bump re-calls everything;
+ *   - swapping the chunker invalidates chunk-level enrichment ONLY while the
+ *     tree hash (and tree-level enrichment keyed to it) survives;
+ *   - the LLM never re-authors source text (chunk text byte-identical out).
+ */
+
+const parsed = (documentId: string, text: Array<[string, string]>): ParsedDocument => ({
+  tree: {
+    kind: 'document',
+    label: documentId,
+    documentId,
+    children: text.map(([key]) => ({
+      kind: 'section' as const,
+      label: key.split(':').pop() ?? key,
+      children: [],
+    })),
+  },
+  text: new Map(text),
+})
+
+const sample = parsed('RTA', [
+  ['RTA|section:1', 'The purposes of this Act are to provide protection.'],
+  ['RTA|section:2', 'In this Act, "Board" means the Landlord and Tenant Board.'],
+])
+
+/**
+ * A scripted responder that plays the role of Claude for the situating-context
+ * pass: it parses the requested chunks out of the user content and answers with
+ * a deterministic, non-empty context per requested id — the JSON-array shape the
+ * parser expects. It also lets a test see exactly which ids a given call covered.
+ */
+function situatingResponder(): (request: ClaudeRequest) => string {
+  return (request) =>
+    JSON.stringify(
+      parseRequestedChunkIds(request.user).map((id) => ({
+        id,
+        context: `Situating context for ${id}.`,
+      })),
+    )
+}
+
+/** Extract the requested chunk ids from a situating-context request's user content. */
+function parseRequestedChunkIds(user: string): string[] {
+  const payload = JSON.parse(user) as { chunks?: Array<{ id: string }> }
+  return (payload.chunks ?? []).map((chunk) => chunk.id)
+}
+
+/**
+ * A second, toy chunker with a DIFFERENT id and DIFFERENT boundaries (it fuses
+ * the whole document into one chunk). Used to prove a chunker swap invalidates
+ * chunk-level cache keys while the tree hash is untouched.
+ */
+const wholeDocChunker: Chunker = {
+  id: 'whole-doc',
+  chunk(parsedDoc) {
+    const text = [...parsedDoc.text.values()].join('\n\n')
+    if (text === '') return []
+    return [
+      {
+        id: `${this.id}:${parsedDoc.tree.documentId}`,
+        citablePathKey: parsedDoc.tree.documentId,
+        text,
+      },
+    ]
+  },
+}
+
+describe('enrichChunks — batching', () => {
+  it('makes exactly ONE call for an uncached document of N chunks', async () => {
+    const client = fakeClaudeClient({ responder: situatingResponder() })
+    const cache = createMemoryCache<string>()
+
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    expect(client.calls).toHaveLength(1)
+    expect(result.chunks).toHaveLength(2)
+    expect(result.chunks.map((c) => c.situatingContext)).toEqual([
+      'Situating context for citable-unit:RTA|section:1.',
+      'Situating context for citable-unit:RTA|section:2.',
+    ])
+  })
+
+  it('records documentId, chunkerId, model and promptVersion on the enrichment', async () => {
+    const client = fakeClaudeClient({ model: 'claude-test-0', responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client,
+      cache: createMemoryCache<string>(),
+      promptVersion: 'v1',
+    })
+
+    const expected: Omit<ChunkEnrichment, 'chunks'> = {
+      documentId: 'RTA',
+      chunkerId: 'citable-unit',
+      model: 'claude-test-0',
+      promptVersion: 'v1',
+    }
+    expect({
+      documentId: result.documentId,
+      chunkerId: result.chunkerId,
+      model: result.model,
+      promptVersion: result.promptVersion,
+    }).toEqual(expected)
+  })
+
+  it('attaches the chunk hash to each situated chunk', async () => {
+    const client = fakeClaudeClient({ responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client,
+      cache: createMemoryCache<string>(),
+      promptVersion: 'v1',
+    })
+
+    const chunks = citableUnitChunker.chunk(sample)
+    expect(result.chunks.map((c) => c.chunkHash)).toEqual(chunks.map(hashChunk))
+  })
+})
+
+describe('enrichChunks — cache behavior', () => {
+  it('re-running over an unchanged cache makes ZERO calls and is all hits', async () => {
+    const cache = createMemoryCache<string>()
+    const first = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: first,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    cache.resetStats()
+    const second = fakeClaudeClient({ responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: second,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    expect(second.calls).toHaveLength(0)
+    const stats = cache.stats()
+    expect(stats.misses).toBe(0)
+    expect(stats.hits).toBe(2)
+    expect(result.chunks.map((c) => c.situatingContext)).toEqual([
+      'Situating context for citable-unit:RTA|section:1.',
+      'Situating context for citable-unit:RTA|section:2.',
+    ])
+  })
+
+  it('with a PARTIAL cache, makes ONE call covering only the missing chunks', async () => {
+    const chunks = citableUnitChunker.chunk(sample)
+    const seededKey = `chunk:situating-context:v1:${hashChunk(chunks[0]!)}`
+    const cache = createMemoryCache<string>({
+      snapshot: { [seededKey]: 'Pre-seeded context for section 1.' },
+    })
+
+    let seenUser = ''
+    const client = fakeClaudeClient({
+      responder: (request) => {
+        seenUser = request.user
+        return situatingResponder()(request)
+      },
+    })
+
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    expect(client.calls).toHaveLength(1)
+    expect(parseRequestedChunkIds(seenUser)).toEqual(['citable-unit:RTA|section:2'])
+    expect(result.chunks[0]!.situatingContext).toBe('Pre-seeded context for section 1.')
+    expect(result.chunks[1]!.situatingContext).toBe(
+      'Situating context for citable-unit:RTA|section:2.',
+    )
+  })
+})
+
+describe('enrichChunks — invalidation semantics', () => {
+  it('bumping the prompt version re-calls the whole document', async () => {
+    const cache = createMemoryCache<string>()
+    const first = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: first,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    const second = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: second,
+      cache,
+      promptVersion: 'v2',
+    })
+
+    expect(second.calls).toHaveLength(1)
+    expect(parseRequestedChunkIds(second.calls[0]!.user)).toEqual([
+      'citable-unit:RTA|section:1',
+      'citable-unit:RTA|section:2',
+    ])
+  })
+
+  it('the prompt version appears in the system prompt so a bump changes the request', async () => {
+    const cache = createMemoryCache<string>()
+    const v1 = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: v1,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    const v2 = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: v2,
+      cache: createMemoryCache<string>(),
+      promptVersion: 'v2',
+    })
+
+    expect(v1.calls[0]!.system).toContain('v1')
+    expect(v2.calls[0]!.system).toContain('v2')
+    expect(v1.calls[0]!.system).not.toBe(v2.calls[0]!.system)
+  })
+
+  it('swapping the chunker invalidates chunk-level enrichment while the tree hash survives', async () => {
+    const cache = createMemoryCache<string>()
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: fakeClaudeClient({ responder: situatingResponder() }),
+      cache,
+      promptVersion: 'v1',
+    })
+
+    cache.resetStats()
+    const swapped = fakeClaudeClient({ responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: wholeDocChunker,
+      client: swapped,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    // The chunker swap re-derives chunk ids/hashes -> a cache MISS -> a fresh call.
+    expect(swapped.calls).toHaveLength(1)
+    expect(cache.stats().misses).toBe(1)
+    expect(result.chunkerId).toBe('whole-doc')
+    expect(result.chunks).toHaveLength(1)
+
+    // The tree-level half of the criterion: the tree hash is untouched by the swap.
+    expect(hashTree(sample)).toBe(hashTree(sample))
+  })
+})
+
+describe('enrichChunks — response integrity', () => {
+  it('rejects malformed (non-JSON) LLM output', async () => {
+    const client = fakeClaudeClient({ responder: () => 'not json at all' })
+    await expect(
+      enrichChunks(sample, {
+        chunker: citableUnitChunker,
+        client,
+        cache: createMemoryCache<string>(),
+        promptVersion: 'v1',
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('rejects a response missing a requested chunk id', async () => {
+    const client = fakeClaudeClient({
+      responder: (request) => {
+        const [first] = parseRequestedChunkIds(request.user)
+        return JSON.stringify([{ id: first, context: 'only the first' }])
+      },
+    })
+    await expect(
+      enrichChunks(sample, {
+        chunker: citableUnitChunker,
+        client,
+        cache: createMemoryCache<string>(),
+        promptVersion: 'v1',
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('rejects a response carrying an unknown chunk id', async () => {
+    const client = fakeClaudeClient({
+      responder: (request) => {
+        const requested = parseRequestedChunkIds(request.user)
+        const answers = requested.map((id) => ({ id, context: `ctx ${id}` }))
+        return JSON.stringify([...answers, { id: 'phantom:id', context: 'never requested' }])
+      },
+    })
+    await expect(
+      enrichChunks(sample, {
+        chunker: citableUnitChunker,
+        client,
+        cache: createMemoryCache<string>(),
+        promptVersion: 'v1',
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('rejects a response with an empty context for a requested chunk', async () => {
+    const client = fakeClaudeClient({
+      responder: (request) =>
+        JSON.stringify(parseRequestedChunkIds(request.user).map((id) => ({ id, context: '' }))),
+    })
+    await expect(
+      enrichChunks(sample, {
+        chunker: citableUnitChunker,
+        client,
+        cache: createMemoryCache<string>(),
+        promptVersion: 'v1',
+      }),
+    ).rejects.toThrow()
+  })
+})
+
+describe('enrichChunks — no re-authoring & empty document', () => {
+  it('carries the ORIGINAL chunk text byte-identical (situating context never replaces it)', async () => {
+    const client = fakeClaudeClient({ responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client,
+      cache: createMemoryCache<string>(),
+      promptVersion: 'v1',
+    })
+
+    const chunks = citableUnitChunker.chunk(sample)
+    expect(result.chunks.map((c) => c.chunk.text)).toEqual(chunks.map((c) => c.text))
+    // The situating context lives beside the text, not in place of it.
+    result.chunks.forEach((situated) => {
+      expect(situated.situatingContext).not.toBe(situated.chunk.text)
+    })
+  })
+
+  it('does not mutate the ParsedDocument or its chunks', async () => {
+    const before = JSON.stringify([...sample.text.entries()])
+    const chunks = citableUnitChunker.chunk(sample)
+    const chunksBefore = JSON.stringify(chunks)
+
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: fakeClaudeClient({ responder: situatingResponder() }),
+      cache: createMemoryCache<string>(),
+      promptVersion: 'v1',
+    })
+
+    expect(JSON.stringify([...sample.text.entries()])).toBe(before)
+    expect(JSON.stringify(citableUnitChunker.chunk(sample))).toBe(chunksBefore)
+  })
+
+  it('an empty document (no chunks) makes zero calls and yields an empty enrichment', async () => {
+    const empty = parsed('EMPTY', [])
+    const client = fakeClaudeClient({ responder: situatingResponder() })
+    const result = await enrichChunks(empty, {
+      chunker: citableUnitChunker,
+      client,
+      cache: createMemoryCache<string>(),
+      promptVersion: 'v1',
+    })
+
+    expect(client.calls).toHaveLength(0)
+    expect(result.chunks).toEqual([])
+    expect(result.documentId).toBe('EMPTY')
+  })
+})
+
+describe('prompt construction helpers', () => {
+  it('buildSituatingContextRequest embeds the prompt version and the missing chunks as JSON', () => {
+    const chunks = citableUnitChunker.chunk(sample)
+    const request = buildSituatingContextRequest({
+      documentId: 'RTA',
+      promptVersion: 'v7',
+      skeleton: ['RTA|section:1', 'RTA|section:2'],
+      chunks,
+    })
+
+    expect(request.system).toContain('v7')
+    expect(parseRequestedChunkIds(request.user)).toEqual([
+      'citable-unit:RTA|section:1',
+      'citable-unit:RTA|section:2',
+    ])
+  })
+
+  it('parseSituatingContextResponse accepts a well-formed array and rejects junk', () => {
+    const ok = parseSituatingContextResponse('[{"id":"a","context":"x"}]')
+    expect(ok).toEqual([{ id: 'a', context: 'x' }])
+    expect(() => parseSituatingContextResponse('{"id":"a"}')).toThrow()
+    expect(() => parseSituatingContextResponse('[{"id":"a"}]')).toThrow()
+  })
+})
