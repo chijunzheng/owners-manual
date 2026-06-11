@@ -53,7 +53,8 @@ All fixtures share ONE invented condo so cross-document conflicts line up. Every
 - **Deductible chargeback** — Declaration provision: where corporation insurance responds to damage **originating in an owner's unit**, that owner is liable for the policy **deductible, regardless of fault**, recoverable as a common-expense addition. (Mirrors the real no-fault chargeback finding; tension with Condo Act s. 105 — verify.)
 - **Unit owner policy**: covers contents + **sudden and accidental escape of water from plumbing**; **excludes sewer backup** (no endorsement attached); **no improvements/betterments rider**.
 - **Lease**: Ontario residential tenancy; rent (fictional) $2,000/month; the unit is in a condominium and the tenant agrees to comply with the declaration, by-laws, and rules (the cross-corpus bridge).
-- **Fees (management policy sheet, no rule authority)**: move-in $300 refundable deposit + $150 non-refundable charge; visitor-parking "fine" $100 after two violations; BBQ restriction.
+- **Management policy sheet (no rule/by-law authority behind the charges)**: move-in $300 refundable deposit + $150 non-refundable administration charge + fob-reactivation fee, "collected as common expenses" (powers GOV-04); BBQ restriction (powers GOV-02). The sheet has no parking clause.
+- **Parking "fine" — Rule, not the policy sheet**: `governing/rules.html` Rule 2 purports to "fine" $100 **for each contravention** of the visitor-parking rule, added to common expenses (powers GOV-03; Ontario condos have no power to levy fines).
 - **Short-term rental**: a **six-month minimum lease** appears in the Rules; the management policy sheet **misattributes** the restriction to the declaration (which is silent on STR). Powers GOV-05.
 
 ---
