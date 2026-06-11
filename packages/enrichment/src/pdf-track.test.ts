@@ -281,6 +281,21 @@ describe('checkPdfCoverage', () => {
     expect(result).toEqual({ ok: true, missingFromTree: [], extraInTree: [] })
   })
 
+  it('flags a DUPLICATED tree clause that appears only once in the reference', () => {
+    // The mirror image of the vanished-duplicate case: the reader emitted the
+    // same clause twice while pdftotext saw it once. Containment alone passes
+    // both copies; occurrence capping must flag the surplus as invented.
+    const clause = 'The corporation shall maintain the common elements.'
+    const parsed = doc('DECL', [
+      ['DECL|section:1', clause],
+      ['DECL|section:2', clause],
+    ])
+    const result = checkPdfCoverage(parsed, clause)
+    expect(result.ok).toBe(false)
+    expect(result.extraInTree).toEqual([clause])
+    expect(result.missingFromTree).toEqual([])
+  })
+
   it('passes vacuously for an empty reference and an empty tree text', () => {
     const parsed = doc('DECL', [])
     const result = checkPdfCoverage(parsed, '')

@@ -231,6 +231,41 @@ describe('enrichChunks — cache behavior', () => {
     ])
   })
 
+  it('re-calls when the CHUNKER changes even if it emits byte-identical chunks (AC2: chunker identity keys the cache)', async () => {
+    // The Chunker interface does not require strategy-prefixed chunk ids, so two
+    // strategies can emit identical (id, citablePathKey, text) triples. AC2 says
+    // a chunker change invalidates chunk-level enrichment — the cache key must
+    // carry the chunker id, not rely on the id-prefix convention.
+    const bareChunk = (parsedDoc: ParsedDocument) => {
+      const [first] = [...parsedDoc.text.entries()]
+      return first === undefined ? [] : [{ id: first[0], citablePathKey: first[0], text: first[1] }]
+    }
+    const strategyA = { id: 'strategy-a', chunk: bareChunk }
+    const strategyB = { id: 'strategy-b', chunk: bareChunk }
+
+    const cache = createMemoryCache<string>()
+    const first = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: strategyA,
+      client: first,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+
+    const second = fakeClaudeClient({ responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: strategyB,
+      client: second,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+
+    expect(second.calls).toHaveLength(1)
+    expect(result.chunkerId).toBe('strategy-b')
+  })
+
   it('with a PARTIAL cache, makes ONE call covering only the missing chunks', async () => {
     const chunks = citableUnitChunker.chunk(sample)
     // Seed using the NEW key format: a JSON array carrying the tree-facts digest
@@ -238,6 +273,7 @@ describe('enrichChunks — cache behavior', () => {
     const seededKey = JSON.stringify([
       'chunk',
       'situating-context',
+      'citable-unit',
       'fake-claude-0',
       'v1',
       treeFactsDigest(treeEnrichment),

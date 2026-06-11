@@ -108,16 +108,22 @@ export function treeFactsDigest(enrichment: TreeEnrichment): string {
 }
 
 /**
- * The per-chunk cache key: namespaced by pass + model + prompt version + the
- * consumed tree-facts digest + chunk hash, encoded as a lossless JSON array.
+ * The per-chunk cache key: namespaced by pass + chunker id + model + prompt
+ * version + the consumed tree-facts digest + chunk hash, encoded as a lossless
+ * JSON array.
  *
  * The array (rather than a colon-joined string) is collision-safe: model and
  * prompt-version are unconstrained, so a joined `chunk:...:<model>:<version>:...`
  * key aliases distinct (model, version) pairs and could serve a stale entry
- * across that boundary. The tree-facts digest scopes the key to the exact
- * sidecar the context consumed, so changing the cited definitions/xrefs misses.
+ * across that boundary. The chunker id is its own element because the Chunker
+ * interface does not require strategy-prefixed chunk ids — two strategies can
+ * emit byte-identical chunks, and AC2 pins that a chunker change invalidates
+ * chunk-level enrichment regardless. The tree-facts digest scopes the key to the
+ * exact sidecar the context consumed, so changing the cited definitions/xrefs
+ * misses.
  */
 function chunkCacheKey(
+  chunkerId: string,
   model: string,
   promptVersion: string,
   treeFacts: string,
@@ -126,6 +132,7 @@ function chunkCacheKey(
   return JSON.stringify([
     'chunk',
     SITUATING_CONTEXT_PASS,
+    chunkerId,
     model,
     promptVersion,
     treeFacts,
@@ -294,7 +301,13 @@ export async function enrichChunks(
   const treeFacts = treeFactsDigest(deps.treeEnrichment)
 
   const missing = chunks.filter((_chunk, index) => {
-    const key = chunkCacheKey(deps.client.model, deps.promptVersion, treeFacts, hashes[index]!)
+    const key = chunkCacheKey(
+      deps.chunker.id,
+      deps.client.model,
+      deps.promptVersion,
+      treeFacts,
+      hashes[index]!,
+    )
     return !cacheHas(deps.cache, key)
   })
 
@@ -306,7 +319,13 @@ export async function enrichChunks(
   const enrichedChunks = await Promise.all(
     chunks.map(async (chunk, index): Promise<SituatedChunk> => {
       const chunkHash = hashes[index]!
-      const key = chunkCacheKey(deps.client.model, deps.promptVersion, treeFacts, chunkHash)
+      const key = chunkCacheKey(
+        deps.chunker.id,
+        deps.client.model,
+        deps.promptVersion,
+        treeFacts,
+        chunkHash,
+      )
       const situatingContext = await deps.cache.getOrCompute(key, async () => {
         const fresh = situated.get(chunk.id)
         if (fresh === undefined) {

@@ -161,9 +161,12 @@ function countOccurrences(haystack: string, needle: string): number {
  * never invoked here). Both sides are whitespace-normalized first.
  *
  * (a) Re-authoring detector: every text node of the tree must occur as a
- *     substring of the normalized reference; nodes that do not are collected as
- *     `extraInTree` (text the LLM authored that the deterministic extraction
- *     never saw).
+ *     substring of the normalized reference — AND no more often than the
+ *     reference supports. A node text appearing K times across the tree must
+ *     occur at least K times in the reference; surplus occurrences are silent
+ *     clause DUPLICATION by the reader and are collected as `extraInTree`, as is
+ *     any node text the reference never contains (text the LLM authored that
+ *     the deterministic extraction never saw).
  * (b) Vanished-clause detector: the reference is split into non-empty lines
  *     (pre-normalization) and coverage is counted by OCCURRENCE, not by distinct
  *     line — legal boilerplate repeats, so a reference line appearing N times
@@ -179,10 +182,20 @@ export function checkPdfCoverage(parsed: ParsedDocument, referenceText: string):
   const normalizedTreeTexts = treeTexts.map(normalizeWhitespace)
   const combinedTreeText = normalizedTreeTexts.join('\n')
 
-  const extraInTree = treeTexts.filter((text) => {
-    const normalized = normalizeWhitespace(text)
-    return normalized.length > 0 && !normalizedReference.includes(normalized)
-  })
+  const treeCounts = new Map<string, { original: string; count: number }>()
+  for (let i = 0; i < treeTexts.length; i += 1) {
+    const normalized = normalizedTreeTexts[i]!
+    if (normalized.length === 0) continue
+    const entry = treeCounts.get(normalized)
+    if (entry === undefined) treeCounts.set(normalized, { original: treeTexts[i]!, count: 1 })
+    else entry.count += 1
+  }
+
+  const extraInTree: string[] = []
+  for (const [normalized, { original, count }] of treeCounts) {
+    const supported = countOccurrences(normalizedReference, normalized)
+    for (let i = supported; i < count; i += 1) extraInTree.push(original)
+  }
 
   const referenceCounts = new Map<string, number>()
   for (const line of referenceText.split('\n')) {
