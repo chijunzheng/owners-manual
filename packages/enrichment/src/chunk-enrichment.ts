@@ -7,9 +7,11 @@
  * context is a sidecar, the {@link SituatedChunk} carries the original chunk
  * untouched.
  *
- * Keys to chunk hash + prompt version (ADR 0004), so changing the chunker
- * re-derives chunk ids and hashes and invalidates chunk-level enrichment ONLY —
- * the tree hash, and the tree-level enrichment keyed to it, are untouched.
+ * Keys to chunk hash + prompt version + the consumed tree-facts digest (ADR
+ * 0004; CONTEXT.md line 134), so changing the chunker re-derives chunk ids and
+ * hashes and invalidates chunk-level enrichment, AND changing the cited tree-level
+ * definitions/cross-references invalidates it too — while unchanged facts still
+ * hit. The tree hash, and the tree-level enrichment keyed to it, are untouched.
  * Calls are BATCHED per document (ADR 0005): every cache-missing chunk is
  * covered by exactly one Claude call, never one call per chunk. A document whose
  * chunks are all cached makes zero calls — the property the build report asserts
@@ -21,6 +23,8 @@
  * carry no id that was not requested.
  */
 
+import { createHash } from 'node:crypto'
+
 import { z } from 'zod'
 
 import { walkTree } from '@owners-manual/core'
@@ -29,6 +33,8 @@ import { pathKey, type ParsedDocument } from '@owners-manual/parser'
 import { type ClaudeClient, type ClaudeRequest } from './claude-client.js'
 import { type EnrichmentCache } from './cache.js'
 import { hashChunk, type Chunk, type Chunker } from './chunk.js'
+import { canonicalJson } from './pipeline-config.js'
+import type { CrossReferenceEdge, DefinitionsIndex, TreeEnrichment } from './tree-enrichment.js'
 
 /** The enrichment-pass name; the cache-key namespace and prompt-version map key. */
 export const SITUATING_CONTEXT_PASS = 'situating-context'
@@ -66,17 +72,65 @@ export interface EnrichChunksDeps {
   readonly client: ClaudeClient
   /** The content-addressed per-chunk context cache (stores the context string). */
   readonly cache: EnrichmentCache<string>
+  /**
+   * The tree-level sidecar this document's chunk contexts consume (CONTEXT.md
+   * line 134): the recovered definitions and cross-references the situating
+   * context MAY cite. Required — the contexts are computed against these facts and
+   * the chunk-context cache is scoped by their digest, so they cannot be optional.
+   */
+  readonly treeEnrichment: TreeEnrichment
   /** The situating-context prompt version; bumping it invalidates every key. */
   readonly promptVersion: string
 }
 
+/** Lowercase hex SHA-256 of a UTF-8 string. */
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex')
+}
+
 /**
- * The per-chunk cache key: namespaced by pass + model + prompt version + chunk
- * hash. The model lives in the key so a persisted cache never serves contexts
- * written by a previous model under a new model's label.
+ * The content-address of exactly the tree-level facts a chunk request embeds: a
+ * SHA-256 over the canonical serialization of `{ crossReferences, definitions }`.
+ *
+ * The chunk situating-context cache keys on this digest, so a chunk-context entry
+ * invalidates iff the consumed facts change and survives when they do not — the
+ * dataflow CONTEXT.md line 134 pins (the context cites the definitions and xrefs
+ * found earlier) made cache-correct. Only the two fields the request embeds enter
+ * the digest; amendment flags and the tree hash are not consumed here and do not.
  */
-function chunkCacheKey(model: string, promptVersion: string, chunkHash: string): string {
-  return `chunk:${SITUATING_CONTEXT_PASS}:${model}:${promptVersion}:${chunkHash}`
+export function treeFactsDigest(enrichment: TreeEnrichment): string {
+  return sha256Hex(
+    canonicalJson({
+      crossReferences: enrichment.crossReferences,
+      definitions: enrichment.definitions,
+    }),
+  )
+}
+
+/**
+ * The per-chunk cache key: namespaced by pass + model + prompt version + the
+ * consumed tree-facts digest + chunk hash, encoded as a lossless JSON array.
+ *
+ * The array (rather than a colon-joined string) is collision-safe: model and
+ * prompt-version are unconstrained, so a joined `chunk:...:<model>:<version>:...`
+ * key aliases distinct (model, version) pairs and could serve a stale entry
+ * across that boundary. The tree-facts digest scopes the key to the exact
+ * sidecar the context consumed, so changing the cited definitions/xrefs misses.
+ */
+function chunkCacheKey(
+  model: string,
+  promptVersion: string,
+  treeFacts: string,
+  chunkHash: string,
+): string {
+  return JSON.stringify([
+    'chunk',
+    SITUATING_CONTEXT_PASS,
+    model,
+    promptVersion,
+    treeFacts,
+    chunkHash,
+  ])
 }
 
 /** The document's structural skeleton: every node's path key, in document order. */
@@ -106,26 +160,35 @@ export interface SituatingContextRequestInput {
   readonly promptVersion: string
   readonly skeleton: readonly string[]
   readonly chunks: readonly Chunk[]
+  /** The tree-level definitions index the situating context MAY cite (CONTEXT.md line 134). */
+  readonly definitions: DefinitionsIndex
+  /** The tree-level cross-reference edges the situating context MAY cite. */
+  readonly crossReferences: readonly CrossReferenceEdge[]
 }
 
 /**
  * Construct the batched Claude request for a document's missing chunks. The
  * system prompt names the task and embeds the prompt VERSION (so a version bump
  * genuinely changes the request and re-keys the cache); the user content carries
- * the document skeleton for situating context plus the missing chunks as a JSON
- * array. Pure and exported for testability.
+ * the document skeleton for situating context, the recovered tree-level facts
+ * (definitions + cross-references) the chunk context may cite, plus the missing
+ * chunks as a JSON array. Pure and exported for testability.
  */
 export function buildSituatingContextRequest(input: SituatingContextRequestInput): ClaudeRequest {
   const system = [
     `You are writing situating context for legal-document chunks (prompt version ${input.promptVersion}).`,
     'For each chunk, write one or two sentences situating it within its document so a retriever',
     'can place it in context. Do NOT rewrite, summarize, or alter the chunk text itself.',
+    'You MAY cite the recovered definitions and cross-references provided below when this helps',
+    'situate a chunk; never use them to rewrite the chunk text.',
     'Respond with ONLY a JSON array of {"id","context"} objects, one per requested chunk.',
   ].join('\n')
 
   const user = JSON.stringify({
     documentId: input.documentId,
     skeleton: input.skeleton,
+    definitions: input.definitions,
+    crossReferences: input.crossReferences,
     chunks: input.chunks.map(toRequestChunk),
   })
 
@@ -196,6 +259,8 @@ async function situateMissingChunks(
     promptVersion: deps.promptVersion,
     skeleton: documentSkeleton(parsed),
     chunks: missing,
+    definitions: deps.treeEnrichment.definitions,
+    crossReferences: deps.treeEnrichment.crossReferences,
   })
 
   const response = await deps.client.complete(request)
@@ -226,9 +291,10 @@ export async function enrichChunks(
 ): Promise<ChunkEnrichment> {
   const chunks = deps.chunker.chunk(parsed)
   const hashes = chunks.map(hashChunk)
+  const treeFacts = treeFactsDigest(deps.treeEnrichment)
 
   const missing = chunks.filter((_chunk, index) => {
-    const key = chunkCacheKey(deps.client.model, deps.promptVersion, hashes[index]!)
+    const key = chunkCacheKey(deps.client.model, deps.promptVersion, treeFacts, hashes[index]!)
     return !cacheHas(deps.cache, key)
   })
 
@@ -240,7 +306,7 @@ export async function enrichChunks(
   const enrichedChunks = await Promise.all(
     chunks.map(async (chunk, index): Promise<SituatedChunk> => {
       const chunkHash = hashes[index]!
-      const key = chunkCacheKey(deps.client.model, deps.promptVersion, chunkHash)
+      const key = chunkCacheKey(deps.client.model, deps.promptVersion, treeFacts, chunkHash)
       const situatingContext = await deps.cache.getOrCompute(key, async () => {
         const fresh = situated.get(chunk.id)
         if (fresh === undefined) {

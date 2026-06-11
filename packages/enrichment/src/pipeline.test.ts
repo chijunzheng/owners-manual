@@ -589,6 +589,55 @@ describe('AC5 "Flags flip at consumers without touching producers"', () => {
 })
 
 // =============================================================================
+// tree -> chunk dataflow (CONTEXT.md line 134)
+// =============================================================================
+
+describe('tree-level enrichment feeds chunk-level enrichment (CONTEXT.md line 134)', () => {
+  it('the chunk-pass user payload embeds the definitions the TREE pass returned for that document', async () => {
+    // Capture every situating-context (chunk-pass) request's user payload.
+    const chunkUserPayloads: string[] = []
+    const responder = buildResponder()
+    const recordingResponder: FakeResponder = (request) => {
+      if (treePassOf(request) === undefined) {
+        chunkUserPayloads.push(request.user)
+      }
+      return responder(request)
+    }
+
+    await runEnrichmentBuild({
+      documents,
+      manifestHash,
+      config,
+      client: fakeClaudeClient({ responder: recordingResponder }),
+      chunker: citableUnitChunker,
+      caches: newCaches(),
+    })
+
+    // The responder defines `{ Term: <first provision path> }` per document. For
+    // docA that path is RTA|section:2; for docB, CONDO|section:1. The chunk pass
+    // could only carry these if the tree pass ran FIRST and was consumed.
+    const parsedPayloads = chunkUserPayloads.map(
+      (user) =>
+        JSON.parse(user) as {
+          documentId: string
+          definitions: Record<string, string>
+          crossReferences: Array<{ from: string; to: string; kind: string }>
+        },
+    )
+
+    const docAPayload = parsedPayloads.find((p) => p.documentId === 'RTA')!
+    const docBPayload = parsedPayloads.find((p) => p.documentId === 'CONDO')!
+
+    expect(docAPayload.definitions).toEqual({ Term: 'RTA|section:2' })
+    expect(docBPayload.definitions).toEqual({ Term: 'CONDO|section:1' })
+    // And the cross-references the tree pass recovered ride along too.
+    expect(docAPayload.crossReferences).toEqual([
+      { from: 'RTA|section:12', to: 'RTA|section:2', kind: 'despite' },
+    ])
+  })
+})
+
+// =============================================================================
 // coherence guards
 // =============================================================================
 

@@ -107,9 +107,9 @@ describe('schemas', () => {
 })
 
 describe('treeCacheKey', () => {
-  it('is content-addressed by tree hash, namespaced by model, and versioned by the pass prompt', () => {
+  it('encodes the key as a deterministic JSON array (content-addressed by tree hash, namespaced by model, versioned by the pass prompt)', () => {
     expect(treeCacheKey('cross-references', 'fake-claude-0', 'xref-v1', sample)).toBe(
-      `tree:cross-references:fake-claude-0:xref-v1:${hashTree(sample)}`,
+      JSON.stringify(['tree', 'cross-references', 'fake-claude-0', 'xref-v1', hashTree(sample)]),
     )
   })
 
@@ -122,6 +122,15 @@ describe('treeCacheKey', () => {
   it('changes when only the model changes', () => {
     expect(treeCacheKey('definitions', 'model-a', 'def-v1', sample)).not.toBe(
       treeCacheKey('definitions', 'model-b', 'def-v1', sample),
+    )
+  })
+
+  it('is collision-safe across the model/prompt boundary (a colon-joined key would alias these)', () => {
+    // The old `tree:<pass>:<model>:<version>:<hash>` colon-joined encoding aliases
+    // these two distinct (model, version) pairs to the same string. The lossless
+    // JSON-array encoding must keep them distinct.
+    expect(treeCacheKey('definitions', 'm:v1', 'p', sample)).not.toBe(
+      treeCacheKey('definitions', 'm', 'v1:p', sample),
     )
   })
 })

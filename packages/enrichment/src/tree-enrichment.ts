@@ -10,7 +10,8 @@
  *
  *   - Keyed to the tree hash, so it survives chunker changes — these passes only
  *     ever see the tree (skeleton path keys + per-path text), never chunks.
- *   - Cached per pass under `tree:${pass}:${promptVersion}:${treeHash}`, with the
+ *   - Cached per pass under a lossless JSON-array key
+ *     `['tree', pass, model, promptVersion, treeHash]`, with the
  *     RAW response text stored so a cache hit skips the client entirely: a re-run
  *     on unchanged inputs is 100% hits and zero LLM calls. Bumping one pass's
  *     prompt version re-runs only that pass (the version is part of its key).
@@ -98,6 +99,13 @@ const amendmentFlagsResponseSchema = z.object({ flags: z.array(amendmentFlagSche
  * enrichment model, and versioned by the pass's prompt. Two runs collide (a hit)
  * iff the tree, the model, and that pass's prompt are all unchanged — a persisted
  * cache must never serve one model's sidecars under another model's label.
+ *
+ * Encoded as a deterministic JSON array rather than a colon-joined string: model
+ * and prompt-version are unconstrained, so a colon-joined `tree:<pass>:<model>:
+ * <version>:<hash>` aliases distinct (model, version) pairs — `('m:v1','p')` and
+ * `('m','v1:p')` would collide and a persisted cache could serve a stale entry
+ * across the model/prompt boundary. The JSON array is lossless: each field is its
+ * own element, so no choice of separators can fold two distinct keys together.
  */
 export function treeCacheKey(
   pass: TreePass,
@@ -105,7 +113,7 @@ export function treeCacheKey(
   promptVersion: string,
   parsed: ParsedDocument,
 ): string {
-  return `tree:${pass}:${model}:${promptVersion}:${hashTree(parsed)}`
+  return JSON.stringify(['tree', pass, model, promptVersion, hashTree(parsed)])
 }
 
 // --- prompt construction (pure helpers, exported for testability) ------------

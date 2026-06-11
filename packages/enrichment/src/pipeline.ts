@@ -132,15 +132,18 @@ export async function runEnrichmentBuild(input: RunEnrichmentBuildInput): Promis
   const chunks: ChunkEnrichment[] = []
 
   for (const document of documents) {
-    const [tree, chunk] = await Promise.all([
-      enrichTree(document, { client, cache: caches.tree, promptVersions }),
-      enrichChunks(document, {
-        chunker,
-        client,
-        cache: caches.chunk,
-        promptVersion: situatingContextVersion,
-      }),
-    ])
+    // CONTEXT.md line 134: chunk-level enrichment CONSUMES tree-level enrichment
+    // (situating context cites the definitions and xrefs found earlier), so the
+    // tree pass must complete and be passed in before the chunk pass runs — not
+    // race it in a Promise.all. Documents still process sequentially.
+    const tree = await enrichTree(document, { client, cache: caches.tree, promptVersions })
+    const chunk = await enrichChunks(document, {
+      chunker,
+      client,
+      cache: caches.chunk,
+      treeEnrichment: tree,
+      promptVersion: situatingContextVersion,
+    })
     trees.push(tree)
     chunks.push(chunk)
   }

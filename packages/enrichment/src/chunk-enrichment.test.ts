@@ -6,10 +6,12 @@ import { fakeClaudeClient, type ClaudeRequest } from './claude-client.js'
 import { createMemoryCache } from './cache.js'
 import { citableUnitChunker, hashChunk, type Chunker } from './chunk.js'
 import { hashTree } from './tree-hash.js'
+import { type TreeEnrichment } from './tree-enrichment.js'
 import {
   buildSituatingContextRequest,
   enrichChunks,
   parseSituatingContextResponse,
+  treeFactsDigest,
   type ChunkEnrichment,
 } from './chunk-enrichment.js'
 
@@ -47,6 +49,29 @@ const sample = parsed('RTA', [
   ['RTA|section:1', 'The purposes of this Act are to provide protection.'],
   ['RTA|section:2', 'In this Act, "Board" means the Landlord and Tenant Board.'],
 ])
+
+/**
+ * A small, valid tree-level sidecar over `sample`: the recovered facts the chunk
+ * pass MUST consume (CONTEXT.md line 134 — situating context cites the
+ * definitions and cross-references found at tree level). Its definition path
+ * (`RTA|section:2`) and edge endpoints exist in `sample`. Build helpers below let
+ * tests vary the consumed facts to prove the digest gates the chunk-context cache.
+ */
+const treeEnrichmentFor = (definitions: Readonly<Record<string, string>>): TreeEnrichment => ({
+  documentId: 'RTA',
+  treeHash: hashTree(sample),
+  model: 'fake-claude-0',
+  promptVersions: {
+    'cross-references': 'xref-v1',
+    definitions: 'def-v1',
+    'amendment-flags': 'amend-v1',
+  },
+  crossReferences: [{ from: 'RTA|section:1', to: 'RTA|section:2', kind: 'despite' }],
+  definitions,
+  amendmentFlags: [],
+})
+
+const treeEnrichment: TreeEnrichment = treeEnrichmentFor({ Board: 'RTA|section:2' })
 
 /**
  * A scripted responder that plays the role of Claude for the situating-context
@@ -99,6 +124,7 @@ describe('enrichChunks — batching', () => {
       chunker: citableUnitChunker,
       client,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -116,6 +142,7 @@ describe('enrichChunks — batching', () => {
       chunker: citableUnitChunker,
       client,
       cache: createMemoryCache<string>(),
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -139,6 +166,7 @@ describe('enrichChunks — batching', () => {
       chunker: citableUnitChunker,
       client,
       cache: createMemoryCache<string>(),
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -155,6 +183,7 @@ describe('enrichChunks — cache behavior', () => {
       chunker: citableUnitChunker,
       client: first,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -163,6 +192,7 @@ describe('enrichChunks — cache behavior', () => {
       chunker: citableUnitChunker,
       client: second,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -177,6 +207,7 @@ describe('enrichChunks — cache behavior', () => {
       chunker: citableUnitChunker,
       client: first,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -186,6 +217,7 @@ describe('enrichChunks — cache behavior', () => {
       chunker: citableUnitChunker,
       client: second,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -201,7 +233,16 @@ describe('enrichChunks — cache behavior', () => {
 
   it('with a PARTIAL cache, makes ONE call covering only the missing chunks', async () => {
     const chunks = citableUnitChunker.chunk(sample)
-    const seededKey = `chunk:situating-context:fake-claude-0:v1:${hashChunk(chunks[0]!)}`
+    // Seed using the NEW key format: a JSON array carrying the tree-facts digest
+    // (the chunk-context cache is now scoped by the consumed tree sidecar too).
+    const seededKey = JSON.stringify([
+      'chunk',
+      'situating-context',
+      'fake-claude-0',
+      'v1',
+      treeFactsDigest(treeEnrichment),
+      hashChunk(chunks[0]!),
+    ])
     const cache = createMemoryCache<string>({
       snapshot: { [seededKey]: 'Pre-seeded context for section 1.' },
     })
@@ -218,6 +259,7 @@ describe('enrichChunks — cache behavior', () => {
       chunker: citableUnitChunker,
       client,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -238,6 +280,7 @@ describe('enrichChunks — invalidation semantics', () => {
       chunker: citableUnitChunker,
       client: first,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -246,6 +289,7 @@ describe('enrichChunks — invalidation semantics', () => {
       chunker: citableUnitChunker,
       client: second,
       cache,
+      treeEnrichment,
       promptVersion: 'v2',
     })
 
@@ -263,6 +307,7 @@ describe('enrichChunks — invalidation semantics', () => {
       chunker: citableUnitChunker,
       client: v1,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -271,6 +316,7 @@ describe('enrichChunks — invalidation semantics', () => {
       chunker: citableUnitChunker,
       client: v2,
       cache: createMemoryCache<string>(),
+      treeEnrichment,
       promptVersion: 'v2',
     })
 
@@ -285,6 +331,7 @@ describe('enrichChunks — invalidation semantics', () => {
       chunker: citableUnitChunker,
       client: fakeClaudeClient({ responder: situatingResponder() }),
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -294,6 +341,7 @@ describe('enrichChunks — invalidation semantics', () => {
       chunker: wholeDocChunker,
       client: swapped,
       cache,
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -316,6 +364,7 @@ describe('enrichChunks — response integrity', () => {
         chunker: citableUnitChunker,
         client,
         cache: createMemoryCache<string>(),
+        treeEnrichment,
         promptVersion: 'v1',
       }),
     ).rejects.toThrow()
@@ -333,6 +382,7 @@ describe('enrichChunks — response integrity', () => {
         chunker: citableUnitChunker,
         client,
         cache: createMemoryCache<string>(),
+        treeEnrichment,
         promptVersion: 'v1',
       }),
     ).rejects.toThrow()
@@ -351,6 +401,7 @@ describe('enrichChunks — response integrity', () => {
         chunker: citableUnitChunker,
         client,
         cache: createMemoryCache<string>(),
+        treeEnrichment,
         promptVersion: 'v1',
       }),
     ).rejects.toThrow()
@@ -366,6 +417,7 @@ describe('enrichChunks — response integrity', () => {
         chunker: citableUnitChunker,
         client,
         cache: createMemoryCache<string>(),
+        treeEnrichment,
         promptVersion: 'v1',
       }),
     ).rejects.toThrow()
@@ -379,6 +431,7 @@ describe('enrichChunks — no re-authoring & empty document', () => {
       chunker: citableUnitChunker,
       client,
       cache: createMemoryCache<string>(),
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -399,6 +452,7 @@ describe('enrichChunks — no re-authoring & empty document', () => {
       chunker: citableUnitChunker,
       client: fakeClaudeClient({ responder: situatingResponder() }),
       cache: createMemoryCache<string>(),
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
@@ -413,12 +467,129 @@ describe('enrichChunks — no re-authoring & empty document', () => {
       chunker: citableUnitChunker,
       client,
       cache: createMemoryCache<string>(),
+      treeEnrichment,
       promptVersion: 'v1',
     })
 
     expect(client.calls).toHaveLength(0)
     expect(result.chunks).toEqual([])
     expect(result.documentId).toBe('EMPTY')
+  })
+})
+
+describe('enrichChunks — tree-sidecar consumption (CONTEXT.md line 134)', () => {
+  it("the batched request's user payload carries the consumed sidecar's definitions and cross-references", async () => {
+    let seenUser = ''
+    const client = fakeClaudeClient({
+      responder: (request) => {
+        seenUser = request.user
+        return situatingResponder()(request)
+      },
+    })
+
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client,
+      cache: createMemoryCache<string>(),
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+
+    const payload = JSON.parse(seenUser) as {
+      definitions: Record<string, string>
+      crossReferences: Array<{ from: string; to: string; kind: string }>
+    }
+    expect(payload.definitions).toEqual({ Board: 'RTA|section:2' })
+    expect(payload.crossReferences).toEqual([
+      { from: 'RTA|section:1', to: 'RTA|section:2', kind: 'despite' },
+    ])
+  })
+
+  it('a CHANGE in the consumed sidecar facts re-calls over a persisted cache; UNCHANGED facts still hit', async () => {
+    const cache = createMemoryCache<string>()
+
+    // First build consumes the original sidecar.
+    const first = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: first,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+
+    // Re-run with UNCHANGED facts: all hits, zero calls.
+    cache.resetStats()
+    const sameFacts = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: sameFacts,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+    expect(sameFacts.calls).toHaveLength(0)
+    expect(cache.stats().misses).toBe(0)
+    expect(cache.stats().hits).toBe(2)
+
+    // Re-run with DIFFERENT consumed facts (a different definition): the chunk
+    // contexts can now cite a different sidecar, so the cache must MISS and the
+    // client must be called afresh.
+    cache.resetStats()
+    const changedFacts = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: changedFacts,
+      cache,
+      treeEnrichment: treeEnrichmentFor({ Board: 'RTA|section:1' }),
+      promptVersion: 'v1',
+    })
+    expect(changedFacts.calls).toHaveLength(1)
+    expect(cache.stats().misses).toBe(2)
+  })
+
+  it('is collision-safe across the model/prompt boundary — a colon-joined key would alias these (second run CALLS, not hits)', async () => {
+    // Run 1: model 'm:v1', promptVersion 'p'. Run 2: model 'm', promptVersion
+    // 'v1:p'. A colon-joined `chunk:...:<model>:<version>:...` key aliases these,
+    // so run 2 would wrongly HIT run 1's entries. The lossless JSON-array key
+    // keeps them distinct, so run 2 must call the client.
+    const cache = createMemoryCache<string>()
+
+    const run1 = fakeClaudeClient({ model: 'm:v1', responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: run1,
+      cache,
+      treeEnrichment,
+      promptVersion: 'p',
+    })
+
+    cache.resetStats()
+    const run2 = fakeClaudeClient({ model: 'm', responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: run2,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1:p',
+    })
+
+    // No stale cross-boundary hit: run 2 misses every chunk and makes a call.
+    expect(run2.calls).toHaveLength(1)
+    expect(cache.stats().misses).toBe(2)
+    expect(cache.stats().hits).toBe(0)
+  })
+})
+
+describe('treeFactsDigest', () => {
+  it('is stable for the same consumed facts and differs when the definitions change', () => {
+    const a = treeFactsDigest(treeEnrichment)
+    const b = treeFactsDigest(treeEnrichmentFor({ Board: 'RTA|section:2' }))
+    const c = treeFactsDigest(treeEnrichmentFor({ Board: 'RTA|section:1' }))
+    expect(a).toBe(b)
+    expect(a).not.toBe(c)
+    // A 64-hex-char sha256 digest.
+    expect(a).toMatch(/^[0-9a-f]{64}$/)
   })
 })
 
@@ -430,6 +601,8 @@ describe('prompt construction helpers', () => {
       promptVersion: 'v7',
       skeleton: ['RTA|section:1', 'RTA|section:2'],
       chunks,
+      definitions: treeEnrichment.definitions,
+      crossReferences: treeEnrichment.crossReferences,
     })
 
     expect(request.system).toContain('v7')
@@ -437,6 +610,31 @@ describe('prompt construction helpers', () => {
       'citable-unit:RTA|section:1',
       'citable-unit:RTA|section:2',
     ])
+  })
+
+  it('buildSituatingContextRequest embeds the consumed tree sidecar (definitions + cross-references) in the user payload', () => {
+    const chunks = citableUnitChunker.chunk(sample)
+    const request = buildSituatingContextRequest({
+      documentId: 'RTA',
+      promptVersion: 'v7',
+      skeleton: ['RTA|section:1', 'RTA|section:2'],
+      chunks,
+      definitions: { Board: 'RTA|section:2' },
+      crossReferences: [{ from: 'RTA|section:1', to: 'RTA|section:2', kind: 'despite' }],
+    })
+
+    const payload = JSON.parse(request.user) as {
+      definitions: Record<string, string>
+      crossReferences: Array<{ from: string; to: string; kind: string }>
+    }
+    expect(payload.definitions).toEqual({ Board: 'RTA|section:2' })
+    expect(payload.crossReferences).toEqual([
+      { from: 'RTA|section:1', to: 'RTA|section:2', kind: 'despite' },
+    ])
+    // The system prompt invites the model to cite the recovered facts, but never
+    // to rewrite the chunk text.
+    expect(request.system.toLowerCase()).toContain('cite')
+    expect(request.system).toMatch(/do not rewrite/i)
   })
 
   it('parseSituatingContextResponse accepts a well-formed array and rejects junk', () => {
