@@ -48,6 +48,19 @@ importers:
         specifier: ^4.20.7
         version: 4.22.4
 
+  packages/enrichment:
+    dependencies:
+      '@owners-manual/core':
+        specifier: workspace:*
+        version: link:../core
+      '@owners-manual/parser':
+        specifier: workspace:*
+        version: link:../parser
+    devDependencies:
+      tsx:
+        specifier: ^4.20.7
+        version: 4.22.4
+
   packages/observability:
     dependencies:
       langfuse:
