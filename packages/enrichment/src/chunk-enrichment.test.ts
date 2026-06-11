@@ -266,6 +266,34 @@ describe('enrichChunks — cache behavior', () => {
     expect(result.chunkerId).toBe('strategy-b')
   })
 
+  it('rejects an EMPTY context served from a seeded snapshot (cache hits are revalidated)', async () => {
+    // A seeded snapshot bypasses the producer, so the non-empty guard in
+    // situateMissingChunks never runs for hits. A corrupt/old snapshot entry
+    // holding '' must fail loudly instead of flowing into the sidecar.
+    const chunks = citableUnitChunker.chunk(sample)
+    const poisonedKey = JSON.stringify([
+      'chunk',
+      'situating-context',
+      'citable-unit',
+      'fake-claude-0',
+      'v1',
+      treeFactsDigest(treeEnrichment),
+      hashChunk(chunks[0]!),
+    ])
+    const cache = createMemoryCache<string>({ snapshot: { [poisonedKey]: '' } })
+    const client = fakeClaudeClient({ responder: situatingResponder() })
+
+    await expect(
+      enrichChunks(sample, {
+        chunker: citableUnitChunker,
+        client,
+        cache,
+        treeEnrichment,
+        promptVersion: 'v1',
+      }),
+    ).rejects.toThrow(/empty/i)
+  })
+
   it('with a PARTIAL cache, makes ONE call covering only the missing chunks', async () => {
     const chunks = citableUnitChunker.chunk(sample)
     // Seed using the NEW key format: a JSON array carrying the tree-facts digest

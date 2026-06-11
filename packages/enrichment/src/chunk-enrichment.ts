@@ -333,6 +333,16 @@ export async function enrichChunks(
         }
         return fresh
       })
+      // A cache HIT bypasses the producer (and situateMissingChunks' non-empty
+      // guard), so a corrupt or stale snapshot entry must be re-checked on the
+      // way out — fresh outputs are rejected for emptiness, and cached ones
+      // get the same bar instead of silently flowing into the sidecar.
+      if (situatingContext === '') {
+        throw new Error(
+          `cached situating context for chunk id "${chunk.id}" is empty — ` +
+            'the cache entry is corrupt; evict it and rebuild',
+        )
+      }
       return { chunk, chunkHash, situatingContext }
     }),
   )
