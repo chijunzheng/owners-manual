@@ -14,9 +14,7 @@
             {
               "kind": "subsection",
               "label": "3",
-              "children": [
-                { "kind": "clause", "label": "a", "children": [] }
-              ]
+              "children": [{ "kind": "clause", "label": "a", "children": [] }]
             }
           ]
         }

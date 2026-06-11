@@ -31,11 +31,11 @@ items:
       - documentId: RTA
         segments:
           - { kind: part, label: V }
-          - { kind: section, label: "49" }
-          - { kind: subsection, label: "1" }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '1' }
     provenance:
       source: ltb-interpretation-guideline
-      reference: "LTB Interpretation Guideline 12 (sample, unverified)"
+      reference: 'LTB Interpretation Guideline 12 (sample, unverified)'
     tags:
       difficulty: medium
       persona: landlord
@@ -59,11 +59,11 @@ items:
       - documentId: RTA
         segments:
           - { kind: part, label: V }
-          - { kind: section, label: "49" }
-          - { kind: subsection, label: "1" }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '1' }
     provenance:
       source: ltb-interpretation-guideline
-      reference: "LTB Interpretation Guideline 12 (sample, unverified)"
+      reference: 'LTB Interpretation Guideline 12 (sample, unverified)'
     tags:
       difficulty: medium
       persona: landlord
@@ -85,16 +85,16 @@ items:
     required_cites:
       - documentId: RTA
         segments:
-          - { kind: section, label: "37" }
+          - { kind: section, label: '37' }
       - documentId: DECLARATION
         segments:
           - { kind: part, label: IV }
-          - { kind: section, label: "12" }
-          - { kind: subsection, label: "3" }
+          - { kind: section, label: '12' }
+          - { kind: subsection, label: '3' }
           - { kind: clause, label: a }
     provenance:
       source: designed-fixture
-      reference: "Designed-fixture lease: tenant-pays-all-damage clause (unverified)"
+      reference: 'Designed-fixture lease: tenant-pays-all-damage clause (unverified)'
     tags:
       difficulty: hard
       persona: landlord
@@ -113,7 +113,7 @@ items:
     required_cites: []
     provenance:
       source: adversarial-design
-      reference: "Jurisdiction trap: BC rent increase (unverified)"
+      reference: 'Jurisdiction trap: BC rent increase (unverified)'
     tags:
       difficulty: easy
       persona: tenant
@@ -129,7 +129,7 @@ items:
     required_cites: []
     provenance:
       source: adversarial-design
-      reference: "Out-of-scope trap: weather (unverified)"
+      reference: 'Out-of-scope trap: weather (unverified)'
     tags:
       difficulty: easy
       persona: owner
@@ -150,7 +150,7 @@ items:
     required_cites: []
     provenance:
       source: adversarial-design
-      reference: "Advice-seeking trap: should-I-sue (unverified)"
+      reference: 'Advice-seeking trap: should-I-sue (unverified)'
     tags:
       difficulty: medium
       persona: landlord

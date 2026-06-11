@@ -27,16 +27,12 @@
     {
       "kind": "section",
       "label": "37",
-      "children": [
-        { "kind": "subsection", "label": "1", "children": [] }
-      ]
+      "children": [{ "kind": "subsection", "label": "1", "children": [] }]
     },
     {
       "kind": "section",
       "label": "62",
-      "children": [
-        { "kind": "subsection", "label": "1", "children": [] }
-      ]
+      "children": [{ "kind": "subsection", "label": "1", "children": [] }]
     }
   ]
 }
