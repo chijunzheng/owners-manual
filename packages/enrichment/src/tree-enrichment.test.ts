@@ -221,6 +221,50 @@ describe('enrichTree', () => {
     expect(passOf(second.calls[0]!)).toBe('definitions')
   })
 
+  it('does not poison the cache with a malformed response — a retry re-calls the client', async () => {
+    const cache = newCache()
+    let defCalls = 0
+    const client = fakeClaudeClient({
+      responder: (req) => {
+        const pass = passOf(req)
+        if (pass === 'definitions') {
+          defCalls += 1
+          if (defCalls === 1) return 'not json at all {'
+        }
+        return validResponses[pass]
+      },
+    })
+
+    await expect(enrichTree(sample, { client, cache, promptVersions })).rejects.toThrow(/JSON/i)
+
+    const result = await enrichTree(sample, { client, cache, promptVersions })
+    expect(defCalls).toBe(2)
+    expect(result.definitions).toEqual({ Board: 'RTA|section:2' })
+  })
+
+  it('does not poison the cache with a hallucinated path — a retry re-calls the client', async () => {
+    const cache = newCache()
+    let defCalls = 0
+    const client = fakeClaudeClient({
+      responder: (req) => {
+        const pass = passOf(req)
+        if (pass === 'definitions') {
+          defCalls += 1
+          if (defCalls === 1) return JSON.stringify({ definitions: { Ghost: 'RTA|section:999' } })
+        }
+        return validResponses[pass]
+      },
+    })
+
+    await expect(enrichTree(sample, { client, cache, promptVersions })).rejects.toThrow(
+      /RTA\|section:999/,
+    )
+
+    const result = await enrichTree(sample, { client, cache, promptVersions })
+    expect(defCalls).toBe(2)
+    expect(result.definitions).toEqual({ Board: 'RTA|section:2' })
+  })
+
   it('rejects malformed JSON from the client', async () => {
     const client = fakeClaudeClient({
       responder: (req) =>

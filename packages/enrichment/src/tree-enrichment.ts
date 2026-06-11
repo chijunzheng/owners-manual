@@ -227,16 +227,30 @@ export interface EnrichTreeDeps {
   readonly promptVersions: Readonly<Record<TreePass, string>>
 }
 
+/** Each pass's validating parser; all of them throw on malformed or invented input. */
+const PASS_VALIDATORS: Readonly<
+  Record<TreePass, (text: string, known: ReadonlySet<string>) => unknown>
+> = {
+  'cross-references': parseCrossReferences,
+  definitions: parseDefinitions,
+  'amendment-flags': parseAmendmentFlags,
+}
+
 /**
  * Run one pass through the cache: on a miss, exactly one client call carrying the
  * whole batched document; on a hit, the stored raw text and no client call. The
  * RAW response is what is cached, so the producer (and thus the model) is skipped
  * on a hit — the property the 100%-hit re-run criterion rests on.
+ *
+ * The response is VALIDATED inside the producer, before the cache commits: a
+ * malformed or hallucinating response throws here, nothing is stored, and a
+ * retry re-calls the client instead of hitting a poisoned entry.
  */
 async function runPass(
   pass: TreePass,
   parsed: ParsedDocument,
   user: string,
+  known: ReadonlySet<string>,
   deps: EnrichTreeDeps,
 ): Promise<string> {
   const promptVersion = deps.promptVersions[pass]
@@ -246,6 +260,7 @@ async function runPass(
       system: treeSystemPrompt(pass, promptVersion),
       user,
     })
+    PASS_VALIDATORS[pass](response.text, known)
     return response.text
   })
 }
@@ -264,11 +279,14 @@ export async function enrichTree(
   const user = treeUserContent(parsed)
 
   const [crossText, defText, amendText] = await Promise.all([
-    runPass('cross-references', parsed, user, deps),
-    runPass('definitions', parsed, user, deps),
-    runPass('amendment-flags', parsed, user, deps),
+    runPass('cross-references', parsed, user, known, deps),
+    runPass('definitions', parsed, user, known, deps),
+    runPass('amendment-flags', parsed, user, known, deps),
   ])
 
+  // Parsing the (already producer-validated) cached text again is cheap and
+  // deterministic — and it still guards entries seeded from an external
+  // snapshot, which never went through the producer.
   return {
     documentId: parsed.tree.documentId,
     treeHash: hashTree(parsed),
