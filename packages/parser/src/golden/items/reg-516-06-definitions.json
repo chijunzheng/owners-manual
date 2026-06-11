@@ -1,0 +1,47 @@
+{
+  "id": "reg-516-06-definitions",
+  "category": "definitions",
+  "family": "elaws",
+  "provenance": "O. Reg. 516/06 s. 19 (1) definitions \"base year\" (with enumerated clauses (a)-(b)), \"local board\", and \"reference year\". Exercises the e-laws REGULATION dialect: the -e variant classes (section-e, firstdef-e, definition-e, defclause-e) and the trailing-period section number (\"19.\"). Each defined term is its own citable clause, the firstdef item adopts its (a)/(b) sub-items, and an inline <em> is stripped to plain text. Hand-verified against the e-laws consolidation dated 2020-11-30.",
+  "licence": "Statute/regulation text © King’s Printer for Ontario. Short excerpt reproduced for personal, non-commercial research use per ontario.ca/page/copyright-information; full regulation never committed.",
+  "sourceFile": "reg-516-06-definitions.source.html",
+  "documentId": "reg-516-06",
+  "title": "O. Reg. 516/06: General (under the Residential Tenancies Act, 2006)",
+  "expectedTree": {
+    "kind": "document",
+    "documentId": "reg-516-06",
+    "label": "O. Reg. 516/06: General (under the Residential Tenancies Act, 2006)",
+    "children": [
+      {
+        "kind": "section",
+        "label": "19",
+        "children": [
+          {
+            "kind": "subsection",
+            "label": "1",
+            "children": [
+              {
+                "kind": "clause",
+                "label": "base year",
+                "children": [
+                  { "kind": "clause", "label": "a", "children": [] },
+                  { "kind": "clause", "label": "b", "children": [] }
+                ]
+              },
+              { "kind": "clause", "label": "local board", "children": [] },
+              { "kind": "clause", "label": "reference year", "children": [] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedText": {
+    "reg-516-06|section:19|subsection:1": "In this Part,",
+    "reg-516-06|section:19|subsection:1|clause:base year": "“base year” means,",
+    "reg-516-06|section:19|subsection:1|clause:base year|clause:a": "when determining rent increases due to an extraordinary increase in the cost for municipal taxes and charges, the last completed calendar year immediately preceding the day that is 90 days before the effective date of the first intended rent increase referred to in the application,",
+    "reg-516-06|section:19|subsection:1|clause:base year|clause:b": "when determining rent increases due to operating costs related to security services, the annual accounting period of one year in length chosen by the landlord which is most recently completed on or before the day that is 90 days before the effective date of the first intended rent increase referred to in the application; (“année de base”)",
+    "reg-516-06|section:19|subsection:1|clause:local board": "“local board” means a “local board” as defined in the Municipal Affairs Act; (“conseil local”)",
+    "reg-516-06|section:19|subsection:1|clause:reference year": "“reference year” means the 12-month period immediately preceding the base year. (“année de reference”) O. Reg. 516/06, s. 19 (1); O. Reg. 562/17, s. 2 (1)."
+  }
+}
