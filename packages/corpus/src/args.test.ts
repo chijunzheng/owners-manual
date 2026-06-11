@@ -31,4 +31,34 @@ describe('parseArgs', () => {
   it('throws on an unknown flag', () => {
     expect(() => parseArgs(['--wat'])).toThrow(/unknown/i)
   })
+
+  it('defaults --only to an empty list (meaning all sources)', () => {
+    expect(parseArgs([]).only).toEqual([])
+  })
+
+  it('parses a single --only id', () => {
+    expect(parseArgs(['--only', 'rta-2006']).only).toEqual(['rta-2006'])
+  })
+
+  it('accumulates repeated --only flags in order', () => {
+    const options = parseArgs(['--only', 'rta-2006', '--only', 'reg-516-06'])
+    expect(options.only).toEqual(['rta-2006', 'reg-516-06'])
+  })
+
+  it('composes --only with --verify-only', () => {
+    const options = parseArgs(['--verify-only', '--only', 'rta-2006'])
+    expect(options.verifyOnly).toBe(true)
+    expect(options.only).toEqual(['rta-2006'])
+  })
+
+  it('throws when --only is missing its value', () => {
+    expect(() => parseArgs(['--only'])).toThrow(/--only/)
+  })
+
+  it('does not mutate the input argv', () => {
+    const argv = ['--only', 'rta-2006', '--verify-only']
+    const snapshot = [...argv]
+    parseArgs(argv)
+    expect(argv).toEqual(snapshot)
+  })
 })

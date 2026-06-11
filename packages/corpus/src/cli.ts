@@ -6,10 +6,14 @@
  * writes the verified bytes to corpus/raw/. `--verify-only` skips the network
  * and re-checks the bytes already on disk — that is the mode CI and a clean
  * checkout use to assert a byte-identical rebuild without redistributing Crown
- * copyright text or making a request.
+ * copyright text or making a request. `--only <id>` (repeatable) scopes either
+ * mode to the named manifest sources, so a job that depends on one source —
+ * e.g. the RTA intrinsic gate — is not held hostage by a transient outage or
+ * expected drift in an unrelated source.
  *
- * The exit code is the contract: 0 when every source matches, nonzero on any
- * mismatch, fetch error, or bad manifest, with a clear report on stderr.
+ * The exit code is the contract: 0 when every (selected) source matches,
+ * nonzero on any mismatch, fetch error, bad manifest, or an --only id absent
+ * from the manifest, with a clear report on stderr.
  *
  * `run` is dependency-injected and pure of process state so it can be unit
  * tested; the executable footer is the only place that touches real stdout,
@@ -24,6 +28,7 @@ import { renderReport } from './report.js'
 import { loadManifest, diskByteSource } from './storage.js'
 import { verifyManifest } from './verify.js'
 import type { ByteSource } from './verify.js'
+import type { Manifest } from './manifest/schema.js'
 
 /** Default location of the committed manifest, relative to the repo root. */
 export const DEFAULT_MANIFEST = 'corpus/manifest.json'
@@ -43,6 +48,8 @@ export interface CliOptions {
   readonly manifestPath: string
   readonly rawRoot: string
   readonly verifyOnly: boolean
+  /** Source ids to scope to; an empty list means every source in the manifest. */
+  readonly only: readonly string[]
 }
 
 /** Parses argv (without node/script) into {@link CliOptions}. */
@@ -50,6 +57,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let manifestPath = DEFAULT_MANIFEST
   let rawRoot = DEFAULT_RAW_ROOT
   let verifyOnly = false
+  let only: readonly string[] = []
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
@@ -71,12 +79,42 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         i += 1
         break
       }
+      case '--only': {
+        const value = argv[i + 1]
+        if (value === undefined) throw new Error('--only requires a source-id argument')
+        only = [...only, value]
+        i += 1
+        break
+      }
       default:
         throw new Error(`Unknown argument: ${arg}`)
     }
   }
 
-  return { manifestPath, rawRoot, verifyOnly }
+  return { manifestPath, rawRoot, verifyOnly, only }
+}
+
+/**
+ * Narrows a manifest to the sources named by `only`, preserving manifest order.
+ * An empty `only` returns the manifest unchanged (all sources). Every id in
+ * `only` must exist in the manifest — an unknown id throws rather than silently
+ * scoping to nothing, so a typo can never make the run a no-op success.
+ */
+export function selectSources(manifest: Manifest, only: readonly string[]): Manifest {
+  if (only.length === 0) return manifest
+
+  const byId = new Set(manifest.sources.map((source) => source.id))
+  const unknown = only.filter((id) => !byId.has(id))
+  if (unknown.length > 0) {
+    throw new Error(
+      `--only named source(s) not in the manifest: ${unknown.join(', ')}. ` +
+        `Known ids: ${manifest.sources.map((source) => source.id).join(', ')}`,
+    )
+  }
+
+  const wanted = new Set(only)
+  const sources = manifest.sources.filter((source) => wanted.has(source.id))
+  return { ...manifest, sources }
 }
 
 /**
@@ -95,7 +133,7 @@ export async function run(argv: readonly string[], deps: CliDeps): Promise<numbe
 
   let report
   try {
-    const manifest = await loadManifest(options.manifestPath)
+    const manifest = selectSources(await loadManifest(options.manifestPath), options.only)
     report = options.verifyOnly
       ? await verifyManifest(manifest, diskByteSource(options.rawRoot))
       : await rebuild(manifest, deps.networkSource(), options.rawRoot)

@@ -115,8 +115,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Fetch corpus (verifies checksums against the manifest)
-        run: pnpm corpus:fetch
+      # Scope the fetch to just the RTA: this gate asserts over the RTA only, so
+      # a transient outage or expected drift in an unrelated source (e.g. the
+      # rent-increase-guideline currency micro-source, which is meant to drift)
+      # must not fail it and masquerade as a parser regression.
+      - name: Fetch RTA (verifies its checksum against the manifest)
+        run: pnpm corpus:fetch --only rta-2006
 
       - name: Intrinsic asserts over the full RTA
         env:
