@@ -60,4 +60,39 @@ describe('tokenizeBlocks', () => {
     expect(blocks[0]!.className).toBe('table')
     expect(blocks[0]!.text).toBe('Purposes of Act')
   })
+
+  it('emits a genuine data table as ONE "datatable" block, not its inner cells', () => {
+    // e-laws renders a data table's cells as <p class="table-e"> paragraphs; the
+    // tokenizer must surface the whole <table> as one block (so the parser can
+    // fold its rows) and not also leak each cell paragraph into the stream.
+    const html = [
+      '<p class="section-e"><a name="BK1"></a><strong>1. </strong>The Schedule.</p>',
+      '<table class="MsoNormalTable">',
+      ' <tr><td><p class="table-e">1.</p></td><td><p class="table-e">Concrete fences</p></td></tr>',
+      '</table>',
+      '<p class="subsection-e">(2) After the table.</p>',
+    ].join('\n')
+    const blocks = tokenizeBlocks(html)
+    expect(blocks.map((b) => b.className)).toEqual(['section-e', 'datatable', 'subsection-e'])
+    // The datatable block keeps the raw table html for the row extractor.
+    expect(blocks[1]!.innerHtml).toContain('<tr>')
+  })
+
+  it('does not surface the table-of-contents layout table as a datatable block', () => {
+    // The ToC is its own giant <table>; it is read by the ToC oracle, not the
+    // body parser. It must NOT become a datatable block, but its TOCid/table
+    // cell paragraphs stay transparent in the stream so the oracle can read them
+    // (the body parser ignores those classes, as it always has).
+    const html = [
+      '<table class="MsoNormalTable">',
+      ' <tr><td><p class="TOCid-e"><a href="#BK1"><span>1.</span></a></p></td>',
+      '  <td><p class="table-e">Definition</p></td></tr>',
+      '</table>',
+      '<p class="section-e"><strong>1. </strong>Body.</p>',
+    ].join('\n')
+    const classes = tokenizeBlocks(html).map((b) => b.className)
+    expect(classes).not.toContain('datatable')
+    expect(classes).toContain('TOCid-e')
+    expect(classes).toContain('section-e')
+  })
 })

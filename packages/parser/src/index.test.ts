@@ -15,6 +15,14 @@ describe('@owners-manual/parser public surface', () => {
     expect(typeof parser.textOf).toBe('function')
   })
 
+  it('exports the prose parser and its tokenizer/oracle (issue #31 families)', () => {
+    expect(typeof parser.parseProse).toBe('function')
+    expect(typeof parser.tokenizeProse).toBe('function')
+    expect(typeof parser.checkProseCompleteness).toBe('function')
+    expect(typeof parser.extractTableRows).toBe('function')
+    expect(typeof parser.slugify).toBe('function')
+  })
+
   it('exports the three intrinsic asserts', () => {
     expect(typeof parser.checkSectionCompleteness).toBe('function')
     expect(typeof parser.checkCiteRoundTrip).toBe('function')

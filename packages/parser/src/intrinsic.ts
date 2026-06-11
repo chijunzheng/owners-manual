@@ -21,6 +21,7 @@ import { walkTree, type DocumentTree } from '@owners-manual/core'
 
 import { htmlFragmentToText } from './html-text.js'
 import { type ParsedDocument, pathKey, textOf } from './parsed-document.js'
+import { tokenizeProse } from './prose-blocks.js'
 import { extractToc } from './toc.js'
 
 /** Result of the section-completeness check against the table of contents. */
@@ -143,4 +144,89 @@ export function checkTextFidelity(parsed: ParsedDocument, sourceHtml: string): T
 
   const coverageRatio = checked === 0 ? 1 : (checked - unfaithful.length) / checked
   return { ok: unfaithful.length === 0, coverageRatio, unfaithful }
+}
+
+/** Result of the prose heading-completeness check. */
+export interface ProseCompletenessResult {
+  readonly ok: boolean
+  /** How many content-heading occurrences the source declares (repeats summed). */
+  readonly expected: number
+  /** How many heading-bearing nodes (section/subsection) the tree carries. */
+  readonly parsed: number
+  /** Source headings with no matching heading node. */
+  readonly missing: string[]
+  /** Heading nodes whose text is not a source heading. */
+  readonly unexpected: string[]
+  /** Heading texts that appear on more than one node. */
+  readonly duplicated: string[]
+}
+
+/** Collects the heading text carried by each section/subsection node of a tree. */
+function headingTexts(parsed: ParsedDocument): string[] {
+  const headings: string[] = []
+  walkTree(parsed.tree, (node, path) => {
+    if (node.kind !== 'section' && node.kind !== 'subsection') return
+    // The preamble wrapper section carries no heading text, so it is absent from
+    // the sidecar and correctly excluded here.
+    const text = textOf(parsed, path)
+    if (text !== undefined) headings.push(text)
+  })
+  return headings
+}
+
+/** Counts occurrences of each value, preserving multiplicity. */
+function countBy(values: readonly string[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1)
+  return counts
+}
+
+/**
+ * The prose analogue of {@link checkSectionCompleteness}: where a source has no
+ * table of contents, the heading outline is the independent oracle. It checks
+ * that the content headings of the source (`<h2>`–`<h6>`, re-extracted from the
+ * raw HTML by a path independent of the body fold) are exactly the heading texts
+ * carried by the tree's section and subsection nodes — none missing, none
+ * invented, and none appearing on MORE nodes than the source declares it. A
+ * heading the source legitimately repeats (the guidelines reuse titles like
+ * "Compensation" across sections) is allowed to repeat the same number of times
+ * in the tree; only a count mismatch is a fault. The level-1 page title is not a
+ * content heading and is excluded on both sides.
+ */
+export function checkProseCompleteness(
+  parsed: ParsedDocument,
+  sourceHtml: string,
+): ProseCompletenessResult {
+  const expected = tokenizeProse(sourceHtml)
+    .filter((block) => block.kind === 'heading' && block.level >= 2)
+    .map((block) => block.text)
+  const parsedHeadings = headingTexts(parsed)
+
+  const expectedCounts = countBy(expected)
+  const parsedCounts = countBy(parsedHeadings)
+
+  const missing = [...expectedCounts.keys()].filter(
+    (heading) => (parsedCounts.get(heading) ?? 0) < (expectedCounts.get(heading) ?? 0),
+  )
+  const unexpected = [...parsedCounts.keys()].filter((heading) => !expectedCounts.has(heading))
+  // A fault only when the tree carries a heading on more nodes than the source.
+  const duplicated = [...parsedCounts.keys()].filter(
+    (heading) =>
+      expectedCounts.has(heading) &&
+      (parsedCounts.get(heading) ?? 0) > (expectedCounts.get(heading) ?? 0),
+  )
+
+  return {
+    ok: missing.length === 0 && unexpected.length === 0 && duplicated.length === 0,
+    // Summed occurrence totals, not distinct heading strings: a heading the
+    // source repeats counts once per occurrence on both sides, so a re-fetch that
+    // gains or loses a repeat of an already-present heading moves these counts and
+    // is caught by the full-corpus pin (the ok/missing/duplicated logic above is
+    // already occurrence-aware via the count comparisons).
+    expected: expected.length,
+    parsed: parsedHeadings.length,
+    missing,
+    unexpected,
+    duplicated,
+  }
 }

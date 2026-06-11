@@ -11,7 +11,14 @@
  * it normalizes whitespace and decodes entities, nothing more.
  */
 
-/** Named HTML entities that appear in e-laws output, decoded literally. */
+/**
+ * Named HTML entities decoded literally. The first group is the structural set
+ * e-laws output uses; the typographic set (en/em dashes, curly quotes, ellipsis)
+ * is added for the HTML5 prose pages (LTB guidelines, the rent-increase page),
+ * which write these as named entities where the e-laws renderer emits the Unicode
+ * character directly. Decoding is applied identically to the parsed text and to
+ * the source side of the fidelity comparison, so the diff stays consistent.
+ */
 const NAMED_ENTITIES: Readonly<Record<string, string>> = {
   amp: '&',
   lt: '<',
@@ -19,6 +26,13 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = {
   quot: '"',
   apos: "'",
   nbsp: ' ',
+  ndash: '–',
+  mdash: '—',
+  ldquo: '“',
+  rdquo: '”',
+  lsquo: '‘',
+  rsquo: '’',
+  hellip: '…',
 }
 
 /** Decodes one entity body (the text between `&` and `;`) or returns `null`. */

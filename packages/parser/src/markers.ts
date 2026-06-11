@@ -17,8 +17,14 @@ export interface MarkerSplit {
   readonly rest: string
 }
 
-/** The section number sits in a leading `<strong>…</strong>`; e.g. "5.1". */
-const SECTION_NUMBER_RE = /^\s*(\d+(?:\.\d+)*)\s+/
+/**
+ * The section number sits in a leading `<strong>…</strong>`; e.g. "5.1".
+ * Statutes print it bare ("5 "); regulations print a trailing period ("5. "),
+ * so a single decorative period before the required whitespace is optional. The
+ * inner `(?:\.\d+)*` still binds digit-period-digit runs like "5.1", so only a
+ * period directly before whitespace is treated as decoration.
+ */
+const SECTION_NUMBER_RE = /^\s*(\d+(?:\.\d+)*)\.?\s+/
 
 /** A parenthesised subsection marker at the head of the text, e.g. "(2)" or "(2.1)". */
 const SUBSECTION_RE = /^\(\s*(\d+(?:\.\d+)*)\s*\)\s*/
@@ -67,4 +73,55 @@ const DEFINITION_TERM_RE = /^“([^”]+)”/
 export function definitionTerm(text: string): string | null {
   const match = DEFINITION_TERM_RE.exec(text.trim())
   return match ? match[1]!.trim() : null
+}
+
+/**
+ * A Schedule division opens with the word "Schedule", optionally followed by a
+ * coordinate that is a number ("Schedule 1") or a single capital letter
+ * ("Schedule A") — and then either whitespace or end. The coordinate alternative
+ * is case-sensitive (a single `[A-Z]`) so a following title word like "Useful"
+ * is never mistaken for the coordinate.
+ */
+const SCHEDULE_RE = /^[Ss]chedule(?:\s+(\d+(?:\.\d+)?|[A-Z]))?(?=\s|$)/
+
+/**
+ * Recovers a Schedule division's label from its heading block. The e-laws table
+ * of contents lists an unnumbered schedule as the bare word "Schedule" and a
+ * numbered one as "Schedule 1"; the body label must match that ToC coordinate so
+ * the completeness oracle lines up. Returns null for a non-schedule line.
+ */
+export function scheduleLabel(text: string): string | null {
+  const match = SCHEDULE_RE.exec(text.trim())
+  if (!match) return null
+  return match[1] ? `Schedule ${match[1]}` : 'Schedule'
+}
+
+/** Strips a Schedule coordinate prefix, leaving the heading's title text. */
+export function scheduleRest(text: string): string {
+  return text.trim().replace(SCHEDULE_RE, '').trim()
+}
+
+/**
+ * A table title block opens with the word "Table", optionally followed by a
+ * coordinate ("Table 1 Sitework") and optionally nothing more (a bare "Table",
+ * as in O. Reg. 48/01's forms table). The `\b` after "Table" stops it matching a
+ * word like "Tabletop". The coordinate, when present, is a number or a single
+ * capital letter and must be followed by whitespace or end.
+ */
+const TABLE_TITLE_RE = /^[Tt]able\b(?:\s+(\d+(?:\.\d+)?|[A-Z])(?=\s|$))?/
+
+/**
+ * Recovers a table title's coordinate from a `headingx` block: "Table 1" from
+ * "Table 1 Sitework", or the bare "Table" when the title carries no number.
+ * Returns null when the heading does not open with the word "Table".
+ */
+export function tableTitle(text: string): string | null {
+  const match = TABLE_TITLE_RE.exec(text.trim())
+  if (!match) return null
+  return match[1] ? `Table ${match[1].toUpperCase()}` : 'Table'
+}
+
+/** Strips a table-title coordinate prefix, leaving the table's title text. */
+export function tableTitleRest(text: string): string {
+  return text.trim().replace(TABLE_TITLE_RE, '').trim()
 }

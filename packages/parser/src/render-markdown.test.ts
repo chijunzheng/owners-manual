@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { parseProse } from './prose-parser.js'
 import { parseStatute } from './rta-parser.js'
 import { renderMarkdown } from './render-markdown.js'
 
@@ -50,5 +51,31 @@ describe('renderMarkdown', () => {
 
   it('renders the full citable path as a comment for human cross-reference', () => {
     expect(render()).toContain('RTA / Part I / s. 6 / (1) / (a)')
+  })
+})
+
+describe('renderMarkdown over a prose parse (issue #31)', () => {
+  // The renderer is a derived artifact and must work for EVERY parsed source,
+  // including the heading-folded prose families, not just e-laws statutes.
+  const PROSE = [
+    '<main id="main-content">',
+    '<h3>General Approach of the Board</h3>',
+    '<p>Parties should assume the hearing will proceed.</p>',
+    '<h4>Procedural Issues</h4>',
+    '<p>A request should be made at the beginning.</p>',
+    '</main>',
+  ].join('\n')
+  const renderProse = () =>
+    renderMarkdown(parseProse({ documentId: 'LTB-G1', title: 'Guideline 1', html: PROSE }))
+
+  it('renders a prose document title, heading sections, and clause text', () => {
+    const md = renderProse()
+    expect(md).toMatch(/^# Guideline 1/)
+    expect(md).toContain('General Approach of the Board')
+    expect(md).toContain('Parties should assume the hearing will proceed.')
+  })
+
+  it('is deterministic for a prose parse too', () => {
+    expect(renderProse()).toBe(renderProse())
   })
 })

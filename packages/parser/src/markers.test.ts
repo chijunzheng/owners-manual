@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   definitionTerm,
+  scheduleLabel,
   splitClause,
   splitSectionNumber,
   splitSubparagraph,
   splitSubsection,
+  tableTitle,
 } from './markers.js'
 
 /**
@@ -87,5 +89,41 @@ describe('definitionTerm', () => {
   it('returns null for a continuation line with no leading term', () => {
     expect(definitionTerm('includes all common areas')).toBeNull()
     expect(definitionTerm('')).toBeNull()
+  })
+})
+
+describe('scheduleLabel', () => {
+  it('labels an unnumbered schedule as "Schedule"', () => {
+    expect(scheduleLabel('Schedule Useful life of work done or thing purchased')).toBe('Schedule')
+  })
+
+  it('labels a numbered or lettered schedule with its coordinate', () => {
+    expect(scheduleLabel('Schedule 1 Forms')).toBe('Schedule 1')
+    expect(scheduleLabel('Schedule A Special rules')).toBe('Schedule A')
+  })
+
+  it('never mistakes a following title word for the coordinate', () => {
+    // "Useful" must not be captured as the schedule number.
+    expect(scheduleLabel('Schedule Useful life')).toBe('Schedule')
+  })
+
+  it('returns null for a non-schedule line', () => {
+    expect(scheduleLabel('Section 5 of the Act')).toBeNull()
+  })
+})
+
+describe('tableTitle', () => {
+  it('labels a numbered table title', () => {
+    expect(tableTitle('Table 1 Sitework')).toBe('Table 1')
+    expect(tableTitle('Table 12 Roofing')).toBe('Table 12')
+  })
+
+  it('labels a bare "Table" with no number (the reg-48-01 forms table)', () => {
+    expect(tableTitle('Table')).toBe('Table')
+  })
+
+  it('returns null for a heading that is not a table title', () => {
+    expect(tableTitle('Tabletop discussion')).toBeNull()
+    expect(tableTitle('General notes')).toBeNull()
   })
 })

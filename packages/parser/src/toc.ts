@@ -11,6 +11,7 @@
  */
 
 import { type Block, tokenizeBlocks } from './block-tokenizer.js'
+import { normalizeElawsClass } from './elaws-class.js'
 import { htmlFragmentToText } from './html-text.js'
 
 /** A Part as the table of contents declares it. */
@@ -81,7 +82,10 @@ export function extractToc(html: string): Toc {
 
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i]!
-    if (block.className === 'TOCpartCenter') {
+    // Collapse statute/regulation dialects (`TOCid-e` → `TOCid`) so one oracle
+    // reads both. The section-heading cell is likewise `table` or `table-e`.
+    const className = normalizeElawsClass(block.className)
+    if (className === 'TOCpartCenter') {
       const part = readPart(block)
       if (part) {
         parts.push(part)
@@ -89,12 +93,12 @@ export function extractToc(html: string): Toc {
       }
       continue
     }
-    if (block.className === 'TOCid') {
+    if (className === 'TOCid') {
       const anchor = attr(HREF_RE.exec(block.innerHtml))
       const number = normalizeSectionNumber(block.text)
       if (anchor === undefined || number === '') continue
       const next = blocks[i + 1]
-      const heading = next && next.className === 'table' ? next.text : ''
+      const heading = next && normalizeElawsClass(next.className) === 'table' ? next.text : ''
       sections.push({ number, heading, anchor, part: currentPart })
     }
   }

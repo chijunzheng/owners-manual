@@ -15,10 +15,24 @@ import { join } from 'node:path'
 import { documentTreeSchema } from '@owners-manual/core'
 import { z } from 'zod'
 
-/** The hard-section classes the extraction set covers. */
-export const GOLDEN_CATEGORIES = ['definitions', 'repealed-marker', 'embedded-table'] as const
+/**
+ * The hard-section classes the extraction set covers. `definitions`,
+ * `repealed-marker`, and `embedded-table` are e-laws structures; `prose-section`
+ * is the heading-folded LTB-guideline structure (issue #31).
+ */
+export const GOLDEN_CATEGORIES = [
+  'definitions',
+  'repealed-marker',
+  'embedded-table',
+  'prose-section',
+] as const
 
 export type GoldenCategory = (typeof GOLDEN_CATEGORIES)[number]
+
+/** Which deterministic parser the blessed excerpt is parsed through. */
+export const GOLDEN_FAMILIES = ['elaws', 'prose'] as const
+
+export type GoldenFamily = (typeof GOLDEN_FAMILIES)[number]
 
 const goldenItemSchema = z
   .object({
@@ -26,6 +40,11 @@ const goldenItemSchema = z
     id: z.string().min(1),
     /** Which hard-section class this item exercises. */
     category: z.enum(GOLDEN_CATEGORIES),
+    /**
+     * Which parser family the excerpt belongs to. Optional and defaulting to
+     * "elaws" so the original #8 statute items need no change.
+     */
+    family: z.enum(GOLDEN_FAMILIES).default('elaws'),
     /** Why this item exists and where the excerpt came from (traceability). */
     provenance: z.string().min(1),
     /** The licence note for the committed source excerpt. */

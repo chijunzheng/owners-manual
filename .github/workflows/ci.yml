@@ -7,12 +7,12 @@ name: CI
 # the committed golden extraction set and fixtures (ADR 0004), which carry only
 # short licensed excerpts.
 #
-# The full-document intrinsic gate (the same asserts over the entire RTA) needs
-# the Crown-copyright bytes, which are gitignored and never committed, so it
-# runs in a dedicated job that fetches the corpus first — on every push to main
-# (i.e. every merge) and nightly. PRs from forks cannot fetch reliably, so it is
-# scoped to main + schedule rather than every PR; the fixture-based asserts are
-# the per-PR gate.
+# The full-document intrinsic gate (the same asserts over the ENTIRE corpus —
+# every parsed source, not just the RTA) needs the Crown / Tribunals-Ontario
+# bytes, which are gitignored and never committed, so it runs in a dedicated job
+# that fetches the corpus first — on every push to main (i.e. every merge) and
+# nightly. PRs from forks cannot fetch reliably, so it is scoped to main +
+# schedule rather than every PR; the fixture-based asserts are the per-PR gate.
 
 on:
   pull_request:
@@ -91,11 +91,13 @@ jobs:
 
   # Full-document intrinsic ingestion gate (ADR 0004): fetches the corpus, then
   # runs the parser's structure-completeness, cite round-trip, and text-fidelity
-  # asserts over the ENTIRE RTA — the bytes that are gitignored and cannot live
-  # in the repo. RTA_FULL_REQUIRED=1 turns a missing fetch into a hard failure
-  # so the gate can never silently skip. Scoped to main + schedule because it
-  # needs network egress to ontario.ca; per-PR coverage comes from the
-  # fixture-and-golden asserts in the `typescript` job above.
+  # asserts over EVERY parsed source — the statutes, the regulations (with their
+  # embedded tables), and the prose guidelines — the bytes that are gitignored
+  # and cannot live in the repo. CORPUS_FULL_REQUIRED=1 turns a missing fetch
+  # into a hard failure so the gate can never silently skip. Scoped to main +
+  # schedule because it needs network egress to ontario.ca and tribunalsontario.ca;
+  # per-PR coverage comes from the fixture-and-golden asserts in the `typescript`
+  # job above.
   corpus-intrinsic:
     name: Intrinsic asserts over full corpus
     if: github.event_name == 'push' || github.event_name == 'schedule'
@@ -115,14 +117,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Scope the fetch to just the RTA: this gate asserts over the RTA only, so
-      # a transient outage or expected drift in an unrelated source (e.g. the
-      # rent-increase-guideline currency micro-source, which is meant to drift)
-      # must not fail it and masquerade as a parser regression.
-      - name: Fetch RTA (verifies its checksum against the manifest)
-        run: pnpm corpus:fetch --only rta-2006
+      # Fetch the consolidated, checksum-stable sources (statutes, regulations,
+      # LTB guidelines). These pin to the manifest, so a checksum mismatch here
+      # is a real currency signal, not flake.
+      - name: Fetch consolidated corpus sources (verify checksums)
+        run: >-
+          pnpm corpus:fetch
+          --only rta-2006
+          --only reg-516-06
+          --only condo-act-1998
+          --only reg-48-01
+          --only ltb-guideline-01
+          --only ltb-guideline-05
+          --only ltb-guideline-06
+          --only ltb-guideline-07
+          --only ltb-guideline-11
+          --only ltb-guideline-12
+          --only ltb-guideline-14
 
-      - name: Intrinsic asserts over the full RTA
+      # The rent-increase page is a currency micro-source that drifts annually;
+      # fetch it best-effort so a routine update (checksum mismatch) does not fail
+      # the parser gate. It is asserted in full only if the fetch succeeds; the
+      # full-corpus test exempts it from the required-presence check.
+      - name: Fetch rent-increase micro-source (best-effort; it drifts)
+        continue-on-error: true
+        run: pnpm corpus:fetch --only rent-increase-guideline
+
+      - name: Intrinsic asserts over the full corpus
         env:
-          RTA_FULL_REQUIRED: '1'
-        run: pnpm vitest run packages/parser/src/rta-full.intrinsic.test.ts
+          CORPUS_FULL_REQUIRED: '1'
+        run: pnpm vitest run packages/parser/src/corpus-full.intrinsic.test.ts

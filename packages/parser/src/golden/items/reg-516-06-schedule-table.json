@@ -1,0 +1,37 @@
+{
+  "id": "reg-516-06-schedule-table",
+  "category": "embedded-table",
+  "family": "elaws",
+  "provenance": "O. Reg. 516/06 Schedule (\"Useful life of work done or thing purchased\"), Table 1 (Sitework), header row plus items 1-2. The embedded data table is the structure #8 explicitly deferred to #31: a real <table> whose cells are <p class=\"table-e\"> paragraphs. The #7 tree has no table kind, so the Schedule is a section, the Table is a subsection carrying its column header, and each DATA ROW is a citable clause keyed by its Column-1 item number with all cells joined verbatim. Hand-verified against the e-laws consolidation dated 2020-11-30.",
+  "licence": "Statute/regulation text © King’s Printer for Ontario. Short excerpt reproduced for personal, non-commercial research use per ontario.ca/page/copyright-information; full regulation never committed.",
+  "sourceFile": "reg-516-06-schedule-table.source.html",
+  "documentId": "reg-516-06",
+  "title": "O. Reg. 516/06: General (under the Residential Tenancies Act, 2006)",
+  "expectedTree": {
+    "kind": "document",
+    "documentId": "reg-516-06",
+    "label": "O. Reg. 516/06: General (under the Residential Tenancies Act, 2006)",
+    "children": [
+      {
+        "kind": "section",
+        "label": "Schedule",
+        "children": [
+          {
+            "kind": "subsection",
+            "label": "Table 1",
+            "children": [
+              { "kind": "clause", "label": "1", "children": [] },
+              { "kind": "clause", "label": "2", "children": [] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedText": {
+    "reg-516-06|section:Schedule": "Useful life of work done or thing purchased",
+    "reg-516-06|section:Schedule|subsection:Table 1": "Sitework Column 1 Item Column 2 Work Done or Thing Purchased Column 3 Useful life in years",
+    "reg-516-06|section:Schedule|subsection:Table 1|clause:1": "1. Concrete fences 20",
+    "reg-516-06|section:Schedule|subsection:Table 1|clause:2": "2. Steel or chain link fences 15"
+  }
+}
