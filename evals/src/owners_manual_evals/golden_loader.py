@@ -11,6 +11,13 @@ cannot see on its own:
 * required cites resolve against the supplied document trees (delegated to the
   per-item parser, which fails the load if any cite is unresolvable).
 
+When a directory is loaded, every ``*.yaml`` / ``*.yml`` file is parsed and
+per-file-validated in sorted path order, then concatenated into one set over
+which the cross-item invariants run exactly once — so a paraphrase variant may
+live in a different file from its parent. The genuinely per-file checks (shape,
+unknown keys, version, a non-empty items list, per-item parsing) still fire on
+each file individually.
+
 The loader also exposes the dev/holdout split (re-exported from
 ``golden_split``) and verified-only filtering for an eval run: unverified items
 load — schema tests need to see every feature — but :func:`eval_run_items`
@@ -67,20 +74,41 @@ def _load_directory(directory: Path, *, documents: Sequence[DocumentTree]) -> Go
     version: int | None = None
     items: list[GoldenItem] = []
     for path in files:
-        partial = load_golden_items_from_text(path.read_text(encoding="utf-8"), documents=documents)
+        # Each file is parsed and per-file-validated on its own, but the
+        # cross-item invariants are deferred: a paraphrase group may straddle
+        # files, so duplicate-id and paraphrase-parent checks run once over the
+        # merged set below — the directory is one validated set, not N.
+        file_version, file_items = _parse_set(
+            yaml.safe_load(path.read_text(encoding="utf-8")), documents=documents
+        )
         if version is None:
-            version = partial.version
-        elif partial.version != version:
+            version = file_version
+        elif file_version != version:
             raise ValueError(
-                f"golden-set files disagree on version: {version} vs {partial.version} in {path}"
+                f"golden-set files disagree on version: {version} vs {file_version} in {path}"
             )
-        items.extend(partial.items)
+        items.extend(file_items)
 
     assert version is not None  # files is non-empty, so the loop ran at least once
     return _finalize_set(version=version, items=tuple(items))
 
 
 def _build_set(raw: object, *, documents: Sequence[DocumentTree]) -> GoldenSet:
+    version, items = _parse_set(raw, documents=documents)
+    return _finalize_set(version=version, items=items)
+
+
+def _parse_set(
+    raw: object, *, documents: Sequence[DocumentTree]
+) -> tuple[int, tuple[GoldenItem, ...]]:
+    """Run the genuinely per-document checks and parse each item.
+
+    Validates the set's shape (mapping, no unknown keys, integer version >= 1,
+    a non-empty list under ``items``) and parses every entry with
+    ``parse_golden_item`` (which resolves required cites). Returns the version
+    and parsed items without enforcing the cross-item invariants — those are the
+    caller's job via :func:`_finalize_set`, so a directory can defer them until
+    its files are merged."""
     if not isinstance(raw, dict):
         raise ValueError(f"golden set must be a mapping, got {type(raw).__name__}")
     _reject_unknown_keys(raw, _SET_KEYS, "golden set")
@@ -94,14 +122,16 @@ def _build_set(raw: object, *, documents: Sequence[DocumentTree]) -> GoldenSet:
     raw_items = raw["items"]
     if not isinstance(raw_items, list):
         raise ValueError("golden set items must be a list")
+    if not raw_items:
+        raise ValueError("golden set requires at least one item")
 
     items = tuple(parse_golden_item(entry, documents=documents) for entry in raw_items)
-    return _finalize_set(version=version, items=items)
+    return version, items
 
 
 def _finalize_set(*, version: int, items: tuple[GoldenItem, ...]) -> GoldenSet:
-    if not items:
-        raise ValueError("golden set requires at least one item")
+    # Cross-item invariants over the final set; emptiness is rejected upstream in
+    # ``_parse_set`` (per file) and the empty-directory guard in ``_load_directory``.
     _reject_duplicate_ids(items)
     _validate_paraphrase_parents(items)
     return GoldenSet(version=version, items=items)

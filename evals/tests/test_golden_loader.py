@@ -106,6 +106,39 @@ def test_rejects_a_duplicate_id_across_directory_files(tmp_path) -> None:
         load_golden_items(tmp_path, documents=_DOCUMENTS)
 
 
+def test_accepts_a_paraphrase_group_split_across_directory_files(tmp_path) -> None:
+    # Cross-item validation runs over the merged directory set, not per file: a
+    # paraphrase variant may live in a different file from its parent, because
+    # the directory is "concatenated into one validated set". Per-file early
+    # validation would (wrongly) reject the variant's parent as absent.
+    (tmp_path / "a.yaml").write_text(_set_yaml([_item_yaml(item_id="parent")]), encoding="utf-8")
+    (tmp_path / "b.yaml").write_text(
+        _set_yaml([_item_yaml(item_id="child", paraphrase_of="parent")]), encoding="utf-8"
+    )
+    result = load_golden_items(tmp_path, documents=_DOCUMENTS)
+    assert {item.id for item in result.items} == {"parent", "child"}
+
+
+def test_rejects_a_paraphrase_variant_absent_across_the_whole_directory(tmp_path) -> None:
+    # The variant's parent is absent from every file in the directory, so the
+    # merged set is genuinely invalid and must still be rejected.
+    (tmp_path / "a.yaml").write_text(_set_yaml([_item_yaml(item_id="sibling")]), encoding="utf-8")
+    (tmp_path / "b.yaml").write_text(
+        _set_yaml([_item_yaml(item_id="child", paraphrase_of="ghost-parent")]), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="parent"):
+        load_golden_items(tmp_path, documents=_DOCUMENTS)
+
+
+def test_rejects_a_directory_file_with_an_empty_items_list(tmp_path) -> None:
+    # The genuinely per-file checks (here: items must be a non-empty list) still
+    # run on each file, even when other files in the directory carry items.
+    (tmp_path / "a.yaml").write_text(_set_yaml([_item_yaml(item_id="a")]), encoding="utf-8")
+    (tmp_path / "b.yaml").write_text("version: 1\nitems: []\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="item"):
+        load_golden_items(tmp_path, documents=_DOCUMENTS)
+
+
 def test_rejects_a_duplicate_item_id_across_the_set() -> None:
     text = _set_yaml([_item_yaml(item_id="dup"), _item_yaml(item_id="dup")])
     with pytest.raises(ValueError, match="duplicate"):
