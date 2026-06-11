@@ -143,6 +143,18 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+/** Count non-overlapping occurrences of `needle` in `haystack`. */
+function countOccurrences(haystack: string, needle: string): number {
+  if (needle.length === 0) return 0
+  let count = 0
+  let index = haystack.indexOf(needle)
+  while (index !== -1) {
+    count += 1
+    index = haystack.indexOf(needle, index + needle.length)
+  }
+  return count
+}
+
 /**
  * THE `pdftotext` coverage diff: a pure, deterministic comparison of a parsed
  * document against the reference text `pdftotext` produced (injected as a string;
@@ -153,8 +165,11 @@ function normalizeWhitespace(value: string): string {
  *     `extraInTree` (text the LLM authored that the deterministic extraction
  *     never saw).
  * (b) Vanished-clause detector: the reference is split into non-empty lines
- *     (pre-normalization), and any line whose normalized form is contained in no
- *     tree node's normalized text is collected as `missingFromTree`.
+ *     (pre-normalization) and coverage is counted by OCCURRENCE, not by distinct
+ *     line — legal boilerplate repeats, so a reference line appearing N times
+ *     must be found at least N times across the tree's text (nodes joined with
+ *     newlines, so a needle can never straddle two nodes). Each missing
+ *     occurrence contributes one entry to `missingFromTree`.
  *
  * `ok` is true iff both arrays are empty.
  */
@@ -162,20 +177,25 @@ export function checkPdfCoverage(parsed: ParsedDocument, referenceText: string):
   const normalizedReference = normalizeWhitespace(referenceText)
   const treeTexts = [...parsed.text.values()]
   const normalizedTreeTexts = treeTexts.map(normalizeWhitespace)
+  const combinedTreeText = normalizedTreeTexts.join('\n')
 
   const extraInTree = treeTexts.filter((text) => {
     const normalized = normalizeWhitespace(text)
     return normalized.length > 0 && !normalizedReference.includes(normalized)
   })
 
-  const missingFromTree = referenceText
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .filter((line) => {
-      const normalizedLine = normalizeWhitespace(line)
-      return !normalizedTreeTexts.some((text) => text.includes(normalizedLine))
-    })
+  const referenceCounts = new Map<string, number>()
+  for (const line of referenceText.split('\n')) {
+    const normalizedLine = normalizeWhitespace(line)
+    if (normalizedLine.length === 0) continue
+    referenceCounts.set(normalizedLine, (referenceCounts.get(normalizedLine) ?? 0) + 1)
+  }
+
+  const missingFromTree: string[] = []
+  for (const [line, expected] of referenceCounts) {
+    const found = countOccurrences(combinedTreeText, line)
+    for (let i = found; i < expected; i += 1) missingFromTree.push(line)
+  }
 
   return {
     ok: extraInTree.length === 0 && missingFromTree.length === 0,

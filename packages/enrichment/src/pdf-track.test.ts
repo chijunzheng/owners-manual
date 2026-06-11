@@ -255,6 +255,32 @@ describe('checkPdfCoverage', () => {
     expect(result).toEqual({ ok: true, missingFromTree: [], extraInTree: [] })
   })
 
+  it('flags a vanished DUPLICATE clause — occurrence counts, not distinct lines', () => {
+    // The reference carries the same clause twice (legal boilerplate repeats);
+    // the tree kept only one occurrence. A distinct-line containment check would
+    // call this covered; the occurrence-counting detector must not.
+    const repeated = 'Each owner shall insure the improvements to the unit.'
+    const referenceWithDuplicate = [repeated, 'Another clause entirely.', repeated].join('\n')
+    const parsed = doc('DECL', [
+      ['DECL|section:1', repeated],
+      ['DECL|section:2', 'Another clause entirely.'],
+    ])
+    const result = checkPdfCoverage(parsed, referenceWithDuplicate)
+    expect(result.ok).toBe(false)
+    expect(result.missingFromTree).toEqual([repeated])
+  })
+
+  it('passes when duplicate reference clauses all land in the tree', () => {
+    const repeated = 'Each owner shall insure the improvements to the unit.'
+    const referenceWithDuplicate = [repeated, repeated].join('\n')
+    const parsed = doc('DECL', [
+      ['DECL|section:1', repeated],
+      ['DECL|section:2', repeated],
+    ])
+    const result = checkPdfCoverage(parsed, referenceWithDuplicate)
+    expect(result).toEqual({ ok: true, missingFromTree: [], extraInTree: [] })
+  })
+
   it('passes vacuously for an empty reference and an empty tree text', () => {
     const parsed = doc('DECL', [])
     const result = checkPdfCoverage(parsed, '')

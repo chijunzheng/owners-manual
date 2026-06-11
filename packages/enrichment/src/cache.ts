@@ -54,6 +54,7 @@ export interface MemoryCacheOptions<T> {
  */
 export function createMemoryCache<T>(options: MemoryCacheOptions<T> = {}): EnrichmentCache<T> {
   const store = new Map<string, T>(Object.entries(options.snapshot ?? {}))
+  const inFlight = new Map<string, Promise<T>>()
   let hits = 0
   let misses = 0
 
@@ -63,10 +64,28 @@ export function createMemoryCache<T>(options: MemoryCacheOptions<T> = {}): Enric
         hits += 1
         return store.get(key) as T
       }
+      // Coalesce concurrent misses: the first caller produces, later callers
+      // share the in-flight promise so the producer runs exactly once per key.
+      // A waiter counts as a hit — it did not trigger production. A rejected
+      // production is never stored and clears the in-flight slot, so a retry
+      // re-runs the producer.
+      const pending = inFlight.get(key)
+      if (pending !== undefined) {
+        hits += 1
+        return pending
+      }
       misses += 1
-      const value = await produce()
-      store.set(key, value)
-      return value
+      const promise = (async () => {
+        try {
+          const value = await produce()
+          store.set(key, value)
+          return value
+        } finally {
+          inFlight.delete(key)
+        }
+      })()
+      inFlight.set(key, promise)
+      return promise
     },
     stats() {
       return { hits, misses }

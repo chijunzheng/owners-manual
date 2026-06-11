@@ -62,6 +62,45 @@ describe('createMemoryCache', () => {
     expect(hits).toBe(keys.length)
   })
 
+  it('coalesces concurrent misses on the same key into ONE producer run', async () => {
+    const cache = createMemoryCache<string>()
+    let runs = 0
+    const slowProduce = async () => {
+      runs += 1
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      return `produced-${runs}`
+    }
+
+    const [a, b] = await Promise.all([
+      cache.getOrCompute('k', slowProduce),
+      cache.getOrCompute('k', slowProduce),
+    ])
+
+    expect(runs).toBe(1)
+    expect(a).toBe('produced-1')
+    expect(b).toBe('produced-1')
+    // The coalesced waiter did not trigger production: one miss, one hit.
+    expect(cache.stats()).toEqual({ hits: 1, misses: 1 })
+  })
+
+  it('does not cache a rejected production — a retry re-runs the producer', async () => {
+    const cache = createMemoryCache<string>()
+    let runs = 0
+    await expect(
+      cache.getOrCompute('k', async () => {
+        runs += 1
+        throw new Error('llm failed')
+      }),
+    ).rejects.toThrow('llm failed')
+
+    const value = await cache.getOrCompute('k', async () => {
+      runs += 1
+      return 'recovered'
+    })
+    expect(runs).toBe(2)
+    expect(value).toBe('recovered')
+  })
+
   it('can be seeded from a prior snapshot so caches survive across runs', async () => {
     const first = createMemoryCache<string>()
     await first.getOrCompute('k', async () => 'persisted')
