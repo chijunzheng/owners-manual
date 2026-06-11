@@ -1,0 +1,156 @@
+# Sample golden items for the owners-manual eval harness.
+#
+# UNVERIFIED BY CONSTRUCTION. Every item here carries `verified: false`. These
+# exist only to exercise every schema feature against the committed fixture
+# document trees (evals/fixtures/golden/trees/*.tree.json) so the loader's
+# validation, cite-resolvability, split, and verified-only filtering are tested
+# without any hand-verified content. The ~15 real, hand-verified tenancy items
+# and their LTB-guideline verification live in issue #9 — they are NOT here, and
+# the loader excludes everything in this file from a real eval run by default.
+#
+# No Crown-copyright statute text appears here: cites are addressing-only
+# citable paths into the fixture trees, and answer-point text is paraphrase.
+
+version: 1
+items:
+  # --- answer: cites resolve, claim-level points, has a paraphrase child ---
+  - id: sample-answer-n12-notice
+    behavior_class: answer
+    verified: false
+    question: >-
+      As a landlord, how much notice must I give a tenant to end the tenancy so
+      a purchaser can move in?
+    answer_points:
+      - id: notice-period
+        text: A landlord may end the tenancy for a purchaser's own use with the
+          statutory notice period.
+      - id: good-faith
+        text: The purchaser must in good faith require the unit for residential
+          occupation.
+    required_cites:
+      - documentId: RTA
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 12 (sample, unverified)'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # --- a paraphrase variant of the answer item; inherits the parent's side ---
+  - id: sample-answer-n12-notice-paraphrase
+    behavior_class: answer
+    verified: false
+    paraphrase_of: sample-answer-n12-notice
+    question: >-
+      I'm selling my condo and the buyer wants to live in it — what notice does
+      the tenant get?
+    answer_points:
+      - id: notice-period
+        text: A landlord may end the tenancy for a purchaser's own use with the
+          statutory notice period.
+      - id: good-faith
+        text: The purchaser must in good faith require the unit for residential
+          occupation.
+    required_cites:
+      - documentId: RTA
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 12 (sample, unverified)'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # --- flag-void-clause: cross-document required cites (clause + overriding section) ---
+  - id: sample-void-clause-tenant-pays-all
+    behavior_class: flag-void-clause
+    verified: false
+    question: >-
+      My lease says the tenant pays for all damage to the unit. Can I rely on
+      that clause to charge the tenant for the chargeback?
+    answer_points:
+      - id: clause-void
+        text: A lease clause shifting all repair liability to the tenant is void
+          to the extent it conflicts with the statutory repair obligation.
+      - id: cite-both
+        text: The answer must identify the offending clause and the overriding
+          statutory section.
+    required_cites:
+      - documentId: RTA
+        segments:
+          - { kind: section, label: '37' }
+      - documentId: DECLARATION
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '12' }
+          - { kind: subsection, label: '3' }
+          - { kind: clause, label: a }
+    provenance:
+      source: designed-fixture
+      reference: 'Designed-fixture lease: tenant-pays-all-damage clause (unverified)'
+    tags:
+      difficulty: hard
+      persona: landlord
+
+  # --- refuse-jurisdiction: a BC question; no cites (nothing to cite) ---
+  - id: sample-refuse-jurisdiction-bc
+    behavior_class: refuse-jurisdiction
+    verified: false
+    question: >-
+      My rental is in Vancouver, BC — can my landlord raise the rent by 10%
+      this year?
+    answer_points:
+      - id: out-of-province
+        text: The system answers Ontario questions only and declines to apply
+          another province's tenancy law.
+    required_cites: []
+    provenance:
+      source: adversarial-design
+      reference: 'Jurisdiction trap: BC rent increase (unverified)'
+    tags:
+      difficulty: easy
+      persona: tenant
+
+  # --- refuse-out-of-scope: an off-topic question ---
+  - id: sample-refuse-out-of-scope-weather
+    behavior_class: refuse-out-of-scope
+    verified: false
+    question: What's the weather forecast for Toronto this weekend?
+    answer_points:
+      - id: off-topic
+        text: The system declines questions outside the condo-ownership domains.
+    required_cites: []
+    provenance:
+      source: adversarial-design
+      reference: 'Out-of-scope trap: weather (unverified)'
+    tags:
+      difficulty: easy
+      persona: owner
+
+  # --- refuse-advice-escalate: advice-seeking phrasing ---
+  - id: sample-refuse-advice-escalate-should-i-sue
+    behavior_class: refuse-advice-escalate
+    verified: false
+    question: >-
+      Should I take my landlord to the LTB over the deductible chargeback, and
+      will I win?
+    answer_points:
+      - id: information-not-advice
+        text: The system explains what the sources say but does not recommend a
+          legal course of action.
+      - id: escalate
+        text: The answer suggests escalating to the LTB or a lawyer.
+    required_cites: []
+    provenance:
+      source: adversarial-design
+      reference: 'Advice-seeking trap: should-I-sue (unverified)'
+    tags:
+      difficulty: medium
+      persona: landlord

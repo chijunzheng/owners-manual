@@ -1,0 +1,38 @@
+{
+  "kind": "document",
+  "documentId": "RTA",
+  "label": "RTA",
+  "children": [
+    {
+      "kind": "part",
+      "label": "V",
+      "children": [
+        {
+          "kind": "section",
+          "label": "49",
+          "children": [
+            {
+              "kind": "subsection",
+              "label": "1",
+              "children": [
+                { "kind": "clause", "label": "a", "children": [] },
+                { "kind": "clause", "label": "b", "children": [] }
+              ]
+            },
+            { "kind": "subsection", "label": "2", "children": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "37",
+      "children": [{ "kind": "subsection", "label": "1", "children": [] }]
+    },
+    {
+      "kind": "section",
+      "label": "62",
+      "children": [{ "kind": "subsection", "label": "1", "children": [] }]
+    }
+  ]
+}

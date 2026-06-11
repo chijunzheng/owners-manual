@@ -8,6 +8,10 @@ dependencies = [
   # Langfuse is the sole system of record for traces/scores (issue #4). The v4
   # client is OTel-native; imported lazily so unit tests need no server.
   "langfuse>=4,<5",
+  # Golden items are authored in YAML (issue #30). Loaded with yaml.safe_load —
+  # the schema is then validated strictly in pure Python, so PyYAML only does
+  # the surface parse, never any type coercion of golden-item fields.
+  "pyyaml>=6,<7",
 ]
 
 [project.scripts]
