@@ -16,6 +16,13 @@
  * outline where it does not ({@link checkProseCompleteness}), and cite
  * round-trips plus a text-fidelity diff everywhere. Markdown is a derived render
  * for human review, never the source of truth.
+ *
+ * Issue #12 brings the fourth corpus in: the designed fixtures (declarations,
+ * rules, policies, a lease) are classless prose HTML5 and fold through the same
+ * {@link parseProse} into the same tree. They are committed (not fetched), so
+ * they live in their own {@link FIXTURE_SOURCES} registry rather than
+ * CORPUS_SOURCES, and each cross-references the fixture-design conflicts it
+ * carries ({@link FIXTURE_DESIGN_IDS}).
  */
 
 export const PACKAGE_NAME = '@owners-manual/parser'
@@ -31,6 +38,15 @@ export {
   parseSource,
   sourceById,
 } from './sources.js'
+
+export {
+  type FixtureSource,
+  type FixtureDesignId,
+  FIXTURE_DESIGN_IDS,
+  FIXTURE_SOURCES,
+  fixtureById,
+  parseFixture,
+} from './fixtures.js'
 
 export { type ParsedDocument, pathKey, textOf } from './parsed-document.js'
 
