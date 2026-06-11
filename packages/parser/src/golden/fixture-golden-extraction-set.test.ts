@@ -68,7 +68,7 @@ describe('fixture golden extraction set', () => {
     // The item is only "ground truth by construction" if its excerpt is the
     // fixture's own bytes, not a divergent copy. Each <p>/heading block in the
     // excerpt must occur verbatim in the committed fixture file the item names.
-    const fixturesRoot = join(process.cwd(), 'corpus', 'fixtures')
+    const fixturesRoot = join(here, '..', '..', '..', '..', 'corpus', 'fixtures')
     for (const item of items) {
       const source = fixtureById(item.documentId)!
       const fixtureHtml = readFileSync(join(fixturesRoot, source.file), 'utf8')

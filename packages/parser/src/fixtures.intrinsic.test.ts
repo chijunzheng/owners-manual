@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { documentTreeSchema } from '@owners-manual/core'
 import { describe, expect, it } from 'vitest'
@@ -42,7 +43,8 @@ const EXPECTATIONS: Readonly<Record<string, FixtureExpectation>> = {
   'fixture-lease': { headings: 10, textNodes: 25 },
 }
 
-const FIXTURES_ROOT = join(process.cwd(), 'corpus', 'fixtures')
+const here = dirname(fileURLToPath(import.meta.url))
+const FIXTURES_ROOT = join(here, '..', '..', '..', 'corpus', 'fixtures')
 
 function bytesPath(source: FixtureSource): string {
   return join(FIXTURES_ROOT, source.file)

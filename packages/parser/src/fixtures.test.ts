@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
@@ -27,7 +28,8 @@ import {
  * back to the planted conflicts golden/adversarial eval cases reference by ID.
  */
 
-const FIXTURES_ROOT = join(process.cwd(), 'corpus', 'fixtures')
+const here = dirname(fileURLToPath(import.meta.url))
+const FIXTURES_ROOT = join(here, '..', '..', '..', 'corpus', 'fixtures')
 
 function readFixture(source: FixtureSource): string {
   return readFileSync(join(FIXTURES_ROOT, source.file), 'utf8')
