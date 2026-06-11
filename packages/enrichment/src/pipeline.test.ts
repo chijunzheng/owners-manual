@@ -261,6 +261,40 @@ describe('AC1 "Re-running with unchanged inputs yields 100% cache hits"', () => 
 // AC2
 // =============================================================================
 
+describe('model change over persisted caches (Codex P1: no stale cross-model hits)', () => {
+  it('changing only the enrichment model re-runs every producer pass instead of serving the old model from cache', async () => {
+    const caches = newCaches()
+    await runEnrichmentBuild({
+      documents,
+      manifestHash,
+      config,
+      client: fakeClaudeClient({ model: config.enrichmentModel, responder: buildResponder() }),
+      chunker: citableUnitChunker,
+      caches,
+    })
+
+    const swappedConfig: PipelineConfig = { ...config, enrichmentModel: 'fake-claude-1' }
+    const swappedClient = fakeClaudeClient({
+      model: swappedConfig.enrichmentModel,
+      responder: buildResponder(),
+    })
+    const rebuilt = await runEnrichmentBuild({
+      documents,
+      manifestHash,
+      config: swappedConfig,
+      client: swappedClient,
+      chunker: citableUnitChunker,
+      caches,
+    })
+
+    // Every artifact labeled with the new model must have been produced by it:
+    // 3 tree passes + 1 chunk pass per document, all fresh.
+    expect(swappedClient.calls.length).toBe(documents.length * 4)
+    for (const tree of rebuilt.trees) expect(tree.model).toBe('fake-claude-1')
+    for (const chunks of rebuilt.chunks) expect(chunks.model).toBe('fake-claude-1')
+  })
+})
+
 describe('AC2 "Changing the chunker invalidates chunk-level enrichment only; tree-level survives"', () => {
   it('a chunker swap makes fresh chunk-level calls but ZERO tree-level calls', async () => {
     const caches = newCaches()

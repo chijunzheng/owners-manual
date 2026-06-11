@@ -107,15 +107,21 @@ describe('schemas', () => {
 })
 
 describe('treeCacheKey', () => {
-  it('is content-addressed by tree hash and versioned by the pass prompt', () => {
-    expect(treeCacheKey('cross-references', 'xref-v1', sample)).toBe(
-      `tree:cross-references:xref-v1:${hashTree(sample)}`,
+  it('is content-addressed by tree hash, namespaced by model, and versioned by the pass prompt', () => {
+    expect(treeCacheKey('cross-references', 'fake-claude-0', 'xref-v1', sample)).toBe(
+      `tree:cross-references:fake-claude-0:xref-v1:${hashTree(sample)}`,
     )
   })
 
   it('changes when only the prompt version changes', () => {
-    expect(treeCacheKey('definitions', 'def-v1', sample)).not.toBe(
-      treeCacheKey('definitions', 'def-v2', sample),
+    expect(treeCacheKey('definitions', 'fake-claude-0', 'def-v1', sample)).not.toBe(
+      treeCacheKey('definitions', 'fake-claude-0', 'def-v2', sample),
+    )
+  })
+
+  it('changes when only the model changes', () => {
+    expect(treeCacheKey('definitions', 'model-a', 'def-v1', sample)).not.toBe(
+      treeCacheKey('definitions', 'model-b', 'def-v1', sample),
     )
   })
 })
@@ -179,6 +185,18 @@ describe('enrichTree', () => {
     expect(second.calls).toHaveLength(0)
     expect(cache.stats()).toEqual({ hits: 3, misses: 0 })
     expect(result.crossReferences).toHaveLength(1)
+  })
+
+  it('re-runs every pass when the model changes under a persisted cache (no stale cross-model hits)', async () => {
+    const cache = newCache()
+    const first = fakeClaudeClient({ model: 'model-a', responder: validResponder })
+    await enrichTree(sample, { client: first, cache, promptVersions })
+
+    const second = fakeClaudeClient({ model: 'model-b', responder: validResponder })
+    const result = await enrichTree(sample, { client: second, cache, promptVersions })
+
+    expect(second.calls).toHaveLength(3)
+    expect(result.model).toBe('model-b')
   })
 
   it('re-calls only the bumped pass when one prompt version changes', async () => {

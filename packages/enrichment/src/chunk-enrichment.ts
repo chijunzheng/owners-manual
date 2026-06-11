@@ -70,9 +70,13 @@ export interface EnrichChunksDeps {
   readonly promptVersion: string
 }
 
-/** The per-chunk cache key: namespaced by pass + prompt version + chunk hash. */
-function chunkCacheKey(promptVersion: string, chunkHash: string): string {
-  return `chunk:${SITUATING_CONTEXT_PASS}:${promptVersion}:${chunkHash}`
+/**
+ * The per-chunk cache key: namespaced by pass + model + prompt version + chunk
+ * hash. The model lives in the key so a persisted cache never serves contexts
+ * written by a previous model under a new model's label.
+ */
+function chunkCacheKey(model: string, promptVersion: string, chunkHash: string): string {
+  return `chunk:${SITUATING_CONTEXT_PASS}:${model}:${promptVersion}:${chunkHash}`
 }
 
 /** The document's structural skeleton: every node's path key, in document order. */
@@ -224,7 +228,7 @@ export async function enrichChunks(
   const hashes = chunks.map(hashChunk)
 
   const missing = chunks.filter((_chunk, index) => {
-    const key = chunkCacheKey(deps.promptVersion, hashes[index]!)
+    const key = chunkCacheKey(deps.client.model, deps.promptVersion, hashes[index]!)
     return !cacheHas(deps.cache, key)
   })
 
@@ -236,7 +240,7 @@ export async function enrichChunks(
   const enrichedChunks = await Promise.all(
     chunks.map(async (chunk, index): Promise<SituatedChunk> => {
       const chunkHash = hashes[index]!
-      const key = chunkCacheKey(deps.promptVersion, chunkHash)
+      const key = chunkCacheKey(deps.client.model, deps.promptVersion, chunkHash)
       const situatingContext = await deps.cache.getOrCompute(key, async () => {
         const fresh = situated.get(chunk.id)
         if (fresh === undefined) {

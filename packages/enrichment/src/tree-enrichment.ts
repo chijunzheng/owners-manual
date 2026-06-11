@@ -94,16 +94,18 @@ const amendmentFlagsResponseSchema = z.object({ flags: z.array(amendmentFlagSche
 // --- cache keying ------------------------------------------------------------
 
 /**
- * The per-pass cache key: content-addressed by the tree hash and versioned by the
- * pass's prompt. Two runs collide (a hit) iff the tree and that pass's prompt are
- * both unchanged — exactly the invalidation contract ADR 0004 pins.
+ * The per-pass cache key: content-addressed by the tree hash, namespaced by the
+ * enrichment model, and versioned by the pass's prompt. Two runs collide (a hit)
+ * iff the tree, the model, and that pass's prompt are all unchanged — a persisted
+ * cache must never serve one model's sidecars under another model's label.
  */
 export function treeCacheKey(
   pass: TreePass,
+  model: string,
   promptVersion: string,
   parsed: ParsedDocument,
 ): string {
-  return `tree:${pass}:${promptVersion}:${hashTree(parsed)}`
+  return `tree:${pass}:${model}:${promptVersion}:${hashTree(parsed)}`
 }
 
 // --- prompt construction (pure helpers, exported for testability) ------------
@@ -230,7 +232,7 @@ async function runPass(
   deps: EnrichTreeDeps,
 ): Promise<string> {
   const promptVersion = deps.promptVersions[pass]
-  const key = treeCacheKey(pass, promptVersion, parsed)
+  const key = treeCacheKey(pass, deps.client.model, promptVersion, parsed)
   return deps.cache.getOrCompute(key, async () => {
     const response = await deps.client.complete({
       system: treeSystemPrompt(pass, promptVersion),

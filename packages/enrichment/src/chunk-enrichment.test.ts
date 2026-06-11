@@ -148,6 +148,28 @@ describe('enrichChunks — batching', () => {
 })
 
 describe('enrichChunks — cache behavior', () => {
+  it('re-calls every chunk when the model changes under a persisted cache (no stale cross-model hits)', async () => {
+    const cache = createMemoryCache<string>()
+    const first = fakeClaudeClient({ model: 'model-a', responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: first,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    const second = fakeClaudeClient({ model: 'model-b', responder: situatingResponder() })
+    const result = await enrichChunks(sample, {
+      chunker: citableUnitChunker,
+      client: second,
+      cache,
+      promptVersion: 'v1',
+    })
+
+    expect(second.calls).toHaveLength(1)
+    expect(result.model).toBe('model-b')
+  })
+
   it('re-running over an unchanged cache makes ZERO calls and is all hits', async () => {
     const cache = createMemoryCache<string>()
     const first = fakeClaudeClient({ responder: situatingResponder() })
@@ -179,7 +201,7 @@ describe('enrichChunks — cache behavior', () => {
 
   it('with a PARTIAL cache, makes ONE call covering only the missing chunks', async () => {
     const chunks = citableUnitChunker.chunk(sample)
-    const seededKey = `chunk:situating-context:v1:${hashChunk(chunks[0]!)}`
+    const seededKey = `chunk:situating-context:fake-claude-0:v1:${hashChunk(chunks[0]!)}`
     const cache = createMemoryCache<string>({
       snapshot: { [seededKey]: 'Pre-seeded context for section 1.' },
     })
