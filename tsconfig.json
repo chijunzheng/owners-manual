@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/corpus" },
-    { "path": "./packages/observability" }
+    { "path": "./packages/observability" },
+    { "path": "./packages/parser" }
   ]
 }

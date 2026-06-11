@@ -1,0 +1,46 @@
+{
+  "id": "rta-s2-definitions",
+  "category": "definitions",
+  "provenance": "RTA s. 2(1) definitions \"Board\" and \"landlord\" (the latter with enumerated clauses (a)-(c)). Definitions are the hardest section: each defined term is its own citable unit, several carry enumerated items, and the subsection lead text must not absorb them. Hand-verified against the e-laws consolidation dated 2025-11-27.",
+  "licence": "Statute text © King’s Printer for Ontario. Short excerpt reproduced for personal, non-commercial research use per ontario.ca/page/copyright-information; full statute never committed.",
+  "sourceFile": "rta-s2-definitions.source.html",
+  "documentId": "RTA",
+  "title": "Residential Tenancies Act, 2006",
+  "expectedTree": {
+    "kind": "document",
+    "documentId": "RTA",
+    "label": "Residential Tenancies Act, 2006",
+    "children": [
+      {
+        "kind": "section",
+        "label": "2",
+        "children": [
+          {
+            "kind": "subsection",
+            "label": "1",
+            "children": [
+              { "kind": "clause", "label": "Board", "children": [] },
+              {
+                "kind": "clause",
+                "label": "landlord",
+                "children": [
+                  { "kind": "clause", "label": "a", "children": [] },
+                  { "kind": "clause", "label": "b", "children": [] },
+                  { "kind": "clause", "label": "c", "children": [] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedText": {
+    "RTA|section:2|subsection:1": "In this Act,",
+    "RTA|section:2|subsection:1|clause:Board": "“Board” means the Landlord and Tenant Board; (“Commission”)",
+    "RTA|section:2|subsection:1|clause:landlord": "“landlord” includes,",
+    "RTA|section:2|subsection:1|clause:landlord|clause:a": "the owner of a rental unit or any other person who permits occupancy of a rental unit, other than a tenant who occupies a rental unit in a residential complex and who permits another person to also occupy the unit or any part of the unit,",
+    "RTA|section:2|subsection:1|clause:landlord|clause:b": "the heirs, assigns, personal representatives and successors in title of a person referred to in clause (a), and",
+    "RTA|section:2|subsection:1|clause:landlord|clause:c": "a person, other than a tenant occupying a rental unit in a residential complex, who is entitled to possession of the residential complex and who attempts to enforce any of the rights of a landlord under a tenancy agreement or this Act, including the right to collect rent; (“locateur”)"
+  }
+}

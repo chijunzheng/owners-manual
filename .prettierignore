@@ -15,3 +15,8 @@ corpus/
 # Corpus test fixtures: their exact bytes are checksummed by the manifest, so
 # reformatting them would break verification. Treated as opaque content.
 packages/corpus/src/__fixtures__/
+
+# Golden extraction excerpts: short, verbatim e-laws source (King's Printer for
+# Ontario), hand-blessed and read byte-for-byte by the extraction tests.
+# Reformatting would alter the licensed source text, so treat as opaque content.
+packages/parser/src/golden/items/*.source.html
