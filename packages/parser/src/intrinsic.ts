@@ -149,7 +149,7 @@ export function checkTextFidelity(parsed: ParsedDocument, sourceHtml: string): T
 /** Result of the prose heading-completeness check. */
 export interface ProseCompletenessResult {
   readonly ok: boolean
-  /** How many content headings the source declares. */
+  /** How many content-heading occurrences the source declares (repeats summed). */
   readonly expected: number
   /** How many heading-bearing nodes (section/subsection) the tree carries. */
   readonly parsed: number
@@ -218,8 +218,13 @@ export function checkProseCompleteness(
 
   return {
     ok: missing.length === 0 && unexpected.length === 0 && duplicated.length === 0,
-    expected: expectedCounts.size,
-    parsed: parsedCounts.size,
+    // Summed occurrence totals, not distinct heading strings: a heading the
+    // source repeats counts once per occurrence on both sides, so a re-fetch that
+    // gains or loses a repeat of an already-present heading moves these counts and
+    // is caught by the full-corpus pin (the ok/missing/duplicated logic above is
+    // already occurrence-aware via the count comparisons).
+    expected: expected.length,
+    parsed: parsedHeadings.length,
     missing,
     unexpected,
     duplicated,

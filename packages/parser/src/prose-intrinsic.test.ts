@@ -80,4 +80,40 @@ describe('checkProseCompleteness', () => {
     // so it must not count as an unexpected heading node.
     expect(result.unexpected).toEqual([])
   })
+
+  it('counts heading OCCURRENCES, not distinct heading texts', () => {
+    // A heading the guidelines legitimately repeat ("Adjournments" appears under
+    // two sections here): the source declares it twice and the tree carries it
+    // twice, so expected/parsed must be the summed occurrence totals — four
+    // headings, not three distinct strings. Reporting distinct counts would leave
+    // expected/parsed unchanged if a re-fetch dropped one of the repeats, hiding
+    // exactly the structural drift the full-corpus pin exists to catch.
+    const repeated = [
+      '<main id="main-content">',
+      '<h1>Interpretation Guideline 1</h1>',
+      '<p>Preamble paragraph before any heading.</p>',
+      '<h3>General Approach of the Board</h3>',
+      '<p>Body of the first section.</p>',
+      '<h3>Adjournments</h3>',
+      '<p>Body of the second section.</p>',
+      '<h4>Procedural Issues</h4>',
+      '<p>Body of the nested subsection.</p>',
+      '<h3>Adjournments</h3>',
+      '<p>A second section that reuses the same heading text.</p>',
+      '</main>',
+    ].join('\n')
+    const parsedRepeated = parseProse({
+      documentId: 'LTB-G1',
+      title: 'Interpretation Guideline 1',
+      html: repeated,
+    })
+    const result = checkProseCompleteness(parsedRepeated, repeated)
+    expect(result.ok).toBe(true)
+    // Four heading occurrences (two "Adjournments"), three distinct texts.
+    expect(result.expected).toBe(4)
+    expect(result.parsed).toBe(4)
+    expect(result.missing).toEqual([])
+    expect(result.unexpected).toEqual([])
+    expect(result.duplicated).toEqual([])
+  })
 })

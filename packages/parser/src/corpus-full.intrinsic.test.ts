@@ -38,8 +38,10 @@ import { CORPUS_SOURCES, parseSource, type CorpusSource } from './sources.js'
 /** The expected, hand-verified shape of each source under the pinned manifest. */
 interface Expectation {
   /**
-   * e-laws: table-of-contents section count; prose: content-heading count. A
-   * number pins the exact value (a drift then shows up here, as intended). A
+   * e-laws: table-of-contents section count; prose: content-heading occurrence
+   * total (a repeated heading counts once per occurrence, so a re-fetch that gains
+   * or loses a repeat moves this number). A number pins the exact value (a drift
+   * then shows up here, as intended). A
    * `min` form is for the rent-increase currency micro-source, which is MEANT to
    * drift annually: its structural invariants (completeness bijection, round-trip,
    * fidelity) are pinned, but its heading count is only lower-bounded so a routine
@@ -58,9 +60,9 @@ const EXPECTATIONS: Readonly<Record<string, Expectation>> = {
   'ltb-guideline-01': { completeness: 14, minTextNodes: 70 },
   'ltb-guideline-05': { completeness: 26, minTextNodes: 120 },
   'ltb-guideline-06': { completeness: 23, minTextNodes: 190 },
-  'ltb-guideline-07': { completeness: 13, minTextNodes: 90 },
-  'ltb-guideline-11': { completeness: 25, minTextNodes: 110 },
-  'ltb-guideline-12': { completeness: 25, minTextNodes: 130 },
+  'ltb-guideline-07': { completeness: 15, minTextNodes: 90 },
+  'ltb-guideline-11': { completeness: 26, minTextNodes: 110 },
+  'ltb-guideline-12': { completeness: 26, minTextNodes: 130 },
   'ltb-guideline-14': { completeness: 45, minTextNodes: 250 },
   // Currency micro-source: bound, not pinned (it is meant to drift annually).
   'rent-increase-guideline': { completeness: { min: 8 }, minTextNodes: 40 },
