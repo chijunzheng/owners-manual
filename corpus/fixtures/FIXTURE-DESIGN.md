@@ -32,7 +32,6 @@ fixtures/
   FIXTURE-DESIGN.md          ← this note (the spec)
   governing/
     declaration.html
-    bylaw-standard-unit.html
     rules.html
     management-policies.html
   insurance/
@@ -49,7 +48,7 @@ All fixtures share ONE invented condo so cross-document conflicts line up. Every
 - **Corporation**: Toronto Standard Condominium Corporation No. 9000 ("Harbourview Terrace"), 12 Fictional Crescent, Toronto, ON. Registered (fictional) 2020.
 - **Pets** — Declaration: an owner may keep **up to two household pets**; a "pet" means a **cat or dog weighing no more than 20 kg**; service animals are exempt; the board may declare a pet a nuisance and require removal. (Rules later contradict this — see GOV-01.)
 - **Pet — Rule (inconsistent)**: Rule purports to ban **all dogs over 10 kg** and **all dogs from the elevators**. Stricter than the declaration permits.
-- **Standard unit** — defined ONLY in the standard-unit by-law as **builder-grade finishes**: vinyl plank flooring, laminate counters, builder-supplied appliances. Hardwood, stone counters, and upgraded/built-in appliances are **improvements**, excluded. The declaration *references* "standard unit" but does not define it (the gap that powers INS-01).
+- **Standard unit** — the declaration and master policy both *reference* the "standard unit" as the boundary of corporation coverage, but the **standard-unit by-law that would define it is deliberately absent** from the corpus, mirroring the real building (whose by-laws were not in the owner's document set). The master policy's own exclusions still name the excluded **improvements** — hardwood, stone counters, upgraded/built-in appliances — so the practical coverage answer is reachable while the precise boundary is not. This absence powers INS-01.
 - **Master insurance policy**: insures the **standard unit and common elements** only; property limit (fictional) $50,000,000; **water-damage / sewer-backup deductible $25,000**; base property deductible $10,000. Covers sewer backup at the corporation level.
 - **Deductible chargeback** — Declaration provision: where corporation insurance responds to damage **originating in an owner's unit**, that owner is liable for the policy **deductible, regardless of fault**, recoverable as a common-expense addition. (Mirrors the real no-fault chargeback finding; tension with Condo Act s. 105 — verify.)
 - **Unit owner policy**: covers contents + **sudden and accidental escape of water from plumbing**; **excludes sewer backup** (no endorsement attached); **no improvements/betterments rider**.
@@ -61,10 +60,10 @@ All fixtures share ONE invented condo so cross-document conflicts line up. Every
 
 ## Insurance fixtures (master policy + unit policy)
 
-**INS-01 — Standard-unit gap.**
-Fixture: `insurance/master-policy.html` (+ the standard-unit definition in `governing/bylaw-standard-unit.html`); `insurance/unit-policy.html` without an improvements rider.
-Planted conflict: the corporation insures the *standard unit* only (Condo Act s. 99 — verify); the owner has hardwood and stone-counter upgrades, and the unit policy's improvements/betterments coverage is absent. Neither policy covers the upgrades.
-Why it teaches: coverage-gap analysis across two policies with a precedence relationship, plus locating a definition (standard unit) that lives in a by-law, not the policy.
+**INS-01 — Undefined standard unit.**
+Fixture: `insurance/master-policy.html` (insures the standard unit only and defers its definition to a standard-unit by-law that is NOT present in the corpus); `insurance/unit-policy.html` without an improvements rider.
+Planted conflict: the corporation insures the *standard unit* only (Condo Act s. 99 — verify) and defers its definition to a standard-unit by-law (s. 56 — verify) that is not among the owner's documents. The owner has hardwood and stone-counter upgrades; the master policy excludes those improvements and the unit policy has no improvements rider, so the owner is exposed — but the exact standard-unit boundary cannot be confirmed from the documents present.
+Why it teaches: the agent must (a) answer the practical coverage question from the exclusions that ARE present, and (b) recognize that the defining document is missing and route the owner to obtain it (records request, Condo Act s. 55 — verify) rather than invent a boundary. "The answer isn't in your documents" is the reasoning a naive chatbot skips. No fabricated by-law stands in for the missing one — the absence is the lesson.
 Eval hook: "A burst pipe ruined my hardwood floors — the corporation says that's not their problem. True?"
 
 **INS-02 — Deductible chargeback (no-fault).**
@@ -129,7 +128,7 @@ Eval hook: "My lease bans smoking and makes me carry liability insurance — are
 
 ## Governing-documents fixtures (declaration + by-law + rules + policy sheet)
 
-Authority hierarchy under test: **Declaration > By-laws > Rules > management policy**, and the statutory ceiling above all of them (Condo Act 1998 — verify). Files: `governing/declaration.html`, `governing/bylaw-standard-unit.html`, `governing/rules.html`, `governing/management-policies.html`.
+Authority hierarchy under test: **Declaration > By-laws > Rules > management policy**, and the statutory ceiling above all of them (Condo Act 1998 — verify). Files: `governing/declaration.html`, `governing/rules.html`, `governing/management-policies.html`.
 
 **GOV-01 — Rule inconsistent with declaration (pets).**
 Planted conflict: the declaration permits up to two pets (cats/dogs ≤ 20 kg); a Rule purports to ban all dogs over 10 kg and bar dogs from elevators. Rules must be reasonable and consistent with the declaration (Condo Act s. 58 — verify); the inconsistent rule loses to that extent.
@@ -167,9 +166,9 @@ Eval hook: "My tenant moves in Saturday but management says she's a 'trespasser'
 
 - **Lease ⇄ Declaration (pets)**: LEASE-01's void clause is incomplete without the declaration's pet provision (GOV-01 baseline) and the RTA s. 76 condo pathway. The single contractual hook is the lease line "the unit is in a condominium and the tenant agrees to comply with the declaration, by-laws and rules."
 - **Insurance ⇄ Declaration (deductible)**: INS-02's "who pays" lives in the declaration's chargeback provision, not either policy.
-- **Insurance ⇄ By-law (standard unit)**: INS-01's coverage line is defined in `bylaw-standard-unit.html`, referenced but undefined in the declaration and the master policy.
+- **Insurance ⇄ missing by-law (standard unit)**: INS-01's coverage boundary is *referenced* by both the declaration and the master policy but defined nowhere in the corpus — the standard-unit by-law is deliberately absent. The agent must reason from the improvements the master policy *does* exclude and flag the missing definition rather than invent one.
 - **Rules/Policy ⇄ Declaration (hierarchy)**: GOV-01/02/05 all require reading two instruments and applying precedence.
 
 ## Out of scope for the fixtures
 
-By-laws beyond the standard-unit by-law (the real set had none downloadable); financial statements; meeting minutes; status certificates. The standard-unit by-law is included only because INS-01 structurally requires the definition to exist somewhere.
+By-laws (the real building's set had none downloadable, so the corpus omits them deliberately — the absent standard-unit by-law is the INS-01 teaching point, not an oversight); financial statements; meeting minutes; status certificates. Do not "resolve" the dangling standard-unit reference by adding a by-law: its absence is intentional and mirrors the owner's real situation.
