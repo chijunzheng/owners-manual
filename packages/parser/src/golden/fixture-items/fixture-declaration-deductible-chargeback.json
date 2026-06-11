@@ -1,0 +1,41 @@
+{
+  "id": "fixture-declaration-deductible-chargeback",
+  "category": "prose-section",
+  "family": "prose",
+  "provenance": "Designed fixture governing/declaration.html, Article V — Insurance and its nested \"Deductible Chargeback\" subsection (the no-fault chargeback that powers INS-02 and the cross-corpus deductible fan-out). The hardest fixture structure: an <h2> article whose <h3> subsection must nest under it (h2 → section, h3 → subsection, each <p> → a citable clause). Ground truth is known by construction — the conflict was planted, so the blessed subtree IS the spec. See corpus/fixtures/FIXTURE-DESIGN.md (INS-02).",
+  "licence": "Synthetic designed fixture authored for this project; ground truth by construction. No third-party copyright — invented identities and numbers (CONTEXT.md: Designed fixture).",
+  "sourceFile": "fixture-declaration-deductible-chargeback.source.html",
+  "documentId": "fixture-declaration",
+  "title": "Declaration of Toronto Standard Condominium Corporation No. 9000 (Harbourview Terrace)",
+  "expectedTree": {
+    "kind": "document",
+    "documentId": "fixture-declaration",
+    "label": "Declaration of Toronto Standard Condominium Corporation No. 9000 (Harbourview Terrace)",
+    "children": [
+      {
+        "kind": "section",
+        "label": "article-v-insurance",
+        "children": [
+          { "kind": "clause", "label": "p-1", "children": [] },
+          { "kind": "clause", "label": "p-2", "children": [] },
+          {
+            "kind": "subsection",
+            "label": "deductible-chargeback",
+            "children": [
+              { "kind": "clause", "label": "p-1", "children": [] },
+              { "kind": "clause", "label": "p-2", "children": [] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedText": {
+    "fixture-declaration|section:article-v-insurance": "Article V — Insurance",
+    "fixture-declaration|section:article-v-insurance|clause:p-1": "The Corporation shall obtain and maintain insurance, on its own behalf and on behalf of the owners, against damage to the standard unit and to the common elements that is caused by major perils as defined in the Act and by such other perils as the Board considers appropriate, to the extent and in the amounts required by the Act and the by-laws.",
+    "fixture-declaration|section:article-v-insurance|clause:p-2": "The insurance obtained and maintained by the Corporation does not cover any improvement or betterment made to a unit by an owner or by any predecessor in title, nor does it cover the furnishings, personal property, or contents of any unit. Each owner is responsible for obtaining and maintaining the owner's own insurance in respect of improvements and betterments to the owner's unit and the contents of the owner's unit.",
+    "fixture-declaration|section:article-v-insurance|subsection:deductible-chargeback": "Deductible Chargeback",
+    "fixture-declaration|section:article-v-insurance|subsection:deductible-chargeback|clause:p-1": "Where the insurance policy obtained by the Corporation responds to damage or loss to a unit, to the common elements, or to both, and the damage or loss originates from or within a unit, the owner of that unit shall be liable for and shall reimburse the Corporation for the amount of the deductible payable under the policy in respect of that claim, to a maximum of the deductible amount stated in the policy. Such liability arises regardless of whether the damage or loss was caused by the fault, act, or omission of the owner or of any person for whom the owner is responsible.",
+    "fixture-declaration|section:article-v-insurance|subsection:deductible-chargeback|clause:p-2": "Any amount for which an owner is liable under this Article that is not paid when due shall be added to the common expenses attributable to that owner's unit and shall be recoverable as common expenses, including by way of a lien against the unit, in the same manner as any other contribution to the common expenses."
+  }
+}

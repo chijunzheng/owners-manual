@@ -38,6 +38,14 @@ describe('@owners-manual/parser public surface', () => {
     expect(typeof parser.loadGoldenExtractionSet).toBe('function')
   })
 
+  it('exports the designed-fixture registry (issue #12 fixtures half)', () => {
+    expect(typeof parser.parseFixture).toBe('function')
+    expect(typeof parser.fixtureById).toBe('function')
+    expect(Array.isArray(parser.FIXTURE_SOURCES)).toBe(true)
+    expect(parser.FIXTURE_SOURCES).toHaveLength(6)
+    expect(parser.FIXTURE_DESIGN_IDS.length).toBeGreaterThan(0)
+  })
+
   it('round-trips a tiny parse end to end through the public API', () => {
     const parsed = parser.parseStatute({
       documentId: 'RTA',

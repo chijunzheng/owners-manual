@@ -20,3 +20,8 @@ packages/corpus/src/__fixtures__/
 # Ontario), hand-blessed and read byte-for-byte by the extraction tests.
 # Reformatting would alter the licensed source text, so treat as opaque content.
 packages/parser/src/golden/items/*.source.html
+
+# Fixture golden excerpts: verbatim slices of the committed designed fixtures,
+# read byte-for-byte and asserted to match the fixture. Reformatting would break
+# the verbatim-slice integrity check, so treat as opaque content.
+packages/parser/src/golden/fixture-items/*.source.html
