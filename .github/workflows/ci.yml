@@ -1,14 +1,26 @@
 name: CI
 
-# Phase-0 scaffold gate: runs both test suites plus linting on every PR and on
-# pushes to main. Per ADR 0003 the TypeScript product and the Python eval
-# harness are separate toolchains, so each gets its own job. No secrets and no
-# corpus text are required — the suites are placeholder smoke tests.
+# Runs both test suites plus linting on every PR and on pushes to main. Per ADR
+# 0003 the TypeScript product and the Python eval harness are separate
+# toolchains, so each gets its own job. The TypeScript job needs no secrets and
+# no corpus text: it covers the deterministic parser's intrinsic asserts over
+# the committed golden extraction set and fixtures (ADR 0004), which carry only
+# short licensed excerpts.
+#
+# The full-document intrinsic gate (the same asserts over the entire RTA) needs
+# the Crown-copyright bytes, which are gitignored and never committed, so it
+# runs in a dedicated job that fetches the corpus first — on every push to main
+# (i.e. every merge) and nightly. PRs from forks cannot fetch reliably, so it is
+# scoped to main + schedule rather than every PR; the fixture-based asserts are
+# the per-PR gate.
 
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    # Nightly full-corpus intrinsic gate (08:17 UTC; off the hour to dodge load).
+    - cron: '17 8 * * *'
 
 # Cancel superseded runs on the same ref so a fresh push doesn't queue behind
 # stale ones.
@@ -76,3 +88,37 @@ jobs:
 
       - name: Test (pytest)
         run: uv run pytest
+
+  # Full-document intrinsic ingestion gate (ADR 0004): fetches the corpus, then
+  # runs the parser's structure-completeness, cite round-trip, and text-fidelity
+  # asserts over the ENTIRE RTA — the bytes that are gitignored and cannot live
+  # in the repo. RTA_FULL_REQUIRED=1 turns a missing fetch into a hard failure
+  # so the gate can never silently skip. Scoped to main + schedule because it
+  # needs network egress to ontario.ca; per-PR coverage comes from the
+  # fixture-and-golden asserts in the `typescript` job above.
+  corpus-intrinsic:
+    name: Intrinsic asserts over full corpus
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch corpus (verifies checksums against the manifest)
+        run: pnpm corpus:fetch
+
+      - name: Intrinsic asserts over the full RTA
+        env:
+          RTA_FULL_REQUIRED: '1'
+        run: pnpm vitest run packages/parser/src/rta-full.intrinsic.test.ts

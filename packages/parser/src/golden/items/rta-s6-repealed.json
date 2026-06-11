@@ -1,0 +1,37 @@
+{
+  "id": "rta-s6-repealed",
+  "category": "repealed-marker",
+  "provenance": "RTA s. 6, whose subsection (2) was REPEALED by 2017, c. 13, s. 3 (2). The repealed coordinate must survive as a citable node carrying the repeal note (never silently dropped), while the live subsection (1) keeps its clauses (a)-(b). Hand-verified against the e-laws consolidation dated 2025-11-27.",
+  "licence": "Statute text © King’s Printer for Ontario. Short excerpt reproduced for personal, non-commercial research use per ontario.ca/page/copyright-information; full statute never committed.",
+  "sourceFile": "rta-s6-repealed.source.html",
+  "documentId": "RTA",
+  "title": "Residential Tenancies Act, 2006",
+  "expectedTree": {
+    "kind": "document",
+    "documentId": "RTA",
+    "label": "Residential Tenancies Act, 2006",
+    "children": [
+      {
+        "kind": "section",
+        "label": "6",
+        "children": [
+          {
+            "kind": "subsection",
+            "label": "1",
+            "children": [
+              { "kind": "clause", "label": "a", "children": [] },
+              { "kind": "clause", "label": "b", "children": [] }
+            ]
+          },
+          { "kind": "subsection", "label": "2", "children": [] }
+        ]
+      }
+    ]
+  },
+  "expectedText": {
+    "RTA|section:6|subsection:1": "Paragraphs 6, 7 and 8 of subsection 30 (1) and sections 48.1, 49.1, 51, 52, 54, 55, 56, 104, 111 to 115, 117, 119 to 134, 136, 140 and 149 to 167 do not apply with respect to,",
+    "RTA|section:6|subsection:1|clause:a": "accommodation that is subject to the Homes for Special Care Act; or",
+    "RTA|section:6|subsection:1|clause:b": "accommodation that is a supported group living residence or an intensive support residence under the Services and Supports to Promote the Social Inclusion of Persons with Developmental Disabilities Act, 2008. 2006, c. 17, s. 6 (1); 2008, c. 14, s. 58 (5); 2009, c. 33, Sched. 8, s. 15; 2017, c. 13, s. 3 (1); 2020, c. 16, Sched. 4, s. 2.",
+    "RTA|section:6|subsection:2": "Repealed: 2017, c. 13, s. 3 (2)."
+  }
+}
