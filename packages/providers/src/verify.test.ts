@@ -78,6 +78,22 @@ describe('runVerification', () => {
     expect(verificationExitCode(results)).toBe(1)
   })
 
+  it('flattens multi-line (JSON-shaped) error messages instead of truncating to the first line', async () => {
+    const probes = passingProbes({
+      geminiGenerate: async () => {
+        throw new Error(
+          '{\n  "error": {\n    "code": 403,\n    "status": "PERMISSION_DENIED"\n  }\n}',
+        )
+      },
+    })
+    const results = await runVerification(fullEnv(), probes)
+
+    const gemini = results.find((r) => r.id === 'vertex-gemini')
+    expect(gemini?.status).toBe('fail')
+    expect(gemini?.detail).toContain('PERMISSION_DENIED')
+    expect(gemini?.detail).not.toBe('{')
+  })
+
   it('never leaks secret env values into failure details', async () => {
     const probes = passingProbes({
       atlasPing: async () => {

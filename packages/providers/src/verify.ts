@@ -94,13 +94,16 @@ function collectSecrets(env: VerifyEnv): readonly string[] {
   return [...fromVars, ...uriCredentials]
 }
 
-/** First line of an error, truncated and scrubbed of every secret value. */
+/**
+ * Error message flattened to one line (provider errors are often pretty-printed
+ * JSON), truncated, and scrubbed of every secret value.
+ */
 function sanitizeDetail(error: unknown, secrets: readonly string[]): string {
   const message = error instanceof Error ? error.message : String(error)
-  const firstLine = message.split('\n')[0] ?? ''
+  const flattened = message.replace(/\s*\n\s*/g, ' ').trim()
   const scrubbed = secrets.reduce(
     (text, secret) => text.replaceAll(secret, '[redacted]'),
-    firstLine,
+    flattened,
   )
   return scrubbed.length > MAX_DETAIL_LENGTH ? `${scrubbed.slice(0, MAX_DETAIL_LENGTH)}…` : scrubbed
 }
