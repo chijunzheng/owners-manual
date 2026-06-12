@@ -1,0 +1,142 @@
+{
+  "kind": "document",
+  "label": "Residential Tenancy Agreement (Suite 1204, Harbourview Terrace)",
+  "documentId": "fixture-lease",
+  "children": [
+    {
+      "kind": "section",
+      "label": "parties-and-rental-unit",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "rent",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "deposits",
+      "children": [
+        {
+          "kind": "subsection",
+          "label": "first-and-last-months-rent",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            }
+          ]
+        },
+        {
+          "kind": "subsection",
+          "label": "key-deposit",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "pets",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "maintenance-and-repairs",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "renewal",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "schedule-a-additional-rent-arrangements",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "additional-terms",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

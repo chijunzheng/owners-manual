@@ -1,0 +1,306 @@
+# Golden set v0 — tenancy items (issue #9).
+#
+# Hand-verification protocol: every item lands as `verified: false` and flips
+# true ONLY on the owner's per-item sign-off against a verification packet that
+# quotes the parsed-tree text of every required cite plus the supporting LTB
+# guideline passage. Git history is the audit record. The eval runner's
+# verified-only filter excludes unverified items from real runs, so a drafted
+# but unsigned item can never score.
+#
+# Design (locked in the 2026-06-12 grill session): 16 parents, 6/3/3/2/2 across
+# the five behavior classes, plus 2 paraphrase variants on each of 5 parents.
+# Batches land in order: 6 answer -> 3 flag-void-clause -> 7 refusals -> 10
+# paraphrase variants.
+#
+# No Crown-copyright statute text appears here: cites are addressing-only
+# citable paths into the committed trees (evals/fixtures/golden/trees/), and
+# answer-point text is claim-level paraphrase.
+
+version: 1
+items:
+  # --- batch 1: answer class -------------------------------------------------
+
+  # RTA s.49(2) is the condominium-unit purchaser provision; s.49(1) covers
+  # complexes of <=3 units. Compensation under s.49.1 stays with the selling
+  # landlord (s.49.1(2)), not the purchaser. Provenance: Guideline 12 discusses
+  # the purchase-and-sale precondition for s.49 notices.
+  - id: answer-purchaser-own-use
+    behavior_class: answer
+    verified: true
+    question: >-
+      I'm selling my condo unit and the buyer says they will live in it
+      themselves. What notice do I have to give my tenant, and do I owe the
+      tenant anything?
+    answer_points:
+      - id: notice-on-purchasers-behalf
+        text: The landlord of a sold condominium unit may give the tenant a
+          termination notice on the purchaser's behalf only if the purchaser in
+          good faith requires the unit for residential occupation by the
+          purchaser, their spouse, a child or parent of either, or their
+          caregiver.
+      - id: notice-period
+        text: The termination date must be at least 60 days after the notice is
+          given and must fall on the last day of a rental period, or at the end
+          of the term for a fixed-term tenancy.
+      - id: compensation
+        text: The tenant is owed compensation equal to one month's rent (or an
+          acceptable alternative unit), and that obligation remains with the
+          landlord who gives the notice rather than passing to the purchaser.
+      - id: tenant-early-exit
+        text: After receiving the notice the tenant may end the tenancy earlier
+          by giving at least 10 days' notice.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '3' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49.1' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 12: Eviction for Personal Use —
+        purchase-and-sale precondition for s.49 notices'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  - id: answer-rent-increase-rules
+    behavior_class: answer
+    verified: true
+    question: >-
+      I want to raise my tenant's rent. How much can I increase it, and what
+      steps do I have to follow first?
+    answer_points:
+      - id: written-notice
+        text: The landlord must give at least 90 days' written notice of the
+          increase in the Board-approved form; an increase taken without that
+          notice is void.
+      - id: twelve-month-rule
+        text: At least 12 months must have passed since the last increase for
+          that tenant, or since the tenancy began.
+      - id: guideline-cap
+        text: The increase cannot exceed the annual provincial guideline unless
+          the Board approves an above-guideline increase or the tenant agrees
+          under the agreed-increase provisions.
+      - id: statutory-ceiling
+        text: The guideline itself is capped by statute at 2.5 per cent for any
+          calendar year.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '116' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '119' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '120' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ontario-ca-page
+      reference: 'Rent increase guideline (ontario.ca; corpus source
+        rent-increase-guideline)'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # The condominium angle lives in the QUESTION; the answer points claim only
+  # what s.20 supports ("including the rental units in it" covers the unit the
+  # landlord rents out). Guideline 5 quotes s.20 and frames the duty as the
+  # landlord's; it carries no condominium-specific passage, so no answer point
+  # asserts one.
+  - id: answer-repair-duty-condo
+    behavior_class: answer
+    verified: true
+    question: >-
+      The dishwasher in the condo I rent out died of old age and my tenant
+      wants it fixed. The condo corporation looks after the building — as the
+      unit owner, is this repair on me?
+    answer_points:
+      - id: landlord-duty
+        text: The landlord is responsible for keeping the residential complex,
+          including the rental unit itself, in a good state of repair and fit
+          for habitation, and for complying with health, safety, housing and
+          maintenance standards.
+      - id: duty-covers-the-unit
+        text: That duty expressly includes the rental unit, so repairs inside
+          the unit the landlord rents out (such as its appliances) fall on the
+          landlord as against the tenant.
+      - id: no-knowledge-defence
+        text: The duty applies even if the tenant knew about the state of
+          non-repair before entering into the tenancy agreement.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '20' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 5: Breach of Maintenance
+        Obligations — s.20 duty and its tests'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # VERIFICATION FLAG: the parsed RTA tree carries TWO versions of s.59(1) —
+  # the in-force rule (termination date >= 14 days after notice for monthly
+  # tenancies, clause (b)) and a 2025 amendment (c. 14, Sched. 12) reading
+  # "not earlier than the 7th day". Guideline 11 states the 14-day rule. The
+  # answer points below assert the 14-day rule; owner adjudicates against
+  # e-Laws at sign-off.
+  - id: answer-arrears-n4
+    behavior_class: answer
+    verified: true
+    question: >-
+      My tenant missed this month's rent. How soon can I serve a termination
+      notice, and what happens if they pay after I serve it?
+    answer_points:
+      - id: notice-timing
+        text: For a monthly tenancy the notice of termination for non-payment
+          must specify a termination date at least 14 days after the notice is
+          given.
+      - id: notice-content
+        text: The notice must set out the amount of rent due and state that the
+          tenant can avoid termination by paying the rent due plus any further
+          rent that accrues, on or before the termination date.
+      - id: void-on-payment
+        text: The notice becomes void if the tenant pays the arrears and any
+          additional rent due before the landlord applies to the Board for
+          termination.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '59' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '59' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '59' }
+          - { kind: subsection, label: '3' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 11: Rent Arrears — Form N4
+        timing, content, and voiding by payment'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # No held guideline covers deposits squarely; provenance is the statute
+  # itself, which the packet quotes in full for the cited subsections.
+  - id: answer-deposits
+    behavior_class: answer
+    verified: true
+    question: >-
+      I'm signing a new tenant for my condo. Can I collect first and last
+      month's rent plus a damage deposit, and do I owe anything on the money I
+      hold?
+    answer_points:
+      - id: rent-deposit-only
+        text: The only security deposit a landlord may collect is a rent
+          deposit; money held as security for the tenant's obligations or
+          returnable on a condition is a prohibited security deposit, so a
+          damage deposit is not lawful.
+      - id: max-one-period
+        text: The rent deposit cannot exceed the lesser of one rent period's
+          rent and one month's rent.
+      - id: annual-interest
+        text: The landlord must pay the tenant interest on the rent deposit
+          annually, at the rent-increase guideline rate in effect when the
+          payment comes due.
+      - id: last-period-application
+        text: The rent deposit must be applied to the rent for the last rent
+          period before the tenancy ends.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '6' }
+    provenance:
+      source: statute
+      reference: 'RTA Part VII, ss.105-106 (direct statutory text; no held
+        guideline covers deposits)'
+    tags:
+      difficulty: easy
+      persona: landlord
+
+  # LEASE-08, the enforceable-terms control pair: a deliberate NON-violation.
+  # The discriminating behavior is precision — affirming enforceable clauses
+  # instead of over-flagging every restriction as void. Cites pin the three
+  # lease clauses plus the statute the locks clause mirrors.
+  - id: answer-enforceable-lease-terms
+    behavior_class: answer
+    verified: true
+    question: >-
+      My lease bans smoking, makes me carry tenant liability insurance, and
+      says I can't re-key the locks without my landlord's written consent. Are
+      those clauses even legal?
+    answer_points:
+      - id: smoking-enforceable
+        text: A no-smoking term is a permitted lease term and is enforceable.
+      - id: insurance-enforceable
+        text: Requiring the tenant to carry liability insurance is a permitted
+          lease term and is enforceable.
+      - id: locks-mirror-statute
+        text: The no-rekeying clause mirrors the statute — a tenant must not
+          alter the locking system without the landlord's consent.
+      - id: no-over-flagging
+        text: None of these clauses is void; restrictive lease terms are not
+          automatically unenforceable.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: additional-terms }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: additional-terms }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: additional-terms }
+          - { kind: clause, label: p-3 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '35' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-08 — enforceable-terms control pair
+        (planted non-violation)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: over-flagging-control
