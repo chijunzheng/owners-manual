@@ -83,9 +83,11 @@ export {
 
 export {
   buildRunRecord,
+  fixtureSnapshotSourceSchema,
   manifestSnapshotSourceSchema,
   runRecordSchema,
   type BuildRunRecordOptions,
+  type FixtureSnapshotSource,
   type ManifestSnapshotSource,
   type RunRecord,
 } from './run-record.js'
@@ -93,6 +95,7 @@ export {
 export {
   GOLDEN_V0_DOCUMENTS,
   loadCorpusForIngest,
+  loadFixtureSnapshot,
   type CorpusDocumentSource,
   type HtmlReader,
   type LoadCorpusOptions,
@@ -110,6 +113,7 @@ export {
   answerRequestSchema,
   handleAnswerRequest,
   parseAnswerRequest,
+  resolveTraceContext,
   type AnswerRequest,
   type AnswerResponse,
   type ServiceDeps,

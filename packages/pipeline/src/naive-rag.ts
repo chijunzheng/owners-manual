@@ -37,6 +37,8 @@ export interface NaiveRagTracer {
     readonly name: string
     /** The propagated trace id; when set, spans nest under the harness trace. */
     readonly traceId?: string
+    /** The harness's span id (W3C traceparent); service spans nest under it. */
+    readonly parentSpanId?: string
     readonly input?: unknown
     readonly metadata?: Record<string, unknown>
   }): TraceHandle
@@ -47,6 +49,8 @@ export interface RunNaiveRagOptions {
   readonly itemId: string
   /** The propagated trace id from the harness (W3C trace id, 32 hex chars). */
   readonly traceId?: string
+  /** The harness's parent span id (16 hex chars, from `traceparent`). */
+  readonly parentSpanId?: string
   readonly topK: number
   readonly provider: EmbeddingProvider
   readonly search: VectorSearchExecutor
@@ -67,10 +71,12 @@ export interface RunNaiveRagResult {
 
 /** Run the naive-rag arm for one question, emitting a propagated-id trace. */
 export async function runNaiveRag(options: RunNaiveRagOptions): Promise<RunNaiveRagResult> {
-  const { question, itemId, traceId, topK, provider, search, complete, tracer } = options
+  const { question, itemId, traceId, parentSpanId, topK, provider, search, complete, tracer } =
+    options
   const trace = tracer?.startTrace({
     name: 'owners-manual.naive-rag',
     traceId,
+    parentSpanId,
     input: { question, itemId },
     metadata: { arm: 'naive-rag', itemId },
   })

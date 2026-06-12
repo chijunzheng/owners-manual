@@ -13,12 +13,13 @@
  */
 
 import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
 
 import { createVoyageEmbeddingProvider } from './embedding.js'
 import { NAIVE_RAG_PIPELINE_CONFIG } from './pipeline-config.js'
 import { buildRunRecord } from './run-record.js'
-import { handleAnswerRequest, parseAnswerRequest } from './service.js'
-import { GOLDEN_V0_DOCUMENTS } from './corpus-loader.js'
+import { handleAnswerRequest, parseAnswerRequest, resolveTraceContext } from './service.js'
+import { GOLDEN_V0_DOCUMENTS, loadFixtureSnapshot } from './corpus-loader.js'
 import { langfuseEnabled, loadRootEnv, repoPath, resolveLiveConfig } from './live/env.js'
 import { connectMongoStore } from './live/mongo-store.js'
 import { createVertexLlm } from './live/vertex-llm.js'
@@ -56,9 +57,14 @@ async function main(): Promise<void> {
 
   const corpusIds = GOLDEN_V0_DOCUMENTS.filter((d) => d.kind === 'corpus').map((d) => d.id)
   const manifestSources = await loadManifestSnapshot(repoPath('corpus', 'manifest.json'), corpusIds)
+  const fixtureSources = await loadFixtureSnapshot({
+    documents: GOLDEN_V0_DOCUMENTS,
+    read: (relPath) => readFile(repoPath(relPath), 'utf8'),
+  })
   const runRecord = buildRunRecord({
     config,
     manifestSources,
+    fixtureSources,
     includedDocumentIds: GOLDEN_V0_DOCUMENTS.map((d) => d.id),
   })
 
@@ -80,7 +86,11 @@ async function main(): Promise<void> {
           return
         }
         if (req.method === 'POST' && req.url === '/answer') {
-          const request = parseAnswerRequest(JSON.parse(await readBody(req)))
+          const body = parseAnswerRequest(JSON.parse(await readBody(req)))
+          // The harness names its parent span via the W3C traceparent header;
+          // consuming it is what nests the service spans under the harness span.
+          const context = resolveTraceContext(body.traceId, req.headers.traceparent)
+          const request = { ...body, traceId: context.traceId, parentSpanId: context.parentSpanId }
           const response = await handleAnswerRequest(request, deps)
           await tracerHandle?.flush()
           res.writeHead(200, { 'content-type': 'application/json' })

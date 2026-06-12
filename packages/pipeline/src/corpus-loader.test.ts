@@ -1,6 +1,13 @@
+import { createHash } from 'node:crypto'
+
 import { describe, expect, it } from 'vitest'
 
-import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest, type HtmlReader } from './corpus-loader.js'
+import {
+  GOLDEN_V0_DOCUMENTS,
+  loadCorpusForIngest,
+  loadFixtureSnapshot,
+  type HtmlReader,
+} from './corpus-loader.js'
 
 const LEASE_HTML = `<!doctype html><html><body>
 <h1>Residential Tenancy Agreement</h1>
@@ -66,5 +73,36 @@ describe('loadCorpusForIngest', () => {
         read: failing,
       }),
     ).rejects.toThrow(/rta-2006/)
+  })
+})
+
+describe('loadFixtureSnapshot', () => {
+  it('hashes exactly the fixture documents, skipping corpus sources', async () => {
+    const snapshot = await loadFixtureSnapshot({
+      documents: GOLDEN_V0_DOCUMENTS,
+      read: fixtureReader, // statutes throw if read — proves they are never read
+    })
+    expect(snapshot.map((s) => s.id)).toEqual(['fixture-lease', 'fixture-declaration'])
+  })
+
+  it('records the sha256 of each fixture file content', async () => {
+    const snapshot = await loadFixtureSnapshot({
+      documents: GOLDEN_V0_DOCUMENTS.filter((d) => d.id === 'fixture-lease'),
+      read: fixtureReader,
+    })
+    const expected = createHash('sha256').update(LEASE_HTML, 'utf8').digest('hex')
+    expect(snapshot).toEqual([{ id: 'fixture-lease', sha256: expected }])
+  })
+
+  it('surfaces a read failure with the fixture id for diagnosis', async () => {
+    const failing: HtmlReader = async () => {
+      throw new Error('ENOENT')
+    }
+    await expect(
+      loadFixtureSnapshot({
+        documents: GOLDEN_V0_DOCUMENTS.filter((d) => d.kind === 'fixture'),
+        read: failing,
+      }),
+    ).rejects.toThrow(/fixture-lease/)
   })
 })

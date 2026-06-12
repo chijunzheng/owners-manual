@@ -13,9 +13,12 @@
  * the ingest CLI binds the reader to the gitignored `corpus/raw` bytes.
  */
 
+import { createHash } from 'node:crypto'
+
 import { parseFixture, parseSource, type ParsedDocument } from '@owners-manual/parser'
 
 import { type ParsedCorpusEntry } from './chunk-corpus.js'
+import { type FixtureSnapshotSource } from './run-record.js'
 
 /** One document to ingest: its id, parse route, and repo-relative HTML path. */
 export interface CorpusDocumentSource {
@@ -72,4 +75,27 @@ export async function loadCorpusForIngest(
   options: LoadCorpusOptions,
 ): Promise<readonly ParsedCorpusEntry[]> {
   return Promise.all(options.documents.map((document) => loadOne(document, options.read)))
+}
+
+/**
+ * Hash the committed fixture documents for the run record: the indexed corpus
+ * includes fixture bytes, so the build hash must change when a fixture changes
+ * (run-record.ts). Corpus sources are skipped — the manifest already pins them.
+ */
+export async function loadFixtureSnapshot(
+  options: LoadCorpusOptions,
+): Promise<readonly FixtureSnapshotSource[]> {
+  const fixtures = options.documents.filter((document) => document.kind === 'fixture')
+  return Promise.all(
+    fixtures.map(async (document) => {
+      let html: string
+      try {
+        html = await options.read(document.inputFile)
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error)
+        throw new Error(`failed to read ${document.id} (${document.inputFile}): ${reason}`)
+      }
+      return { id: document.id, sha256: createHash('sha256').update(html, 'utf8').digest('hex') }
+    }),
+  )
 }

@@ -15,7 +15,7 @@ import { readFile } from 'node:fs/promises'
 import { citableUnitChunker } from '@owners-manual/enrichment'
 
 import { chunkParsedDocuments } from './chunk-corpus.js'
-import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest } from './corpus-loader.js'
+import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest, loadFixtureSnapshot } from './corpus-loader.js'
 import { createVoyageEmbeddingProvider } from './embedding.js'
 import { NAIVE_RAG_PIPELINE_CONFIG } from './pipeline-config.js'
 import { buildRunRecord, type ManifestSnapshotSource } from './run-record.js'
@@ -94,9 +94,14 @@ async function main(): Promise<number> {
       .filter((c) => c.documentId.startsWith('rta-') || c.documentId.startsWith('reg-'))
       .map((c) => c.documentId),
   )
+  const fixtureSources = await loadFixtureSnapshot({
+    documents: GOLDEN_V0_DOCUMENTS,
+    read: (relPath) => readFile(repoPath(relPath), 'utf8'),
+  })
   const record = buildRunRecord({
     config,
     manifestSources,
+    fixtureSources,
     includedDocumentIds: corpus.map((c) => c.documentId),
   })
   process.stdout.write(`\nCorpus build hash: ${record.corpusBuildHash}\n`)

@@ -32,10 +32,27 @@ export const manifestSnapshotSourceSchema = z
 
 export type ManifestSnapshotSource = z.infer<typeof manifestSnapshotSourceSchema>
 
+/**
+ * One committed fixture as recorded in the build: id + content checksum. The
+ * indexed corpus includes fixtures, so their bytes must pin the build exactly
+ * like manifest sources do — otherwise a fixture edit silently reuses the old
+ * `corpusBuildHash` while retrieving different text (Codex P2, PR #39).
+ */
+export const fixtureSnapshotSourceSchema = z
+  .object({
+    id: z.string().min(1),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  })
+  .strict()
+
+export type FixtureSnapshotSource = z.infer<typeof fixtureSnapshotSourceSchema>
+
 export const runRecordSchema = z
   .object({
     /** The exact manifest sources this build measured. */
     manifest: z.object({ sources: z.array(manifestSnapshotSourceSchema) }).strict(),
+    /** The exact committed fixtures this build ingested, by content checksum. */
+    fixtures: z.object({ sources: z.array(fixtureSnapshotSourceSchema) }).strict(),
     /** The full pipeline-config snapshot. */
     pipelineConfig: pipelineConfigSchema,
     /** The content hash of {@link pipelineConfig}. */
@@ -52,29 +69,35 @@ export type RunRecord = z.infer<typeof runRecordSchema>
 export interface BuildRunRecordOptions {
   readonly config: PipelineConfig
   readonly manifestSources: readonly ManifestSnapshotSource[]
+  readonly fixtureSources: readonly FixtureSnapshotSource[]
   readonly includedDocumentIds: readonly string[]
+}
+
+/** Canonical digest of id-sorted source tuples — order-insensitive by design. */
+function sortedTupleDigest(tuples: readonly (readonly string[])[]): string {
+  const sorted = [...tuples].sort((a, b) =>
+    (a[0] ?? '') < (b[0] ?? '') ? -1 : (a[0] ?? '') > (b[0] ?? '') ? 1 : 0,
+  )
+  return createHash('sha256').update(JSON.stringify(sorted), 'utf8').digest('hex')
 }
 
 /** Build (and validate) the run record for one corpus build. */
 export function buildRunRecord(options: BuildRunRecordOptions): RunRecord {
-  const { config, manifestSources, includedDocumentIds } = options
+  const { config, manifestSources, fixtureSources, includedDocumentIds } = options
   const configHash = pipelineConfigHash(config)
-  const manifestDigest = createHash('sha256')
-    .update(
-      JSON.stringify(
-        [...manifestSources]
-          .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-          .map((source) => [source.id, source.sha256, source.consolidationDate]),
-      ),
-      'utf8',
-    )
-    .digest('hex')
+  const manifestDigest = sortedTupleDigest(
+    manifestSources.map((source) => [source.id, source.sha256, source.consolidationDate]),
+  )
+  const fixtureDigest = sortedTupleDigest(
+    fixtureSources.map((source) => [source.id, source.sha256]),
+  )
   const corpusBuildHash = createHash('sha256')
-    .update(`${manifestDigest}:${configHash}`, 'utf8')
+    .update(`${manifestDigest}:${fixtureDigest}:${configHash}`, 'utf8')
     .digest('hex')
 
   return runRecordSchema.parse({
     manifest: { sources: manifestSources },
+    fixtures: { sources: fixtureSources },
     pipelineConfig: config,
     pipelineConfigHash: configHash,
     corpusBuildHash,

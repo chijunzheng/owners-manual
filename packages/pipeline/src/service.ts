@@ -35,11 +35,41 @@ export const answerRequestSchema = z
   })
   .strict()
 
-export type AnswerRequest = z.infer<typeof answerRequestSchema>
+export type AnswerRequest = z.infer<typeof answerRequestSchema> & {
+  /** The harness's parent span id — from the `traceparent` HEADER, never the body. */
+  readonly parentSpanId?: string
+}
 
 /** Validate an untyped request body into an {@link AnswerRequest}. */
 export function parseAnswerRequest(value: unknown): AnswerRequest {
   return answerRequestSchema.parse(value)
+}
+
+/** W3C traceparent: `00-<32hex trace>-<16hex span>-<2hex flags>` (lowercase). */
+const TRACEPARENT_PATTERN = /^00-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}$/
+
+/**
+ * Merge the body trace id with the `traceparent` header the harness sends
+ * (service_client.py): a valid header contributes the parent span id so the
+ * service spans nest under the harness span; a malformed header — or one whose
+ * trace id contradicts the body — is ignored rather than trusted.
+ */
+export function resolveTraceContext(
+  bodyTraceId: string | undefined,
+  traceparentHeader: string | readonly string[] | undefined,
+): { readonly traceId?: string; readonly parentSpanId?: string } {
+  const header = Array.isArray(traceparentHeader) ? traceparentHeader[0] : traceparentHeader
+  const match = typeof header === 'string' ? TRACEPARENT_PATTERN.exec(header) : null
+  const headerTraceId = match?.[1]
+  const headerSpanId = match?.[2]
+
+  if (!headerTraceId || !headerSpanId) {
+    return bodyTraceId ? { traceId: bodyTraceId } : {}
+  }
+  if (bodyTraceId && bodyTraceId !== headerTraceId) {
+    return { traceId: bodyTraceId }
+  }
+  return { traceId: bodyTraceId ?? headerTraceId, parentSpanId: headerSpanId }
 }
 
 /** The dependencies a handler needs — injected so the handler is pure. */
@@ -76,6 +106,7 @@ export async function handleAnswerRequest(
     question: request.question,
     itemId: request.itemId,
     traceId: request.traceId,
+    parentSpanId: request.parentSpanId,
     topK: deps.topK,
     provider: deps.provider,
     search: deps.search,

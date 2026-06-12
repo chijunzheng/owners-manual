@@ -22,7 +22,6 @@ the dashboard, and the client are all unit-tested against fakes).
 
 from __future__ import annotations
 
-import secrets
 from collections.abc import Sequence
 from typing import Any
 
@@ -87,7 +86,6 @@ def build_live_answer(
     def answer(item: GoldenItem) -> ItemOutcome:
         # Deterministic, correlatable trace id from the run + item.
         trace_id = langfuse.create_trace_id(seed=f"{run_name}:{item.id}")
-        parent_span_id = secrets.token_hex(8)  # 16 hex chars (W3C span id)
 
         with langfuse.start_as_current_observation(
             trace_context={"trace_id": trace_id},
@@ -100,11 +98,13 @@ def build_live_answer(
                 "runName": run_name,
             },
         ) as span:
+            # The REAL span id (not an invented one) — the service nests its
+            # spans under this exact observation (Codex P2, PR #39).
             result = client.answer(
                 question=item.question,
                 item_id=item.id,
                 trace_id=trace_id,
-                parent_span_id=parent_span_id,
+                parent_span_id=span.id,
             )
             span.update(output={"behaviorClass": result.behavior_class})
 
@@ -142,8 +142,12 @@ def finalize_langfuse(langfuse: Any) -> None:
 
 def build_offline_answer(*, service_url: str, run_name: str) -> AnswerFn:
     """A no-Langfuse answer function: still PROPAGATES a deterministic trace id
-    to the service (so the service's own Langfuse spans nest correctly and the
-    response is correlatable), but the harness emits no Python spans/scores.
+    to the service (so the service's own Langfuse trace is correlatable), but
+    the harness emits no Python spans/scores.
+
+    No ``parent_span_id`` is sent: the harness creates no span, so naming one
+    would nest the service under a nonexistent parent. The service falls back
+    to creating the trace itself with the propagated id.
 
     Lets the dashboard (AC1) and the service's trace export (AC2) be exercised
     when the harness-side Langfuse keys are not yet provisioned. The trace id is
@@ -155,12 +159,10 @@ def build_offline_answer(*, service_url: str, run_name: str) -> AnswerFn:
 
     def answer(item: GoldenItem) -> ItemOutcome:
         trace_id = hashlib.sha256(f"{run_name}:{item.id}".encode()).hexdigest()[:32]
-        parent_span_id = secrets.token_hex(8)
         result = client.answer(
             question=item.question,
             item_id=item.id,
             trace_id=trace_id,
-            parent_span_id=parent_span_id,
         )
         return ItemOutcome(
             item_id=item.id,
