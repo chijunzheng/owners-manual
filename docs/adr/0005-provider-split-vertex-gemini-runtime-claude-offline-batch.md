@@ -26,5 +26,5 @@ The GCP free-trial credit explicitly **cannot** pay for "Gemini API in AI Studio
 - Free-trial accounts can't request quota increases — irrelevant under dynamic shared quota.
 - The AI Studio free tier is never used for anything touching BYOD/personal documents (free-tier prompts may be used for model training).
 - Smoke-tier CI runs bill to Vertex via a CI service account; the `claude setup-token` verify flag moves to the judge path (nightly tier).
-- Embeddings still bill outside both credits (Voyage/OpenAI); an optional `gemini-embedding` third A/B arm could ride the GCP credit.
+- Embeddings still bill outside both credits (Voyage/OpenAI); an optional `gemini-embedding` third A/B arm could ride the GCP credit. *(2026-06-12, #6: that optional arm was promoted — the embedding B arm is `gemini-embedding-001` on Vertex, and OpenAI is dropped from the provider inventory entirely; only the Voyage A arm bills outside the credits.)*
 - Verify at build: current Gemini context window covers the ~900K `stuff` arm; Vertex long-context and context-caching pricing.

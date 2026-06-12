@@ -46,10 +46,12 @@ Layout under `LANGFUSE_DATA_ROOT`:
 
 ## Environment
 
-Copy the example env to the repo root (it is gitignored — never commit it):
+Copy the canonical example env to the repo root (it is gitignored — never
+commit it). The root `.env.example` is the full project env contract (issue
+#6); the Langfuse sections are the ones this stack reads:
 
 ```bash
-cp infra/langfuse/.env.example .env
+cp .env.example .env
 ```
 
 Then edit `.env`:
@@ -185,5 +187,5 @@ rm -rf "${LANGFUSE_DATA_ROOT:-$HOME/.owners-manual/langfuse-data}"
   `CHANGEME` before exposing the stack beyond `localhost`.
 - Only `langfuse-web` (`3000`) is published on all interfaces; every other
   service binds to `127.0.0.1`.
-- `.env.example` carries placeholders only (issue #6 owns the full env
-  contract); never commit real keys.
+- The repo-root `.env.example` (the full env contract, issue #6) carries
+  placeholders only; never commit real keys.

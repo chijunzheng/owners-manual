@@ -17,7 +17,8 @@
     "lint:fix": "eslint . --fix && prettier --write .",
     "corpus:fetch": "tsx packages/corpus/src/cli.ts",
     "corpus:verify": "tsx packages/corpus/src/cli.ts --verify-only",
-    "golden:trees": "tsx packages/parser/src/golden-trees-cli.ts"
+    "golden:trees": "tsx packages/parser/src/golden-trees-cli.ts",
+    "providers:verify": "tsx packages/providers/src/verify-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

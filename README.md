@@ -44,7 +44,7 @@ Legal corpora break naive chunking. The pipeline owns:
 1. **Hierarchy-aware chunking** — chunks carry their position in the document tree (Act → Part → Section → Subsection), so a retrieved subsection knows its parents and citations resolve precisely
 2. **Authority-weighted reranking** — when sources conflict, precedence is a ranking feature, not an afterthought
 3. **Amendment/conflict resolution** — void-clause detection: contract text that loses to statute is flagged, not parroted
-4. **Embedding selection as measurement** — `voyage-law-2` (legal-tuned) vs OpenAI `text-embedding-3-small`, compared on the golden set, not chosen by vibes
+4. **Embedding selection as measurement** — `voyage-law-2` (legal-tuned) vs `gemini-embedding-001` (general-purpose, rides the GCP credit), compared on the golden set, not chosen by vibes
 5. **Contextual enrichment as a measured ablation** — LLM-written situating context per chunk (contextual retrieval), shipped behind a flag so the lift is proven on *this* corpus, not assumed from a blog post
 
 ## Ingestion pipeline
@@ -212,7 +212,7 @@ Cite grading is **hierarchical via citable paths** — an answer citing s. 49(1)
 | Ingestion | Two-track: deterministic e-laws parser + Claude PDF reading; tree-/chunk-level LLM enrichment; content-addressed builds |
 | LLM | Split by workload shape — runtime: Gemini on Vertex AI via `ChatVertexAI` (agent + all four arms, GCP credit); offline batch: Claude via Agent SDK / `claude -p` (ingestion enrichment + primary judge, subscription credit); Agent SDK adapter for the product path = post-credit fallback |
 | Data + vectors | MongoDB Atlas (collections + Vector Search + BM25, one database) |
-| Embeddings | voyage-law-2 vs OpenAI text-embedding-3-small (eval-selected) |
+| Embeddings | voyage-law-2 vs gemini-embedding-001 (eval-selected) |
 | Reranking | Cohere Rerank 3.5 vs LLM-rerank (eval-selected) |
 | Evals | Python: RAGAS + custom metrics, Langfuse Datasets/Experiments |
 | Observability | Langfuse, self-hosted via Docker Compose — tracing, datasets, scores, annotation queues; sole system of record (Cloud is an env-var fallback, `LANGFUSE_HOST`) |
