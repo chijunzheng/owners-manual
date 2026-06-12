@@ -172,6 +172,14 @@ describe('parsePipelineConfig', () => {
     expect(parsePipelineConfig(config())).toEqual(config())
   })
 
+  it('rejects an unknown top-level key instead of silently stripping it', () => {
+    // Zod's default object behavior strips unknown keys, which would let a
+    // misspelled or not-yet-supported build knob vanish BEFORE hashing — the
+    // supplied config bytes change but the build identity does not. The config
+    // IS the build identity, so unsupported config must fail loudly.
+    expect(() => parsePipelineConfig({ ...config(), embedingModel: 'typo-knob' })).toThrow()
+  })
+
   it('rejects a missing chunkerId', () => {
     expect(() => parsePipelineConfig(without('chunkerId'))).toThrow()
   })

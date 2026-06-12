@@ -32,12 +32,19 @@ export interface PipelineConfig {
   readonly promptVersions: Readonly<Record<string, string>>
 }
 
-/** Validates untyped input into a {@link PipelineConfig}; all fields required, non-empty. */
-export const pipelineConfigSchema = z.object({
-  chunkerId: z.string().min(1),
-  enrichmentModel: z.string().min(1),
-  promptVersions: z.record(z.string(), z.string().min(1)),
-})
+/**
+ * Validates untyped input into a {@link PipelineConfig}; all fields required,
+ * non-empty. Strict: an unknown top-level key is REJECTED, never stripped — the
+ * config is the build identity, so a misspelled or not-yet-supported knob must
+ * fail loudly rather than silently vanish before hashing.
+ */
+export const pipelineConfigSchema = z
+  .object({
+    chunkerId: z.string().min(1),
+    enrichmentModel: z.string().min(1),
+    promptVersions: z.record(z.string(), z.string().min(1)),
+  })
+  .strict()
 
 /** Parse-and-validate untyped input into a {@link PipelineConfig}, throwing on any violation. */
 export function parsePipelineConfig(value: unknown): PipelineConfig {
