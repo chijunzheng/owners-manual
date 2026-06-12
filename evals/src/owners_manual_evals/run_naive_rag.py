@@ -149,7 +149,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     # Lazy imports so the unit suite (which imports this module) needs no SDK,
     # no service, and no Langfuse server.
+    from .env_file import load_root_env  # noqa: PLC0415
     from .golden_v0 import load_golden_v0_documents, load_golden_v0_set  # noqa: PLC0415
+
+    # Mirror the TS CLIs: the root .env fills env gaps (process env wins), so
+    # the documented one-command run needs no manual `source .env`.
+    load_root_env()
     from .live_runner import (  # noqa: PLC0415
         build_live_answer,
         build_offline_answer,
@@ -188,9 +193,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         score_sink = build_score_sink(langfuse)
 
     try:
-        result = run_items(
-            items=items, documents=documents, answer=answer, score_sink=score_sink
-        )
+        result = run_items(items=items, documents=documents, answer=answer, score_sink=score_sink)
     finally:
         finalize_langfuse(langfuse)
 
