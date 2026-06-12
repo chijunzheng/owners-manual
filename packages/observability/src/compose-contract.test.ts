@@ -206,7 +206,9 @@ describe('Langfuse compose contract — S3 endpoints reachable from their client
 
 describe('Langfuse compose contract — LANGFUSE_HOST env contract (AC4)', () => {
   const here2 = dirname(fileURLToPath(import.meta.url))
-  const envExamplePath = resolve(here2, '../../../infra/langfuse/.env.example')
+  // The root .env.example is the canonical env contract (issue #6 absorbed the
+  // former infra/langfuse/.env.example into it).
+  const envExamplePath = resolve(here2, '../../../.env.example')
 
   it('declares LANGFUSE_HOST with the local self-host default', async () => {
     const { readFile } = await import('node:fs/promises')

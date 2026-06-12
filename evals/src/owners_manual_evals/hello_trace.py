@@ -71,7 +71,7 @@ def emit_hello_trace(
     """Emit exactly one trace via the Python SDK and flush it to the server.
 
     Reads ``LANGFUSE_PUBLIC_KEY``, ``LANGFUSE_SECRET_KEY``, and ``LANGFUSE_HOST``
-    from the environment (see ``infra/langfuse/.env.example``). Raises
+    from the environment (see the repo-root ``.env.example``). Raises
     ``RuntimeError`` with a clear message if credentials are missing rather than
     silently no-op'ing.
 
@@ -87,7 +87,7 @@ def emit_hello_trace(
     if not public_key or not secret_key:
         raise RuntimeError(
             "LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set "
-            "(copy infra/langfuse/.env.example to .env and fill in the project "
+            "(copy .env.example to .env and fill in the project "
             "keys from the Langfuse UI)."
         )
 

@@ -29,7 +29,7 @@ export function resolveLangfuseHost(env: NodeJS.ProcessEnv = process.env): strin
  * Emit exactly one trace via the TS SDK and flush it to the server.
  *
  * Reads `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_HOST` from
- * the environment (see infra/langfuse/.env.example). Throws a clear error if
+ * the environment (see the repo-root .env.example). Throws a clear error if
  * credentials are missing rather than silently no-op'ing.
  */
 export async function emitHelloTrace(
@@ -40,7 +40,7 @@ export async function emitHelloTrace(
 
   if (!publicKey || !secretKey) {
     throw new Error(
-      'LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set (copy infra/langfuse/.env.example to .env and fill in the project keys from the Langfuse UI).',
+      'LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set (copy .env.example to .env and fill in the project keys from the Langfuse UI).',
     )
   }
 

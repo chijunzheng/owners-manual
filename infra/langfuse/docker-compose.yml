@@ -16,7 +16,7 @@
 # stores bind to 127.0.0.1 only; just langfuse-web (3000) is reachable.
 #
 # Usage:
-#   cp infra/langfuse/.env.example .env   # then fill in CHANGEME values
+#   cp .env.example .env                  # then fill in CHANGEME values
 #   docker compose -f infra/langfuse/docker-compose.yml --env-file .env up -d
 #   docker compose -f infra/langfuse/docker-compose.yml ps   # wait for healthy
 
