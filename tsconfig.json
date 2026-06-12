@@ -6,6 +6,7 @@
     { "path": "./packages/enrichment" },
     { "path": "./packages/observability" },
     { "path": "./packages/parser" },
+    { "path": "./packages/pipeline" },
     { "path": "./packages/providers" }
   ]
 }

@@ -87,6 +87,40 @@ importers:
         specifier: ^4.20.7
         version: 4.22.4
 
+  packages/pipeline:
+    dependencies:
+      '@langchain/google-vertexai':
+        specifier: ^0.2.16
+        version: 0.2.18(@langchain/core@0.3.80)
+      '@owners-manual/core':
+        specifier: workspace:*
+        version: link:../core
+      '@owners-manual/corpus':
+        specifier: workspace:*
+        version: link:../corpus
+      '@owners-manual/enrichment':
+        specifier: workspace:*
+        version: link:../enrichment
+      '@owners-manual/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@owners-manual/parser':
+        specifier: workspace:*
+        version: link:../parser
+      langfuse:
+        specifier: ^3.38.20
+        version: 3.38.20
+      mongodb:
+        specifier: ^6.17.0
+        version: 6.21.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      tsx:
+        specifier: ^4.20.7
+        version: 4.22.4
+
   packages/providers:
     dependencies:
       '@langchain/core':

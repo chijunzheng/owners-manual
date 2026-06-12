@@ -1,0 +1,32 @@
+{
+  "name": "@owners-manual/pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --build",
+    "build": "tsc --build",
+    "naive-rag:ingest": "tsx src/ingest-cli.ts",
+    "naive-rag:serve": "tsx src/serve-cli.ts"
+  },
+  "dependencies": {
+    "@langchain/google-vertexai": "^0.2.16",
+    "@owners-manual/core": "workspace:*",
+    "@owners-manual/corpus": "workspace:*",
+    "@owners-manual/enrichment": "workspace:*",
+    "@owners-manual/observability": "workspace:*",
+    "@owners-manual/parser": "workspace:*",
+    "langfuse": "^3.38.20",
+    "mongodb": "^6.17.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.7"
+  }
+}
