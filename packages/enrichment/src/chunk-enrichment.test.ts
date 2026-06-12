@@ -231,6 +231,38 @@ describe('enrichChunks — cache behavior', () => {
     ])
   })
 
+  it('does not reuse contexts across DOCUMENTS with byte-identical chunks (tree identity keys the cache)', async () => {
+    // The situating context is written "within its document" — the request
+    // embeds documentId + skeleton — so an identical chunk triple in a second
+    // document must be re-situated, never served the first document's context.
+    const fixedChunker: Chunker = {
+      id: 'fixed',
+      chunk: () => [{ id: 'chunk-1', citablePathKey: 'shared', text: 'Identical clause text.' }],
+    }
+    const docB = parsed('LEASE', [['LEASE|clause:1', 'Entirely different document body.']])
+
+    const cache = createMemoryCache<string>()
+    const first = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(sample, {
+      chunker: fixedChunker,
+      client: first,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+
+    const second = fakeClaudeClient({ responder: situatingResponder() })
+    await enrichChunks(docB, {
+      chunker: fixedChunker,
+      client: second,
+      cache,
+      treeEnrichment,
+      promptVersion: 'v1',
+    })
+
+    expect(second.calls).toHaveLength(1)
+  })
+
   it('re-calls when the CHUNKER changes even if it emits byte-identical chunks (AC2: chunker identity keys the cache)', async () => {
     // The Chunker interface does not require strategy-prefixed chunk ids, so two
     // strategies can emit identical (id, citablePathKey, text) triples. AC2 says
@@ -277,6 +309,7 @@ describe('enrichChunks — cache behavior', () => {
       'citable-unit',
       'fake-claude-0',
       'v1',
+      hashTree(sample),
       treeFactsDigest(treeEnrichment),
       hashChunk(chunks[0]!),
     ])
@@ -304,6 +337,7 @@ describe('enrichChunks — cache behavior', () => {
       'citable-unit',
       'fake-claude-0',
       'v1',
+      hashTree(sample),
       treeFactsDigest(treeEnrichment),
       hashChunk(chunks[0]!),
     ])

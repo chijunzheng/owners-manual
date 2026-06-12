@@ -34,6 +34,7 @@ import { type ClaudeClient, type ClaudeRequest } from './claude-client.js'
 import { type EnrichmentCache } from './cache.js'
 import { hashChunk, type Chunk, type Chunker } from './chunk.js'
 import { canonicalJson } from './pipeline-config.js'
+import { hashTree } from './tree-hash.js'
 import type { CrossReferenceEdge, DefinitionsIndex, TreeEnrichment } from './tree-enrichment.js'
 
 /** The enrichment-pass name; the cache-key namespace and prompt-version map key. */
@@ -109,8 +110,8 @@ export function treeFactsDigest(enrichment: TreeEnrichment): string {
 
 /**
  * The per-chunk cache key: namespaced by pass + chunker id + model + prompt
- * version + the consumed tree-facts digest + chunk hash, encoded as a lossless
- * JSON array.
+ * version + the document's tree hash + the consumed tree-facts digest + chunk
+ * hash, encoded as a lossless JSON array.
  *
  * The array (rather than a colon-joined string) is collision-safe: model and
  * prompt-version are unconstrained, so a joined `chunk:...:<model>:<version>:...`
@@ -118,14 +119,18 @@ export function treeFactsDigest(enrichment: TreeEnrichment): string {
  * across that boundary. The chunker id is its own element because the Chunker
  * interface does not require strategy-prefixed chunk ids — two strategies can
  * emit byte-identical chunks, and AC2 pins that a chunker change invalidates
- * chunk-level enrichment regardless. The tree-facts digest scopes the key to the
- * exact sidecar the context consumed, so changing the cited definitions/xrefs
- * misses.
+ * chunk-level enrichment regardless. The tree hash is its own element because a
+ * situating context is written WITHIN its document — the request embeds the
+ * documentId and full skeleton — so a byte-identical chunk in a different
+ * document must be re-situated, never served another document's context. The
+ * tree-facts digest scopes the key to the exact sidecar the context consumed,
+ * so changing the cited definitions/xrefs misses.
  */
 function chunkCacheKey(
   chunkerId: string,
   model: string,
   promptVersion: string,
+  treeHash: string,
   treeFacts: string,
   chunkHash: string,
 ): string {
@@ -135,6 +140,7 @@ function chunkCacheKey(
     chunkerId,
     model,
     promptVersion,
+    treeHash,
     treeFacts,
     chunkHash,
   ])
@@ -299,12 +305,14 @@ export async function enrichChunks(
   const chunks = deps.chunker.chunk(parsed)
   const hashes = chunks.map(hashChunk)
   const treeFacts = treeFactsDigest(deps.treeEnrichment)
+  const treeIdentity = hashTree(parsed)
 
   const missing = chunks.filter((_chunk, index) => {
     const key = chunkCacheKey(
       deps.chunker.id,
       deps.client.model,
       deps.promptVersion,
+      treeIdentity,
       treeFacts,
       hashes[index]!,
     )
@@ -323,6 +331,7 @@ export async function enrichChunks(
         deps.chunker.id,
         deps.client.model,
         deps.promptVersion,
+        treeIdentity,
         treeFacts,
         chunkHash,
       )
