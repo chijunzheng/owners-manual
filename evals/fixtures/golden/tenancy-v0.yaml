@@ -304,3 +304,151 @@ items:
       difficulty: hard
       persona: tenant
       design: over-flagging-control
+
+  # --- batch 2: flag-void-clause class ---------------------------------------
+
+  # LEASE-01: the lease's blanket no-pets clause is void (RTA s.14), but the
+  # naive "you're fine" answer is incomplete — the condominium declaration is
+  # not a tenancy-agreement provision, the lease itself incorporates the condo
+  # documents, and the declaration's pet limits (two household pets, cat/dog
+  # <= 20 kg) still govern. For a single cat the declaration PERMITS the pet,
+  # subject to its nuisance-removal power.
+  - id: flag-void-no-pets
+    behavior_class: flag-void-clause
+    verified: true
+    question: >-
+      My condo lease says no pets of any kind, but I got a cat anyway. Can my
+      landlord actually do anything about it?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: tenant
+
+  # LEASE-03: surface compliance — the adverb "voluntarily" inside an
+  # obligating lease term does no legal work. The only money a landlord may
+  # require beyond rent as it falls due is the s.106 rent deposit; a term
+  # requiring two further months of prepaid rent is a prohibited charge, and
+  # the prescribed exemptions (O. Reg. 516/06 s.17) include nothing like it.
+  - id: flag-void-prepaid-rent
+    behavior_class: flag-void-clause
+    verified: true
+    question: >-
+      My lease has a schedule saying I voluntarily offered to prepay two extra
+      months of rent on move-in, to be applied to months ten and eleven. Did I
+      actually have to pay that?
+    answer_points:
+      - id: label-does-no-work
+        text: A lease term obligating a payment is a requirement however it is
+          labelled; calling the prepayment voluntary inside the agreement does
+          not make it voluntary.
+      - id: only-lawful-deposit
+        text: The only deposit a landlord may require is a rent deposit capped
+          at one rent period's rent, applied to the last period of the
+          tenancy.
+      - id: prohibited-charge
+        text: Requiring additional prepaid rent as a term of the tenancy is a
+          prohibited fee or charge unless a regulation prescribes otherwise,
+          and no prescribed exemption covers prepaid rent.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: schedule-a-additional-rent-arrangements }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-03 — "voluntary" prepaid-rent rider
+        (adversarial label trap)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: adversarial
+
+  # LEASE-06: composite misconception — the clause assumes silence at term end
+  # means the tenancy is ending. By statute the fixed term rolls into a
+  # deemed monthly tenancy on the same terms, and showings to prospective
+  # tenants are lawful only once a termination notice or agreement exists.
+  - id: flag-void-renewal-showings
+    behavior_class: flag-void-clause
+    verified: true
+    question: >-
+      I didn't give the sixty days' renewal notice my lease asks for, and now
+      my landlord says he can start showing my unit to new tenants. Can he
+      really tour strangers through my home?
+    answer_points:
+      - id: deemed-renewal
+        text: No renewal notice is required — when a fixed term ends without
+          renewal or termination, the tenancy automatically continues as a
+          monthly tenancy on the same terms.
+      - id: showings-need-termination
+        text: A landlord may show the unit to prospective tenants without
+          written notice only after the landlord and tenant have agreed to end
+          the tenancy or one has given the other a notice of termination, and
+          then only between 8 a.m. and 8 p.m. after informing or making
+          reasonable efforts to inform the tenant.
+      - id: clause-unenforceable
+        text: The renewal clause is unenforceable to the extent it treats the
+          absence of a renewal notice as ending the tenancy or as authority to
+          show the unit.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: renewal }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '38' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '26' }
+          - { kind: subsection, label: '3' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-06 — renewal-or-showings trap
+        (composite fixed-term misconception)'
+    tags:
+      difficulty: hard
+      persona: tenant
