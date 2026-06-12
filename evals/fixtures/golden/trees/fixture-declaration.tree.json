@@ -1,0 +1,244 @@
+{
+  "kind": "document",
+  "label": "Declaration of Toronto Standard Condominium Corporation No. 9000 (Harbourview Terrace)",
+  "documentId": "fixture-declaration",
+  "children": [
+    {
+      "kind": "section",
+      "label": "preamble",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-i-definitions",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-4",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-5",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-6",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-7",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-8",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-9",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-ii-common-expenses-and-common-interest",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-iii-use-and-occupation-of-units",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "subsection",
+          "label": "pets",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            },
+            {
+              "kind": "clause",
+              "label": "p-2",
+              "children": []
+            },
+            {
+              "kind": "clause",
+              "label": "p-3",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-iv-use-of-the-common-elements",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "subsection",
+          "label": "barbecues-on-exclusive-use-balconies",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-v-insurance",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "subsection",
+          "label": "deductible-chargeback",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            },
+            {
+              "kind": "clause",
+              "label": "p-2",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-vi-leasing-of-units",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-vii-maintenance-and-repair",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "article-viii-alterations-to-the-common-elements",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

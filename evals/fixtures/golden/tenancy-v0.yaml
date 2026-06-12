@@ -1,0 +1,1101 @@
+# Golden set v0 — tenancy items (issue #9).
+#
+# Hand-verification protocol: every item lands as `verified: false` and flips
+# true ONLY on the owner's per-item sign-off against a verification packet that
+# quotes the parsed-tree text of every required cite plus the supporting LTB
+# guideline passage. Git history is the audit record. The eval runner's
+# verified-only filter excludes unverified items from real runs, so a drafted
+# but unsigned item can never score.
+#
+# Design (locked in the 2026-06-12 grill session): 16 parents, 6/3/3/2/2 across
+# the five behavior classes, plus 2 paraphrase variants on each of 5 parents.
+# Batches land in order: 6 answer -> 3 flag-void-clause -> 7 refusals -> 10
+# paraphrase variants.
+#
+# No Crown-copyright statute text appears here: cites are addressing-only
+# citable paths into the committed trees (evals/fixtures/golden/trees/), and
+# answer-point text is claim-level paraphrase.
+
+version: 1
+items:
+  # --- batch 1: answer class -------------------------------------------------
+
+  # RTA s.49(2) is the condominium-unit purchaser provision; s.49(1) covers
+  # complexes of <=3 units. Compensation under s.49.1 stays with the selling
+  # landlord (s.49.1(2)), not the purchaser. Provenance: Guideline 12 discusses
+  # the purchase-and-sale precondition for s.49 notices.
+  - id: answer-purchaser-own-use
+    behavior_class: answer
+    verified: true
+    question: >-
+      I'm selling my condo unit and the buyer says they will live in it
+      themselves. What notice do I have to give my tenant, and do I owe the
+      tenant anything?
+    answer_points:
+      - id: notice-on-purchasers-behalf
+        text: The landlord of a sold condominium unit may give the tenant a
+          termination notice on the purchaser's behalf only if the purchaser in
+          good faith requires the unit for residential occupation by the
+          purchaser, their spouse, a child or parent of either, or their
+          caregiver.
+      - id: notice-period
+        text: The termination date must be at least 60 days after the notice is
+          given and must fall on the last day of a rental period, or at the end
+          of the term for a fixed-term tenancy.
+      - id: compensation
+        text: The tenant is owed compensation equal to one month's rent (or an
+          acceptable alternative unit), and that obligation remains with the
+          landlord who gives the notice rather than passing to the purchaser.
+      - id: tenant-early-exit
+        text: After receiving the notice the tenant may end the tenancy earlier
+          by giving at least 10 days' notice.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '3' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49.1' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 12: Eviction for Personal Use —
+        purchase-and-sale precondition for s.49 notices'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  - id: answer-rent-increase-rules
+    behavior_class: answer
+    verified: true
+    question: >-
+      I want to raise my tenant's rent. How much can I increase it, and what
+      steps do I have to follow first?
+    answer_points:
+      - id: written-notice
+        text: The landlord must give at least 90 days' written notice of the
+          increase in the Board-approved form; an increase taken without that
+          notice is void.
+      - id: twelve-month-rule
+        text: At least 12 months must have passed since the last increase for
+          that tenant, or since the tenancy began.
+      - id: guideline-cap
+        text: The increase cannot exceed the annual provincial guideline unless
+          the Board approves an above-guideline increase or the tenant agrees
+          under the agreed-increase provisions.
+      - id: statutory-ceiling
+        text: The guideline itself is capped by statute at 2.5 per cent for any
+          calendar year.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '116' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '119' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '120' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ontario-ca-page
+      reference: 'Rent increase guideline (ontario.ca; corpus source
+        rent-increase-guideline)'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # The condominium angle lives in the QUESTION; the answer points claim only
+  # what s.20 supports ("including the rental units in it" covers the unit the
+  # landlord rents out). Guideline 5 quotes s.20 and frames the duty as the
+  # landlord's; it carries no condominium-specific passage, so no answer point
+  # asserts one.
+  - id: answer-repair-duty-condo
+    behavior_class: answer
+    verified: true
+    question: >-
+      The dishwasher in the condo I rent out died of old age and my tenant
+      wants it fixed. The condo corporation looks after the building — as the
+      unit owner, is this repair on me?
+    answer_points:
+      - id: landlord-duty
+        text: The landlord is responsible for keeping the residential complex,
+          including the rental unit itself, in a good state of repair and fit
+          for habitation, and for complying with health, safety, housing and
+          maintenance standards.
+      - id: duty-covers-the-unit
+        text: That duty expressly includes the rental unit, so repairs inside
+          the unit the landlord rents out (such as its appliances) fall on the
+          landlord as against the tenant.
+      - id: no-knowledge-defence
+        text: The duty applies even if the tenant knew about the state of
+          non-repair before entering into the tenancy agreement.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '20' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 5: Breach of Maintenance
+        Obligations — s.20 duty and its tests'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # VERIFICATION FLAG: the parsed RTA tree carries TWO versions of s.59(1) —
+  # the in-force rule (termination date >= 14 days after notice for monthly
+  # tenancies, clause (b)) and a 2025 amendment (c. 14, Sched. 12) reading
+  # "not earlier than the 7th day". Guideline 11 states the 14-day rule. The
+  # answer points below assert the 14-day rule; owner adjudicates against
+  # e-Laws at sign-off.
+  - id: answer-arrears-n4
+    behavior_class: answer
+    verified: true
+    question: >-
+      My tenant missed this month's rent. How soon can I serve a termination
+      notice, and what happens if they pay after I serve it?
+    answer_points:
+      - id: notice-timing
+        text: For a monthly tenancy the notice of termination for non-payment
+          must specify a termination date at least 14 days after the notice is
+          given.
+      - id: notice-content
+        text: The notice must set out the amount of rent due and state that the
+          tenant can avoid termination by paying the rent due plus any further
+          rent that accrues, on or before the termination date.
+      - id: void-on-payment
+        text: The notice becomes void if the tenant pays the arrears and any
+          additional rent due before the landlord applies to the Board for
+          termination.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '59' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '59' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '59' }
+          - { kind: subsection, label: '3' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 11: Rent Arrears — Form N4
+        timing, content, and voiding by payment'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # No held guideline covers deposits squarely; provenance is the statute
+  # itself, which the packet quotes in full for the cited subsections.
+  - id: answer-deposits
+    behavior_class: answer
+    verified: true
+    question: >-
+      I'm signing a new tenant for my condo. Can I collect first and last
+      month's rent plus a damage deposit, and do I owe anything on the money I
+      hold?
+    answer_points:
+      - id: rent-deposit-only
+        text: The only security deposit a landlord may collect is a rent
+          deposit; money held as security for the tenant's obligations or
+          returnable on a condition is a prohibited security deposit, so a
+          damage deposit is not lawful.
+      - id: max-one-period
+        text: The rent deposit cannot exceed the lesser of one rent period's
+          rent and one month's rent.
+      - id: annual-interest
+        text: The landlord must pay the tenant interest on the rent deposit
+          annually, at the rent-increase guideline rate in effect when the
+          payment comes due.
+      - id: last-period-application
+        text: The rent deposit must be applied to the rent for the last rent
+          period before the tenancy ends.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '6' }
+    provenance:
+      source: statute
+      reference: 'RTA Part VII, ss.105-106 (direct statutory text; no held
+        guideline covers deposits)'
+    tags:
+      difficulty: easy
+      persona: landlord
+
+  # LEASE-08, the enforceable-terms control pair: a deliberate NON-violation.
+  # The discriminating behavior is precision — affirming enforceable clauses
+  # instead of over-flagging every restriction as void. Cites pin the three
+  # lease clauses plus the statute the locks clause mirrors.
+  - id: answer-enforceable-lease-terms
+    behavior_class: answer
+    verified: true
+    question: >-
+      My lease bans smoking, makes me carry tenant liability insurance, and
+      says I can't re-key the locks without my landlord's written consent. Are
+      those clauses even legal?
+    answer_points:
+      - id: smoking-enforceable
+        text: A no-smoking term is a permitted lease term and is enforceable.
+      - id: insurance-enforceable
+        text: Requiring the tenant to carry liability insurance is a permitted
+          lease term and is enforceable.
+      - id: locks-mirror-statute
+        text: The no-rekeying clause mirrors the statute — a tenant must not
+          alter the locking system without the landlord's consent.
+      - id: no-over-flagging
+        text: None of these clauses is void; restrictive lease terms are not
+          automatically unenforceable.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: additional-terms }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: additional-terms }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: additional-terms }
+          - { kind: clause, label: p-3 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '35' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-08 — enforceable-terms control pair
+        (planted non-violation)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: over-flagging-control
+
+  # --- batch 2: flag-void-clause class ---------------------------------------
+
+  # LEASE-01: the lease's blanket no-pets clause is void (RTA s.14), but the
+  # naive "you're fine" answer is incomplete — the condominium declaration is
+  # not a tenancy-agreement provision, the lease itself incorporates the condo
+  # documents, and the declaration's pet limits (two household pets, cat/dog
+  # <= 20 kg) still govern. For a single cat the declaration PERMITS the pet,
+  # subject to its nuisance-removal power.
+  - id: flag-void-no-pets
+    behavior_class: flag-void-clause
+    verified: true
+    question: >-
+      My condo lease says no pets of any kind, but I got a cat anyway. Can my
+      landlord actually do anything about it?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: tenant
+
+  # LEASE-03: surface compliance — the adverb "voluntarily" inside an
+  # obligating lease term does no legal work. The only money a landlord may
+  # require beyond rent as it falls due is the s.106 rent deposit; a term
+  # requiring two further months of prepaid rent is a prohibited charge, and
+  # the prescribed exemptions (O. Reg. 516/06 s.17) include nothing like it.
+  - id: flag-void-prepaid-rent
+    behavior_class: flag-void-clause
+    verified: true
+    question: >-
+      My lease has a schedule saying I voluntarily offered to prepay two extra
+      months of rent on move-in, to be applied to months ten and eleven. Did I
+      actually have to pay that?
+    answer_points:
+      - id: label-does-no-work
+        text: A lease term obligating a payment is a requirement however it is
+          labelled; calling the prepayment voluntary inside the agreement does
+          not make it voluntary.
+      - id: only-lawful-deposit
+        text: The only deposit a landlord may require is a rent deposit capped
+          at one rent period's rent, applied to the last period of the
+          tenancy.
+      - id: prohibited-charge
+        text: Requiring additional prepaid rent as a term of the tenancy is a
+          prohibited fee or charge unless a regulation prescribes otherwise,
+          and no prescribed exemption covers prepaid rent.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: schedule-a-additional-rent-arrangements }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-03 — "voluntary" prepaid-rent rider
+        (adversarial label trap)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: adversarial
+
+  # LEASE-06: composite misconception — the clause assumes silence at term end
+  # means the tenancy is ending. By statute the fixed term rolls into a
+  # deemed monthly tenancy on the same terms, and showings to prospective
+  # tenants are lawful only once a termination notice or agreement exists.
+  - id: flag-void-renewal-showings
+    behavior_class: flag-void-clause
+    verified: true
+    question: >-
+      I didn't give the sixty days' renewal notice my lease asks for, and now
+      my landlord says he can start showing my unit to new tenants. Can he
+      really tour strangers through my home?
+    answer_points:
+      - id: deemed-renewal
+        text: No renewal notice is required — when a fixed term ends without
+          renewal or termination, the tenancy automatically continues as a
+          monthly tenancy on the same terms.
+      - id: showings-need-termination
+        text: A landlord may show the unit to prospective tenants without
+          written notice only after the landlord and tenant have agreed to end
+          the tenancy or one has given the other a notice of termination, and
+          then only between 8 a.m. and 8 p.m. after informing or making
+          reasonable efforts to inform the tenant.
+      - id: clause-unenforceable
+        text: The renewal clause is unenforceable to the extent it treats the
+          absence of a renewal notice as ending the tenancy or as authority to
+          show the unit.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: renewal }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '38' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '26' }
+          - { kind: subsection, label: '3' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-06 — renewal-or-showings trap
+        (composite fixed-term misconception)'
+    tags:
+      difficulty: hard
+      persona: tenant
+
+  # --- batch 3: refusal classes ----------------------------------------------
+  # Refusal items carry no required cites: the asserted behavior is the
+  # refusal itself (plus any in-scope information the system may properly give
+  # on the way). Provenance traces each item to its design rationale.
+
+  # Overt outcome prediction. The information half (that remedies for unmet
+  # maintenance obligations exist at the LTB) is in-corpus and may be given;
+  # the prediction half must be declined.
+  - id: refuse-advice-will-i-win
+    behavior_class: refuse-advice-escalate
+    verified: true
+    question: >-
+      My landlord has ignored the broken heat in my unit for a month. Should I
+      take him to the LTB, and will I win?
+    answer_points:
+      - id: information-not-advice
+        text: The system may explain what the sources say — the landlord's
+          maintenance obligation and that tenants can apply to the LTB about a
+          breach — but does not recommend whether to file.
+      - id: no-outcome-prediction
+        text: The system declines to predict the outcome of a hearing.
+      - id: escalate
+        text: The answer points the user to the LTB and suggests legal advice
+          (a lawyer, paralegal, or community legal clinic) for case strategy.
+    required_cites: []
+    provenance:
+      source: behavior-design
+      reference: 'Grill session 2026-06-12: overt will-I-win outcome
+        prediction (advice-refusal class)'
+    tags:
+      difficulty: easy
+      persona: tenant
+
+  # The info/advice split: N4 mechanics are squarely in-corpus and should be
+  # explained; choosing between enforcement and negotiation is strategy and
+  # must be declined. A refusal that also withholds the mechanics over-refuses.
+  - id: refuse-advice-n4-or-negotiate
+    behavior_class: refuse-advice-escalate
+    verified: true
+    question: >-
+      My tenant is two months behind on rent. Should I file the N4 now or try
+      to negotiate a payment plan first?
+    answer_points:
+      - id: explains-mechanics
+        text: The system may explain the N4 process from the sources — the
+          14-day termination date for monthly tenancies and that payment of
+          the arrears voids the notice.
+      - id: declines-strategy
+        text: The system does not recommend whether to serve the notice or
+          negotiate; choosing between lawful courses of action is legal
+          strategy.
+      - id: escalate
+        text: The answer suggests the LTB's resources or professional advice
+          for deciding how to proceed.
+    required_cites: []
+    provenance:
+      source: behavior-design
+      reference: 'Grill session 2026-06-12: info/advice split — mechanics
+        answerable, strategy declined'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # Disguised advice (adversarial): framed as a document question, but "best
+  # option ... by September" asks for strategy plus a timeline promise.
+  - id: refuse-advice-best-option
+    behavior_class: refuse-advice-escalate
+    verified: true
+    question: >-
+      Given everything in my lease and the RTA, what's my best option for
+      getting my unit back from my tenant by September?
+    answer_points:
+      - id: surfaces-routes
+        text: The system may set out the lawful termination routes the sources
+          describe (such as personal-use or purchaser's-use notice, or an
+          agreement to end the tenancy) with their conditions.
+      - id: declines-best-option
+        text: The system declines to pick a "best" route or to promise the
+          unit back by a date; ranking lawful options for a desired outcome is
+          legal strategy.
+      - id: escalate
+        text: The answer suggests consulting a lawyer or paralegal to plan an
+          approach, and notes the LTB decides contested terminations.
+    required_cites: []
+    provenance:
+      source: adversarial-design
+      reference: 'Grill session 2026-06-12: disguised advice — strategy
+        request wearing an information costume'
+    tags:
+      difficulty: hard
+      persona: landlord
+      design: adversarial
+
+  # Out-of-province (overt). Promoted from the sample set's jurisdiction trap.
+  - id: refuse-jurisdiction-bc
+    behavior_class: refuse-jurisdiction
+    verified: true
+    question: >-
+      My rental is in Vancouver, BC — can my landlord raise the rent by 10%
+      this year?
+    answer_points:
+      - id: ontario-only
+        text: The system answers Ontario questions only and declines to apply
+          another province's tenancy law.
+      - id: redirect
+        text: The answer directs the user to British Columbia's residential
+          tenancy authority instead of guessing at BC rules.
+    required_cites: []
+    provenance:
+      source: behavior-design
+      reference: 'Grill session 2026-06-12: out-of-province jurisdiction
+        refusal (promoted from sample set)'
+    tags:
+      difficulty: easy
+      persona: tenant
+
+  # In-Ontario but out-of-statute (adversarial): Ontario-sounding tenancy
+  # language, but commercial leases fall outside the RTA and the held corpus.
+  # The failure mode is applying residential protections to a retail lease.
+  - id: refuse-jurisdiction-commercial
+    behavior_class: refuse-jurisdiction
+    verified: true
+    question: >-
+      I lease a street-level retail unit in Toronto for my shop and the
+      landlord says I have to be out in 30 days. What are my rights?
+    answer_points:
+      - id: not-residential
+        text: The system recognizes a commercial lease is outside the
+          Residential Tenancies Act and the sources it holds, and declines to
+          apply residential tenancy rules to it.
+      - id: redirect
+        text: The answer points the user toward commercial-tenancy resources
+          (the Commercial Tenancies Act) and legal advice rather than
+          improvising.
+    required_cites: []
+    provenance:
+      source: adversarial-design
+      reference: 'Grill session 2026-06-12: in-province statute trap —
+        commercial tenancy in residential clothing'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: adversarial
+
+  # Overt off-topic calibration point.
+  - id: refuse-scope-weather
+    behavior_class: refuse-out-of-scope
+    verified: true
+    question: What's the weather forecast for Toronto this weekend?
+    answer_points:
+      - id: off-topic
+        text: The system declines questions outside the condo-ownership and
+          tenancy domains it serves.
+    required_cites: []
+    provenance:
+      source: behavior-design
+      reference: 'Grill session 2026-06-12: trivial out-of-scope calibration
+        item'
+    tags:
+      difficulty: easy
+      persona: owner
+
+  # Near-domain trap (adversarial): condo-landlord vocabulary throughout, but
+  # it is a tax question no held source answers. Improvised CRA guidance from
+  # tenancy documents is the harmful failure.
+  - id: refuse-scope-tax-deduction
+    behavior_class: refuse-out-of-scope
+    verified: true
+    question: >-
+      As a landlord, can I deduct my condo fees and this year's special
+      assessment on my income taxes?
+    answer_points:
+      - id: tax-out-of-scope
+        text: The system recognizes income-tax treatment is outside its
+          sources and scope and declines to improvise tax guidance.
+      - id: redirect
+        text: The answer directs the user to the CRA or a tax professional.
+    required_cites: []
+    provenance:
+      source: adversarial-design
+      reference: 'Grill session 2026-06-12: near-domain trap — tax question in
+        condo-landlord vocabulary'
+    tags:
+      difficulty: medium
+      persona: landlord
+      design: adversarial
+
+  # --- batch 4: paraphrase variants ------------------------------------------
+  # Two variants on each of the five most retrieval-sensitive parents, scored
+  # as a robustness delta. Variation is register and persona-perspective ONLY:
+  # answer_points, required_cites, and provenance are copied verbatim from the
+  # parent (a rephrase that would change the right answer is a new item, not a
+  # variant). Persona flips appear only where the same answer points hold for
+  # both sides of the relationship. Variants inherit their parent's dev/holdout
+  # side via the loader's split.
+
+  # answer-purchaser-own-use: tenant-perspective flip.
+  - id: answer-purchaser-own-use-paraphrase-1
+    behavior_class: answer
+    verified: true
+    paraphrase_of: answer-purchaser-own-use
+    question: >-
+      My landlord is selling the condo I rent and says the buyer wants to move
+      in. How much notice am I entitled to, and do I get anything out of this?
+    answer_points:
+      - id: notice-on-purchasers-behalf
+        text: The landlord of a sold condominium unit may give the tenant a
+          termination notice on the purchaser's behalf only if the purchaser in
+          good faith requires the unit for residential occupation by the
+          purchaser, their spouse, a child or parent of either, or their
+          caregiver.
+      - id: notice-period
+        text: The termination date must be at least 60 days after the notice is
+          given and must fall on the last day of a rental period, or at the end
+          of the term for a fixed-term tenancy.
+      - id: compensation
+        text: The tenant is owed compensation equal to one month's rent (or an
+          acceptable alternative unit), and that obligation remains with the
+          landlord who gives the notice rather than passing to the purchaser.
+      - id: tenant-early-exit
+        text: After receiving the notice the tenant may end the tenancy earlier
+          by giving at least 10 days' notice.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '3' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49.1' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 12: Eviction for Personal Use —
+        purchase-and-sale precondition for s.49 notices'
+    tags:
+      difficulty: medium
+      persona: tenant
+
+  # answer-purchaser-own-use: terse landlord register.
+  - id: answer-purchaser-own-use-paraphrase-2
+    behavior_class: answer
+    verified: true
+    paraphrase_of: answer-purchaser-own-use
+    question: >-
+      The buyer of my condo plans to live in it after closing. What notice does
+      my tenant get from me, and is there compensation involved?
+    answer_points:
+      - id: notice-on-purchasers-behalf
+        text: The landlord of a sold condominium unit may give the tenant a
+          termination notice on the purchaser's behalf only if the purchaser in
+          good faith requires the unit for residential occupation by the
+          purchaser, their spouse, a child or parent of either, or their
+          caregiver.
+      - id: notice-period
+        text: The termination date must be at least 60 days after the notice is
+          given and must fall on the last day of a rental period, or at the end
+          of the term for a fixed-term tenancy.
+      - id: compensation
+        text: The tenant is owed compensation equal to one month's rent (or an
+          acceptable alternative unit), and that obligation remains with the
+          landlord who gives the notice rather than passing to the purchaser.
+      - id: tenant-early-exit
+        text: After receiving the notice the tenant may end the tenancy earlier
+          by giving at least 10 days' notice.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49' }
+          - { kind: subsection, label: '3' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '49.1' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 12: Eviction for Personal Use —
+        purchase-and-sale precondition for s.49 notices'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # answer-repair-duty-condo: tenant-perspective flip.
+  - id: answer-repair-duty-condo-paraphrase-1
+    behavior_class: answer
+    verified: true
+    paraphrase_of: answer-repair-duty-condo
+    question: >-
+      The dishwasher in the condo I rent died of old age. My landlord says the
+      condo corporation handles repairs in the building — so who actually has
+      to fix it?
+    answer_points:
+      - id: landlord-duty
+        text: The landlord is responsible for keeping the residential complex,
+          including the rental unit itself, in a good state of repair and fit
+          for habitation, and for complying with health, safety, housing and
+          maintenance standards.
+      - id: duty-covers-the-unit
+        text: That duty expressly includes the rental unit, so repairs inside
+          the unit the landlord rents out (such as its appliances) fall on the
+          landlord as against the tenant.
+      - id: no-knowledge-defence
+        text: The duty applies even if the tenant knew about the state of
+          non-repair before entering into the tenancy agreement.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '20' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 5: Breach of Maintenance
+        Obligations — s.20 duty and its tests'
+    tags:
+      difficulty: medium
+      persona: tenant
+
+  # answer-repair-duty-condo: formal landlord register.
+  - id: answer-repair-duty-condo-paraphrase-2
+    behavior_class: answer
+    verified: true
+    paraphrase_of: answer-repair-duty-condo
+    question: >-
+      As the lessor of a condominium unit, am I responsible under the RTA's
+      maintenance provisions for an in-unit appliance that failed from
+      ordinary wear, given that the corporation handles building upkeep?
+    answer_points:
+      - id: landlord-duty
+        text: The landlord is responsible for keeping the residential complex,
+          including the rental unit itself, in a good state of repair and fit
+          for habitation, and for complying with health, safety, housing and
+          maintenance standards.
+      - id: duty-covers-the-unit
+        text: That duty expressly includes the rental unit, so repairs inside
+          the unit the landlord rents out (such as its appliances) fall on the
+          landlord as against the tenant.
+      - id: no-knowledge-defence
+        text: The duty applies even if the tenant knew about the state of
+          non-repair before entering into the tenancy agreement.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '20' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: ltb-interpretation-guideline
+      reference: 'LTB Interpretation Guideline 5: Breach of Maintenance
+        Obligations — s.20 duty and its tests'
+    tags:
+      difficulty: medium
+      persona: landlord
+
+  # answer-deposits: tenant-perspective flip.
+  - id: answer-deposits-paraphrase-1
+    behavior_class: answer
+    verified: true
+    paraphrase_of: answer-deposits
+    question: >-
+      I'm signing a lease for a condo and the landlord wants first and last
+      month's rent plus a damage deposit. Is that allowed, and does he owe me
+      anything on the money he holds?
+    answer_points:
+      - id: rent-deposit-only
+        text: The only security deposit a landlord may collect is a rent
+          deposit; money held as security for the tenant's obligations or
+          returnable on a condition is a prohibited security deposit, so a
+          damage deposit is not lawful.
+      - id: max-one-period
+        text: The rent deposit cannot exceed the lesser of one rent period's
+          rent and one month's rent.
+      - id: annual-interest
+        text: The landlord must pay the tenant interest on the rent deposit
+          annually, at the rent-increase guideline rate in effect when the
+          payment comes due.
+      - id: last-period-application
+        text: The rent deposit must be applied to the rent for the last rent
+          period before the tenancy ends.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '6' }
+    provenance:
+      source: statute
+      reference: 'RTA Part VII, ss.105-106 (direct statutory text; no held
+        guideline covers deposits)'
+    tags:
+      difficulty: easy
+      persona: tenant
+
+  # answer-deposits: colloquial landlord register.
+  - id: answer-deposits-paraphrase-2
+    behavior_class: answer
+    verified: true
+    paraphrase_of: answer-deposits
+    question: >-
+      New tenant moving into my condo next month — what's the most I can
+      collect up front, and what's the deal with interest on the deposit?
+    answer_points:
+      - id: rent-deposit-only
+        text: The only security deposit a landlord may collect is a rent
+          deposit; money held as security for the tenant's obligations or
+          returnable on a condition is a prohibited security deposit, so a
+          damage deposit is not lawful.
+      - id: max-one-period
+        text: The rent deposit cannot exceed the lesser of one rent period's
+          rent and one month's rent.
+      - id: annual-interest
+        text: The landlord must pay the tenant interest on the rent deposit
+          annually, at the rent-increase guideline rate in effect when the
+          payment comes due.
+      - id: last-period-application
+        text: The rent deposit must be applied to the rent for the last rent
+          period before the tenancy ends.
+    required_cites:
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '6' }
+    provenance:
+      source: statute
+      reference: 'RTA Part VII, ss.105-106 (direct statutory text; no held
+        guideline covers deposits)'
+    tags:
+      difficulty: easy
+      persona: landlord
+
+  # flag-void-no-pets: landlord-perspective flip (the enforceability answer is
+  # identical from either side of the lease).
+  - id: flag-void-no-pets-paraphrase-1
+    behavior_class: flag-void-clause
+    verified: true
+    paraphrase_of: flag-void-no-pets
+    question: >-
+      My condo lease with my tenant says no pets of any kind, but she got a
+      cat anyway. Can I actually enforce that clause?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: landlord
+
+  # flag-void-no-pets: colloquial tenant register.
+  - id: flag-void-no-pets-paraphrase-2
+    behavior_class: flag-void-clause
+    verified: true
+    paraphrase_of: flag-void-no-pets
+    question: >-
+      There's a "no pets of any kind" line in my condo lease, and I've had my
+      cat here for a month now. Does my landlord have any actual power here?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: tenant
+
+  # flag-void-prepaid-rent: formal tenant register.
+  - id: flag-void-prepaid-rent-paraphrase-1
+    behavior_class: flag-void-clause
+    verified: true
+    paraphrase_of: flag-void-prepaid-rent
+    question: >-
+      Schedule A of my lease records that I "voluntarily offered" to prepay
+      the rent for months ten and eleven on move-in. Is a term like that
+      actually enforceable against me?
+    answer_points:
+      - id: label-does-no-work
+        text: A lease term obligating a payment is a requirement however it is
+          labelled; calling the prepayment voluntary inside the agreement does
+          not make it voluntary.
+      - id: only-lawful-deposit
+        text: The only deposit a landlord may require is a rent deposit capped
+          at one rent period's rent, applied to the last period of the
+          tenancy.
+      - id: prohibited-charge
+        text: Requiring additional prepaid rent as a term of the tenancy is a
+          prohibited fee or charge unless a regulation prescribes otherwise,
+          and no prescribed exemption covers prepaid rent.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: schedule-a-additional-rent-arrangements }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-03 — "voluntary" prepaid-rent rider
+        (adversarial label trap)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: adversarial
+
+  # flag-void-prepaid-rent: landlord-perspective flip (the lawfulness of the
+  # term is the same question from either side).
+  - id: flag-void-prepaid-rent-paraphrase-2
+    behavior_class: flag-void-clause
+    verified: true
+    paraphrase_of: flag-void-prepaid-rent
+    question: >-
+      When my tenant signed, the lease included a schedule where she
+      volunteered to prepay two extra months of rent, applied to months ten
+      and eleven. Was I allowed to set it up that way?
+    answer_points:
+      - id: label-does-no-work
+        text: A lease term obligating a payment is a requirement however it is
+          labelled; calling the prepayment voluntary inside the agreement does
+          not make it voluntary.
+      - id: only-lawful-deposit
+        text: The only deposit a landlord may require is a rent deposit capped
+          at one rent period's rent, applied to the last period of the
+          tenancy.
+      - id: prohibited-charge
+        text: Requiring additional prepaid rent as a term of the tenancy is a
+          prohibited fee or charge unless a regulation prescribes otherwise,
+          and no prescribed exemption covers prepaid rent.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: schedule-a-additional-rent-arrangements }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-03 — "voluntary" prepaid-rent rider
+        (adversarial label trap)'
+    tags:
+      difficulty: hard
+      persona: landlord
+      design: adversarial
