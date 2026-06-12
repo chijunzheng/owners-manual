@@ -1,0 +1,85 @@
+/**
+ * The injected Claude seam for the offline enrichment track.
+ *
+ * ADR 0005 routes ingestion enrichment to Claude via the Agent SDK / `claude -p`.
+ * That credit window opens later and no provider keys live in this checkout, so
+ * every Claude call goes through this narrow {@link ClaudeClient} interface and
+ * the real adapter is injected only where credit exists. CI runs against
+ * {@link fakeClaudeClient}: deterministic, network-free, and call-recording, so
+ * tests can assert batching (per document, never one call per chunk — ADR 0005)
+ * and so the enrichment logic is exercised end to end offline.
+ */
+
+import { createHash } from 'node:crypto'
+
+/** A single completion request: a system prompt and the user content. */
+export interface ClaudeRequest {
+  readonly system: string
+  readonly user: string
+}
+
+/** A completion response: just the text for this offline-batch use. */
+export interface ClaudeResponse {
+  readonly text: string
+}
+
+/**
+ * The minimal Claude surface the enrichment track depends on. `model` is the
+ * pinned model string that flows into pipeline config and the build hash.
+ */
+export interface ClaudeClient {
+  /** The pinned enrichment model string (recorded in build metadata). */
+  readonly model: string
+  /** Complete one request. */
+  complete(request: ClaudeRequest): Promise<ClaudeResponse>
+}
+
+/** A recorded request, for batching/invocation assertions in tests. */
+export interface RecordedCall {
+  readonly system: string
+  readonly user: string
+}
+
+/** A scripted responder: maps a request to the text Claude would return. */
+export type FakeResponder = (request: ClaudeRequest) => string
+
+/** Construction options for the fake client. */
+export interface FakeClaudeOptions {
+  /** The pinned model string the fake reports; defaults to a test sentinel. */
+  readonly model?: string
+  /** Optional canned responder; defaults to a deterministic digest of the request. */
+  readonly responder?: FakeResponder
+}
+
+/** A fake client that also exposes the calls it received. */
+export interface FakeClaudeClient extends ClaudeClient {
+  /** Every request received, in call order. */
+  readonly calls: readonly RecordedCall[]
+}
+
+function digestResponse(request: ClaudeRequest): string {
+  return createHash('sha256')
+    .update(`${request.system}\u0000${request.user}`, 'utf8')
+    .digest('hex')
+    .slice(0, 16)
+}
+
+/**
+ * Builds a deterministic, call-recording fake Claude client. With no responder,
+ * it answers with a short stable digest of the request so identical requests get
+ * identical answers (the property the per-stage caches rely on under test).
+ */
+export function fakeClaudeClient(options: FakeClaudeOptions = {}): FakeClaudeClient {
+  const model = options.model ?? 'fake-claude-0'
+  const responder = options.responder ?? digestResponse
+  const calls: RecordedCall[] = []
+
+  return {
+    model,
+    calls,
+    async complete(request) {
+      calls.push({ system: request.system, user: request.user })
+      return { text: responder(request) }
+    },
+  }
+}
