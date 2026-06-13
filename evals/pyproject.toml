@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 hello-trace = "owners_manual_evals.hello_trace_cli:main"
+run-naive-rag = "owners_manual_evals.run_naive_rag:main"
 
 [dependency-groups]
 dev = [
