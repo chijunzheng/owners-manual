@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  BM25_TEXT_INDEX_NAME,
+  buildTextSearchIndexDefinition,
   buildVectorIndexDefinition,
+  ensureSearchIndex,
   ensureVectorIndex,
   type SearchIndexCollection,
 } from './atlas-index.js'
@@ -65,6 +68,56 @@ describe('ensureVectorIndex', () => {
       path: 'embedding',
       dimensions: 1024,
     })
+    expect(result.created).toBe(false)
+    expect(create).not.toHaveBeenCalled()
+  })
+})
+
+describe('buildTextSearchIndexDefinition (#14 BM25 stage)', () => {
+  it('defines a `search` index (not vectorSearch) for the BM25 lexical stage', () => {
+    const def = buildTextSearchIndexDefinition()
+    expect(def.type).toBe('search')
+    expect(def.name).toBe(BM25_TEXT_INDEX_NAME)
+  })
+
+  it('indexes the chunk text as a string field so BM25 can score it', () => {
+    const def = buildTextSearchIndexDefinition()
+    expect(def.definition.mappings.fields.text).toMatchObject({ type: 'string' })
+  })
+
+  it('declares documentId filterable for corpus/authority pre-filtering (ADR 0002)', () => {
+    const def = buildTextSearchIndexDefinition()
+    // documentId is kept as a token/string facet so $search can pre-filter.
+    expect(def.definition.mappings.fields.documentId).toBeDefined()
+  })
+
+  it('uses a name distinct from the vector index (M0 three-index cap)', () => {
+    expect(BM25_TEXT_INDEX_NAME).not.toBe('vector_voyage_law_2')
+  })
+})
+
+describe('ensureSearchIndex (generic, covers both vector and text)', () => {
+  it('creates a text index when absent', async () => {
+    const created: unknown[] = []
+    const collection: SearchIndexCollection = {
+      listSearchIndexes: () => ({ toArray: async () => [] }),
+      createSearchIndex: async (def) => {
+        created.push(def)
+        return def.name
+      },
+    }
+    const result = await ensureSearchIndex(collection, buildTextSearchIndexDefinition())
+    expect(result.created).toBe(true)
+    expect(result.name).toBe(BM25_TEXT_INDEX_NAME)
+  })
+
+  it('is idempotent for the text index too', async () => {
+    const create = vi.fn()
+    const collection: SearchIndexCollection = {
+      listSearchIndexes: () => ({ toArray: async () => [{ name: BM25_TEXT_INDEX_NAME }] }),
+      createSearchIndex: create,
+    }
+    const result = await ensureSearchIndex(collection, buildTextSearchIndexDefinition())
     expect(result.created).toBe(false)
     expect(create).not.toHaveBeenCalled()
   })

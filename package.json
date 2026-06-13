@@ -18,6 +18,7 @@
     "corpus:fetch": "tsx packages/corpus/src/cli.ts",
     "corpus:verify": "tsx packages/corpus/src/cli.ts --verify-only",
     "golden:trees": "tsx packages/parser/src/golden-trees-cli.ts",
+    "corpus:retrieval-fixture": "tsx packages/pipeline/src/retrieval-corpus-cli.ts",
     "providers:verify": "tsx packages/providers/src/verify-cli.ts"
   },
   "devDependencies": {

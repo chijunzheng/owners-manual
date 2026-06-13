@@ -42,6 +42,9 @@ export {
 // --- chunking contract + reference chunker -----------------------------------
 export { type Chunk, type Chunker, citableUnitChunker, hashChunk } from './chunk.js'
 
+// --- the hierarchy chunker (#14): real chunker, boundaries == citable units --
+export { hierarchyChunker } from './hierarchy-chunker.js'
+
 // --- tree content-address ----------------------------------------------------
 export { hashTree } from './tree-hash.js'
 

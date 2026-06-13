@@ -1,15 +1,22 @@
 /**
  * `naive-rag:serve` — the live HTTP service the Python harness drives. Binds the
- * live providers (Voyage embeddings, Atlas vector search, Vertex Gemini) and the
- * Langfuse tracer around the pure {@link handleAnswerRequest}, builds the run
- * record once from the committed manifest + pinned pipeline config, and serves:
+ * live providers (Voyage embeddings, Atlas vector + BM25 search, Vertex Gemini)
+ * and the Langfuse tracer around the pure handlers, builds the run record once
+ * from the committed manifest + pinned pipeline config, and serves:
  *
- *   POST /answer   { question, itemId, traceId? }  → AnswerResponse
- *   GET  /healthz                                   → { ok: true }
+ *   POST /answer          { question, itemId, traceId? }       → AnswerResponse
+ *   POST /retrieve/debug  { question, topK?, authorityLevels? } → RetrieveDebugResponse
+ *   GET  /retrieve/debug?q=…&topK=…                             → RetrieveDebugResponse
+ *   GET  /healthz                                               → { ok: true }
  *
- * The propagated trace id flows from the request body into the Langfuse trace so
- * the service spans nest under the harness experiment (AC2). Live by design and
- * not unit-tested — every decision it composes is covered upstream against fakes.
+ * The naive-rag `/answer` path is FROZEN (#14): the new `/retrieve/debug`
+ * endpoint (ADR 0003: part of the contract) is additive — it exposes hybrid
+ * retrieval's ranked candidates WITH stage-provenance so the harness can compute
+ * the pre-synthesis hit-rate and the hybrid-vs-vector comparison without a
+ * synthesis call. The propagated trace id flows from the request body into the
+ * Langfuse trace so the service spans nest under the harness experiment (AC2).
+ * Live by design and not unit-tested — every decision it composes is covered
+ * upstream against fakes.
  */
 
 import { createServer } from 'node:http'
@@ -19,6 +26,11 @@ import { createVoyageEmbeddingProvider } from './embedding.js'
 import { NAIVE_RAG_PIPELINE_CONFIG } from './pipeline-config.js'
 import { buildRunRecord } from './run-record.js'
 import { handleAnswerRequest, parseAnswerRequest, resolveTraceContext } from './service.js'
+import {
+  handleRetrieveDebugRequest,
+  parseRetrieveDebugRequest,
+  type RetrieveDebugRequest,
+} from './retrieve-debug.js'
 import { GOLDEN_V0_DOCUMENTS, loadFixtureSnapshot } from './corpus-loader.js'
 import { langfuseEnabled, loadRootEnv, repoPath, resolveLiveConfig } from './live/env.js'
 import { connectMongoStore } from './live/mongo-store.js'
@@ -32,6 +44,25 @@ async function readBody(stream: NodeJS.ReadableStream): Promise<string> {
   const chunks: Buffer[] = []
   for await (const chunk of stream) chunks.push(Buffer.from(chunk))
   return Buffer.concat(chunks).toString('utf8')
+}
+
+/**
+ * Parse a `GET /retrieve/debug?q=…&topK=…&authority=act,regulation` query into a
+ * debug request (the same schema the POST body validates). The question accepts
+ * either `q` or `question`; `authority` is a comma-separated level list.
+ */
+function debugRequestFromQuery(url: URL): RetrieveDebugRequest {
+  const params = url.searchParams
+  const raw: Record<string, unknown> = {
+    question: params.get('q') ?? params.get('question') ?? '',
+  }
+  const topK = params.get('topK')
+  if (topK !== null) raw.topK = Number(topK)
+  const mode = params.get('mode')
+  if (mode !== null) raw.mode = mode
+  const authority = params.get('authority')
+  if (authority !== null) raw.authorityLevels = authority.split(',').filter((s) => s.length > 0)
+  return parseRetrieveDebugRequest(raw)
 }
 
 async function main(): Promise<void> {
@@ -77,6 +108,15 @@ async function main(): Promise<void> {
     tracer: tracerHandle?.tracer,
   }
 
+  // The retrieval-debug endpoint reuses the same embedding provider and Atlas
+  // collection, adding the BM25 text-search executor for the hybrid path.
+  const debugDeps = {
+    provider,
+    vectorSearch: store.search,
+    textSearch: store.textSearch,
+    topK: config.retrieval.topK,
+  }
+
   const server = createServer((req, res) => {
     void (async () => {
       try {
@@ -93,6 +133,20 @@ async function main(): Promise<void> {
           const request = { ...body, traceId: context.traceId, parentSpanId: context.parentSpanId }
           const response = await handleAnswerRequest(request, deps)
           await tracerHandle?.flush()
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(response))
+          return
+        }
+        const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`)
+        if (req.method === 'POST' && url.pathname === '/retrieve/debug') {
+          const request = parseRetrieveDebugRequest(JSON.parse(await readBody(req)))
+          const response = await handleRetrieveDebugRequest(request, debugDeps)
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(response))
+          return
+        }
+        if (req.method === 'GET' && url.pathname === '/retrieve/debug') {
+          const response = await handleRetrieveDebugRequest(debugRequestFromQuery(url), debugDeps)
           res.writeHead(200, { 'content-type': 'application/json' })
           res.end(JSON.stringify(response))
           return
@@ -119,6 +173,7 @@ async function main(): Promise<void> {
     process.stdout.write(`naive-rag service listening on http://127.0.0.1:${PORT}\n`)
     process.stdout.write(`  build ${runRecord.corpusBuildHash}\n`)
     process.stdout.write(`  model ${config.runtime.model} · embed ${config.embedding.model}\n`)
+    process.stdout.write(`  endpoints: POST /answer · GET|POST /retrieve/debug · GET /healthz\n`)
     process.stdout.write(
       `  langfuse tracing: ${tracingOn ? 'on' : 'off (keys unset/placeholder)'}\n`,
     )

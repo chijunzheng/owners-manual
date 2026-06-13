@@ -84,6 +84,15 @@ async function main(): Promise<number> {
         ? `Created vector index "${index.name}" (build may take ~1 min to be queryable).\n`
         : `Vector index "${index.name}" already exists.\n`,
     )
+    // #14: the BM25 text index over the SAME chunk collection powers the hybrid
+    // retrieval-debug path. Creating it here is additive — it never alters the
+    // naive-rag arm's vector-only retrieval or its corpus-build hash.
+    const textIndex = await store.ensureTextIndex()
+    process.stdout.write(
+      textIndex.created
+        ? `Created BM25 text index "${textIndex.name}" (build may take ~1 min to be queryable).\n`
+        : `BM25 text index "${textIndex.name}" already exists.\n`,
+    )
   } finally {
     await store.close()
   }

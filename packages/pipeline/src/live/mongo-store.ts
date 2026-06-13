@@ -12,13 +12,16 @@
 import { MongoClient } from 'mongodb'
 
 import {
+  buildTextSearchIndexDefinition,
+  ensureSearchIndex,
   ensureVectorIndex,
   type EnsureIndexResult,
   type SearchIndexCollection,
 } from '../atlas-index.js'
 import { type CorpusChunk } from '../chunk-corpus.js'
+import { type TextSearchExecutor } from '../hybrid-retrieve.js'
 import { type VectorSearchExecutor, type VectorSearchHit } from '../retrieve.js'
-import { buildVectorSearchPipeline } from '../vector-search-pipeline.js'
+import { buildTextSearchPipeline, buildVectorSearchPipeline } from '../vector-search-pipeline.js'
 
 /** A stored chunk row: the corpus chunk plus its embedding vector. */
 interface ChunkRow extends CorpusChunk {
@@ -36,12 +39,16 @@ export interface MongoStoreOptions {
 export interface MongoStore {
   /** Create the vector index if absent (idempotent). */
   ensureIndex(): Promise<EnsureIndexResult>
+  /** Create the BM25 text index if absent (idempotent) — #14 hybrid stage. */
+  ensureTextIndex(): Promise<EnsureIndexResult>
   /** Replace all chunk rows with the supplied embedded chunks. */
   replaceChunks(rows: readonly ChunkRow[]): Promise<number>
   /** Count stored chunk rows. */
   count(): Promise<number>
   /** A vector-search executor over the stored rows. */
   readonly search: VectorSearchExecutor
+  /** A BM25 text-search executor over the stored rows (#14 hybrid stage). */
+  readonly textSearch: TextSearchExecutor
   /** Close the underlying connection. */
   close(): Promise<void>
 }
@@ -52,6 +59,13 @@ export async function connectMongoStore(options: MongoStoreOptions): Promise<Mon
   await client.connect()
   const collection = client.db(options.db).collection<ChunkRow>(options.collection)
 
+  const toHit = (row: Record<string, unknown>): VectorSearchHit => ({
+    documentId: String(row.documentId),
+    citablePathKey: String(row.citablePathKey),
+    text: String(row.text),
+    score: Number(row.score),
+  })
+
   const search: VectorSearchExecutor = async ({ queryVector, topK }) => {
     const pipeline = buildVectorSearchPipeline({
       indexName: options.indexName,
@@ -59,14 +73,17 @@ export async function connectMongoStore(options: MongoStoreOptions): Promise<Mon
       topK,
     })
     const rows = await collection.aggregate(pipeline as object[]).toArray()
-    return rows.map(
-      (row): VectorSearchHit => ({
-        documentId: String(row.documentId),
-        citablePathKey: String(row.citablePathKey),
-        text: String(row.text),
-        score: Number(row.score),
-      }),
-    )
+    return rows.map(toHit)
+  }
+
+  const textSearch: TextSearchExecutor = async ({ query, topK }) => {
+    const pipeline = buildTextSearchPipeline({
+      indexName: buildTextSearchIndexDefinition().name,
+      query,
+      topK,
+    })
+    const rows = await collection.aggregate(pipeline as object[]).toArray()
+    return rows.map(toHit)
   }
 
   return {
@@ -76,6 +93,11 @@ export async function connectMongoStore(options: MongoStoreOptions): Promise<Mon
         path: 'embedding',
         dimensions: options.dimensions,
       }),
+    ensureTextIndex: () =>
+      ensureSearchIndex(
+        collection as unknown as SearchIndexCollection,
+        buildTextSearchIndexDefinition(),
+      ),
     async replaceChunks(rows) {
       await collection.deleteMany({})
       if (rows.length > 0) {
@@ -85,6 +107,7 @@ export async function connectMongoStore(options: MongoStoreOptions): Promise<Mon
     },
     count: () => collection.countDocuments({}),
     search,
+    textSearch,
     close: () => client.close(),
   }
 }
