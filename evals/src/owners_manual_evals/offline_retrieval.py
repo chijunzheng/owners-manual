@@ -79,10 +79,7 @@ def _cosine(a: Counter[str], b: Counter[str]) -> float:
 def _dense_ranking(query: str, corpus: Sequence[RetrievalDoc], top_k: int) -> list[str]:
     """Path keys ranked by trigram-cosine to the query, descending, positive only."""
     q = _trigrams(query)
-    scored = [
-        (doc.citable_path_key, _cosine(q, _trigrams(doc.text)))
-        for doc in corpus
-    ]
+    scored = [(doc.citable_path_key, _cosine(q, _trigrams(doc.text))) for doc in corpus]
     scored = [(key, score) for key, score in scored if score > 0]
     scored.sort(key=lambda pair: (-pair[1], pair[0]))
     return [key for key, _score in scored[:top_k]]
