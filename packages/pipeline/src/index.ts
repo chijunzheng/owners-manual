@@ -55,6 +55,50 @@ export {
 } from './retrieve.js'
 
 export {
+  bm25Rank,
+  tokenize,
+  type Bm25Document,
+  type Bm25Hit,
+  type Bm25RankOptions,
+} from './bm25.js'
+
+export {
+  RRF_K_DEFAULT,
+  fuseByRrf,
+  type FusedCandidate,
+  type FuseOptions,
+  type RankedList,
+} from './rrf.js'
+
+export {
+  AUTHORITY_LEVELS,
+  authorityLevelOf,
+  authorityRank,
+  isHigherAuthority,
+  type AuthorityLevel,
+} from './authority.js'
+
+export {
+  retrieveHybrid,
+  type HybridCandidate,
+  type RetrieveHybridOptions,
+  type RetrieveHybridResult,
+  type TextSearchExecutor,
+} from './hybrid-retrieve.js'
+
+export {
+  RETRIEVE_DEBUG_MODES,
+  handleRetrieveDebugRequest,
+  parseRetrieveDebugRequest,
+  retrieveDebugRequestSchema,
+  type DebugCandidate,
+  type RetrieveDebugDeps,
+  type RetrieveDebugMode,
+  type RetrieveDebugRequest,
+  type RetrieveDebugResponse,
+} from './retrieve-debug.js'
+
+export {
   buildSynthesisPrompt,
   synthesize,
   type LlmComplete,
@@ -72,10 +116,15 @@ export {
 } from './naive-rag.js'
 
 export {
+  BM25_TEXT_INDEX_NAME,
+  buildTextSearchIndexDefinition,
   buildVectorIndexDefinition,
+  ensureSearchIndex,
   ensureVectorIndex,
   type EnsureIndexResult,
   type SearchIndexCollection,
+  type SearchIndexDefinition,
+  type TextSearchIndexDefinition,
   type VectorIndexDefinition,
   type VectorIndexField,
   type VectorIndexSpec,
@@ -102,12 +151,23 @@ export {
 } from './corpus-loader.js'
 
 export {
+  buildTextSearchPipeline,
   buildVectorSearchPipeline,
+  type TextSearchPipelineSpec,
+  type TextSearchStage,
   type VectorSearchPipelineSpec,
   type VectorSearchStage,
 } from './vector-search-pipeline.js'
 
 export { extractManifestSnapshot } from './manifest-snapshot-util.js'
+
+export {
+  RETRIEVAL_CORPUS_SOURCES,
+  chunkFixtureToRows,
+  renderRetrievalCorpus,
+  type RetrievalCorpusRow,
+  type RetrievalCorpusSource,
+} from './retrieval-corpus.js'
 
 export {
   answerRequestSchema,

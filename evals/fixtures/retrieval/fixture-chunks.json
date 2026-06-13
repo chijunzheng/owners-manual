@@ -1,0 +1,347 @@
+[
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:parties-and-rental-unit",
+    "text": "fixture-lease / s. parties-and-rental-unit\n\nParties and Rental Unit"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:parties-and-rental-unit|clause:p-1",
+    "text": "fixture-lease / s. parties-and-rental-unit / (p-1)\n\nThis Residential Tenancy Agreement is made between Pat Morgan (the \"Landlord\") and Sam Rivera (the \"Tenant\") for the residential unit known as Suite 1204, Harbourview Terrace, 12 Fictional Crescent, Toronto, Ontario (the \"Unit\")."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:parties-and-rental-unit|clause:p-2",
+    "text": "fixture-lease / s. parties-and-rental-unit / (p-2)\n\nThe rental unit is a unit in a condominium. The Tenant acknowledges that the Unit is governed by a condominium corporation and agrees to comply with the declaration, by-laws and rules of the corporation, as amended from time to time, copies of which have been provided to the Tenant by the Landlord."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:parties-and-rental-unit|clause:p-3",
+    "text": "fixture-lease / s. parties-and-rental-unit / (p-3)\n\nThe tenancy is for a fixed term of one year commencing on the first day of the month and is subject to the Residential Tenancies Act, 2006."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:rent",
+    "text": "fixture-lease / s. rent\n\nRent"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:rent|clause:p-1",
+    "text": "fixture-lease / s. rent / (p-1)\n\nThe Tenant shall pay rent of $2,000.00 per month, payable in advance on the first day of each month, without deduction, set-off or abatement, to the Landlord at the address designated by the Landlord for that purpose."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:rent|clause:p-2",
+    "text": "fixture-lease / s. rent / (p-2)\n\nRent not received by the Landlord on the day it is due shall be considered late, and the Tenant shall pay any lawful administration charge for a cheque returned by a financial institution."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:deposits",
+    "text": "fixture-lease / s. deposits\n\nDeposits"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:deposits|subsection:first-and-last-months-rent",
+    "text": "fixture-lease / s. deposits / (first-and-last-months-rent)\n\nFirst and Last Months' Rent"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:deposits|subsection:first-and-last-months-rent|clause:p-1",
+    "text": "fixture-lease / s. deposits / (first-and-last-months-rent) / (p-1)\n\nOn signing this Agreement the Tenant shall pay to the Landlord a deposit equal to the first and last months' rent, in the total amount of $4,000.00, which the Landlord shall hold in trust as security for the performance of the Tenant's obligations under this Agreement. The deposit shall bear no interest, and no interest shall be earned, received or payable on it for the duration of the tenancy."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:deposits|subsection:key-deposit",
+    "text": "fixture-lease / s. deposits / (key-deposit)\n\nKey Deposit"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:deposits|subsection:key-deposit|clause:p-1",
+    "text": "fixture-lease / s. deposits / (key-deposit) / (p-1)\n\nThe Tenant shall pay a key deposit of $300.00 for the keys, entry fobs and garage remote issued to the Tenant. The key deposit shall be refunded to the Tenant after the Tenant vacates the Unit and returns it in its original condition and cleanliness, reasonable allowance for the cost of any cleaning or repair being deducted by the Landlord."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:pets",
+    "text": "fixture-lease / s. pets\n\nPets"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:pets|clause:p-1",
+    "text": "fixture-lease / s. pets / (p-1)\n\nNo pets of any kind are permitted in the Unit. The keeping of any pet in the Unit shall constitute a substantial breach of this Agreement."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:maintenance-and-repairs",
+    "text": "fixture-lease / s. maintenance-and-repairs\n\nMaintenance and Repairs"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:maintenance-and-repairs|clause:p-1",
+    "text": "fixture-lease / s. maintenance-and-repairs / (p-1)\n\nThe Tenant is responsible for all damage and repairs of any kind to the Unit and its contents arising during the tenancy, whatever the cause, and shall keep the Unit in a good state of repair at the Tenant's own expense."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:maintenance-and-repairs|clause:p-2",
+    "text": "fixture-lease / s. maintenance-and-repairs / (p-2)\n\nThe Tenant shall pay the first $100.00 of the cost of every repair to the fixtures and appliances in the Unit, and the Landlord shall be responsible only for the portion of any such repair that exceeds that amount."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:renewal",
+    "text": "fixture-lease / s. renewal\n\nRenewal"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:renewal|clause:p-1",
+    "text": "fixture-lease / s. renewal / (p-1)\n\nIf the Tenant does not provide the Landlord with sixty days' written notice of the Tenant's intention to renew before the end of the term, the Landlord may show the Unit to prospective tenants and may make arrangements to re-let the Unit at the end of the term."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:schedule-a-additional-rent-arrangements",
+    "text": "fixture-lease / s. schedule-a-additional-rent-arrangements\n\nSchedule A — Additional Rent Arrangements"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:schedule-a-additional-rent-arrangements|clause:p-1",
+    "text": "fixture-lease / s. schedule-a-additional-rent-arrangements / (p-1)\n\nThe Tenant voluntarily offers, as an accommodation to the Landlord and of the Tenant's own free will, to prepay two additional months of rent on the move-in date. The Landlord shall apply the prepaid amounts to the rent owing for the tenth and eleventh months of the term, and the Tenant agrees that no rent payment shall be required in those two months."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:additional-terms",
+    "text": "fixture-lease / s. additional-terms\n\nAdditional Terms"
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:additional-terms|clause:p-1",
+    "text": "fixture-lease / s. additional-terms / (p-1)\n\nSmoking is not permitted anywhere in the Unit or in the common areas of the building. The Tenant shall not smoke, and shall not permit any occupant or guest to smoke, within the Unit."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:additional-terms|clause:p-2",
+    "text": "fixture-lease / s. additional-terms / (p-2)\n\nThe Tenant shall obtain and maintain, for the duration of the tenancy, a policy of tenant's liability insurance, and shall provide the Landlord with proof of that insurance on request."
+  },
+  {
+    "documentId": "fixture-lease",
+    "citablePathKey": "fixture-lease|section:additional-terms|clause:p-3",
+    "text": "fixture-lease / s. additional-terms / (p-3)\n\nThe Tenant shall not change, add to or re-key the locks on the Unit without the prior written consent of the Landlord, and shall provide the Landlord with a key to any lock installed with such consent."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:preamble|clause:p-1",
+    "text": "fixture-declaration / s. preamble / (p-1)\n\nThis Declaration is made and registered pursuant to the Condominium Act, 1998, S.O. 1998, c. 19, in respect of the lands and premises known municipally as 12 Fictional Crescent, in the City of Toronto, in the Province of Ontario. Upon registration of this Declaration and the corresponding description, the lands and the buildings and improvements erected upon them constitute a standard condominium corporation governed by the Act."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions",
+    "text": "fixture-declaration / s. article-i-definitions\n\nArticle I — Definitions"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-1",
+    "text": "fixture-declaration / s. article-i-definitions / (p-1)\n\nIn this Declaration, and in the by-laws and rules of the Corporation, unless the context otherwise requires, the words and expressions used herein shall have the meanings ascribed to them in the Condominium Act, 1998 and the regulations made thereunder."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-2",
+    "text": "fixture-declaration / s. article-i-definitions / (p-2)\n\n\"Act\" means the Condominium Act, 1998, S.O. 1998, c. 19, as amended from time to time, and the regulations made under it."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-3",
+    "text": "fixture-declaration / s. article-i-definitions / (p-3)\n\n\"Corporation\" means Toronto Standard Condominium Corporation No. 9000, also known as Harbourview Terrace."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-4",
+    "text": "fixture-declaration / s. article-i-definitions / (p-4)\n\n\"Board\" means the board of directors of the Corporation."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-5",
+    "text": "fixture-declaration / s. article-i-definitions / (p-5)\n\n\"Common elements\" means all of the property except the units, and includes those parts of the property over which an owner has been granted the exclusive use as an appurtenance to that owner's unit."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-6",
+    "text": "fixture-declaration / s. article-i-definitions / (p-6)\n\n\"Exclusive-use common elements\" means those portions of the common elements of which the exclusive use is granted to the owner of a unit as set out in this Declaration, including the balcony, terrace, or patio area appurtenant to and adjoining a unit, and the parking space and locker, if any, allocated to a unit."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-7",
+    "text": "fixture-declaration / s. article-i-definitions / (p-7)\n\n\"Owner\" means the owner or owners for the time being of the freehold estate or interest in a unit, but does not include a mortgagee unless in possession."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-8",
+    "text": "fixture-declaration / s. article-i-definitions / (p-8)\n\n\"Unit\" means a part of the property designated as a unit by the description and intended for independent use, the boundaries of which are described in the description, together with the appurtenant common interest."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-i-definitions|clause:p-9",
+    "text": "fixture-declaration / s. article-i-definitions / (p-9)\n\n\"Standard unit\" means the unit as defined and described for insurance purposes in the by-laws of the Corporation, being the standard of finishes and elements provided in each residential unit as constructed."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-ii-common-expenses-and-common-interest",
+    "text": "fixture-declaration / s. article-ii-common-expenses-and-common-interest\n\nArticle II — Common Expenses and Common Interest"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-ii-common-expenses-and-common-interest|clause:p-1",
+    "text": "fixture-declaration / s. article-ii-common-expenses-and-common-interest / (p-1)\n\nThe common interest and the proportions of the common expenses attributable to each unit are set out in Schedule \"D\" to this Declaration. Each owner shall contribute to the common expenses in the proportion set opposite that owner's unit, irrespective of the use made of the owner's unit or of the common elements."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-ii-common-expenses-and-common-interest|clause:p-2",
+    "text": "fixture-declaration / s. article-ii-common-expenses-and-common-interest / (p-2)\n\nThe common expenses are the expenses of the performance of the objects and duties of the Corporation and all expenses specified as common expenses in this Declaration, the by-laws, or the Act, including, without limiting the generality of the foregoing, the cost of maintaining and repairing the common elements, the premiums for insurance the Corporation is required or permitted to obtain, and the contributions to the reserve fund."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-ii-common-expenses-and-common-interest|clause:p-3",
+    "text": "fixture-declaration / s. article-ii-common-expenses-and-common-interest / (p-3)\n\nThe Corporation may, where authorized by this Declaration, the by-laws, or the Act, add an amount owing by an owner to the common expenses payable for that owner's unit, and such amount shall be recoverable in the same manner as common expenses, including by way of a lien against the unit under section 85 of the Act."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units\n\nArticle III — Use and Occupation of Units"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units|clause:p-1",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units / (p-1)\n\nEach unit shall be occupied and used only as a private single-family residence and for no other purpose, in accordance with the Act, this Declaration, the by-laws, and the rules of the Corporation."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units|clause:p-2",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units / (p-2)\n\nNo use shall be made of any unit, and no act or thing shall be permitted or kept in any unit, that is or may become a nuisance to any other owner or to the occupants of any other unit, or that constitutes a breach of the rules of the Corporation."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units|subsection:pets",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units / (pets)\n\nPets"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units|subsection:pets|clause:p-1",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units / (pets) / (p-1)\n\nAn owner may keep in a unit not more than two household pets. For the purposes of this Declaration, a \"pet\" means a cat or a dog the weight of which does not exceed twenty kilograms, and does not include any reptile, livestock, exotic animal, or animal kept for breeding or commercial purposes."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units|subsection:pets|clause:p-2",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units / (pets) / (p-2)\n\nNothing in this Declaration prohibits or restricts an owner or occupant who requires a service animal from keeping that service animal in a unit, and a service animal is not a pet for the purposes of this Declaration and is not subject to the limits set out in this Declaration."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iii-use-and-occupation-of-units|subsection:pets|clause:p-3",
+    "text": "fixture-declaration / s. article-iii-use-and-occupation-of-units / (pets) / (p-3)\n\nWhere the Board, acting reasonably, determines that a pet is a nuisance or is creating a nuisance or hazard or unreasonably interferes with the use and enjoyment of the units or common elements by other owners, the Board may give written notice to the owner requiring the permanent removal of that pet from the property, and the owner shall, within two weeks of receiving such notice, permanently remove the pet."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iv-use-of-the-common-elements",
+    "text": "fixture-declaration / s. article-iv-use-of-the-common-elements\n\nArticle IV — Use of the Common Elements"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iv-use-of-the-common-elements|clause:p-1",
+    "text": "fixture-declaration / s. article-iv-use-of-the-common-elements / (p-1)\n\nEach owner and occupant may use the common elements in accordance with their intended purposes, subject to the Act, this Declaration, the by-laws, and the rules, and so long as such use does not interfere with the use and enjoyment of the common elements by other owners and occupants."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iv-use-of-the-common-elements|clause:p-2",
+    "text": "fixture-declaration / s. article-iv-use-of-the-common-elements / (p-2)\n\nNo owner shall make any structural change to or place any structure or fixture upon the common elements, including the exclusive-use common elements, without the prior written consent of the Board and, where required, a by-law authorizing the change under section 98 of the Act."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iv-use-of-the-common-elements|subsection:barbecues-on-exclusive-use-balconies",
+    "text": "fixture-declaration / s. article-iv-use-of-the-common-elements / (barbecues-on-exclusive-use-balconies)\n\nBarbecues on Exclusive-Use Balconies"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-iv-use-of-the-common-elements|subsection:barbecues-on-exclusive-use-balconies|clause:p-1",
+    "text": "fixture-declaration / s. article-iv-use-of-the-common-elements / (barbecues-on-exclusive-use-balconies) / (p-1)\n\nAn owner having the exclusive use of a balcony as an appurtenance to that owner's unit may keep and operate an electric barbecue upon that balcony for the personal use of the owner and occupants of the unit. The use of charcoal, propane, natural gas, or any other open-flame or fuelled barbecue upon any balcony, terrace, or other exclusive-use common element is prohibited."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-v-insurance",
+    "text": "fixture-declaration / s. article-v-insurance\n\nArticle V — Insurance"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-v-insurance|clause:p-1",
+    "text": "fixture-declaration / s. article-v-insurance / (p-1)\n\nThe Corporation shall obtain and maintain insurance, on its own behalf and on behalf of the owners, against damage to the standard unit and to the common elements that is caused by major perils as defined in the Act and by such other perils as the Board considers appropriate, to the extent and in the amounts required by the Act and the by-laws."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-v-insurance|clause:p-2",
+    "text": "fixture-declaration / s. article-v-insurance / (p-2)\n\nThe insurance obtained and maintained by the Corporation does not cover any improvement or betterment made to a unit by an owner or by any predecessor in title, nor does it cover the furnishings, personal property, or contents of any unit. Each owner is responsible for obtaining and maintaining the owner's own insurance in respect of improvements and betterments to the owner's unit and the contents of the owner's unit."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-v-insurance|subsection:deductible-chargeback",
+    "text": "fixture-declaration / s. article-v-insurance / (deductible-chargeback)\n\nDeductible Chargeback"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-v-insurance|subsection:deductible-chargeback|clause:p-1",
+    "text": "fixture-declaration / s. article-v-insurance / (deductible-chargeback) / (p-1)\n\nWhere the insurance policy obtained by the Corporation responds to damage or loss to a unit, to the common elements, or to both, and the damage or loss originates from or within a unit, the owner of that unit shall be liable for and shall reimburse the Corporation for the amount of the deductible payable under the policy in respect of that claim, to a maximum of the deductible amount stated in the policy. Such liability arises regardless of whether the damage or loss was caused by the fault, act, or omission of the owner or of any person for whom the owner is responsible."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-v-insurance|subsection:deductible-chargeback|clause:p-2",
+    "text": "fixture-declaration / s. article-v-insurance / (deductible-chargeback) / (p-2)\n\nAny amount for which an owner is liable under this Article that is not paid when due shall be added to the common expenses attributable to that owner's unit and shall be recoverable as common expenses, including by way of a lien against the unit, in the same manner as any other contribution to the common expenses."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vi-leasing-of-units",
+    "text": "fixture-declaration / s. article-vi-leasing-of-units\n\nArticle VI — Leasing of Units"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vi-leasing-of-units|clause:p-1",
+    "text": "fixture-declaration / s. article-vi-leasing-of-units / (p-1)\n\nAn owner may lease the owner's unit, provided that the owner shall, within ten days of entering into a lease or renewal of a lease, notify the Corporation in writing that the unit is leased and provide to the Corporation the name of the lessee, the owner's address for service, and a copy of the lease or renewal or a summary of it in the form prescribed by the Minister."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vi-leasing-of-units|clause:p-2",
+    "text": "fixture-declaration / s. article-vi-leasing-of-units / (p-2)\n\nAn owner who leases a unit shall deliver to the lessee a copy of this Declaration, the by-laws, and the rules of the Corporation, and shall take all reasonable steps to ensure that the lessee complies with the Act, this Declaration, the by-laws, and the rules during the term of the lease. The lease shall be deemed to contain a covenant by the lessee to comply with the Act, this Declaration, the by-laws, and the rules."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vi-leasing-of-units|clause:p-3",
+    "text": "fixture-declaration / s. article-vi-leasing-of-units / (p-3)\n\nThe provisions of this Article are in addition to, and do not derogate from, the obligations of an owner and of a lessee under section 83 of the Act."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vii-maintenance-and-repair",
+    "text": "fixture-declaration / s. article-vii-maintenance-and-repair\n\nArticle VII — Maintenance and Repair"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vii-maintenance-and-repair|clause:p-1",
+    "text": "fixture-declaration / s. article-vii-maintenance-and-repair / (p-1)\n\nEach owner shall maintain the owner's unit, and shall repair the owner's unit after damage, except as otherwise provided in the Act, this Declaration, or the by-laws, and except in respect of the standard unit to the extent that the Corporation is obligated to repair the standard unit after damage that is covered by the Corporation's insurance."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vii-maintenance-and-repair|clause:p-2",
+    "text": "fixture-declaration / s. article-vii-maintenance-and-repair / (p-2)\n\nThe Corporation shall maintain the common elements, and shall repair the common elements and the standard unit after damage, except as otherwise provided in the Act or this Declaration. The Corporation's obligation to repair the standard unit after damage does not extend to any improvement or betterment made to a unit."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-vii-maintenance-and-repair|clause:p-3",
+    "text": "fixture-declaration / s. article-vii-maintenance-and-repair / (p-3)\n\nEach owner shall be responsible for any damage to the common elements or to any other unit that is caused by the failure of the owner to maintain or repair the owner's unit, subject to the provisions of this Declaration respecting insurance and the recovery of deductibles."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-viii-alterations-to-the-common-elements",
+    "text": "fixture-declaration / s. article-viii-alterations-to-the-common-elements\n\nArticle VIII — Alterations to the Common Elements"
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-viii-alterations-to-the-common-elements|clause:p-1",
+    "text": "fixture-declaration / s. article-viii-alterations-to-the-common-elements / (p-1)\n\nNo owner shall make any addition, alteration, or improvement to the common elements, make any change to the appearance of any portion of the common elements, including the exclusive-use common elements, or carry out any work to the common elements, except in accordance with the Act and only after obtaining the prior written approval of the Board."
+  },
+  {
+    "documentId": "fixture-declaration",
+    "citablePathKey": "fixture-declaration|section:article-viii-alterations-to-the-common-elements|clause:p-2",
+    "text": "fixture-declaration / s. article-viii-alterations-to-the-common-elements / (p-2)\n\nWhere the Board approves an addition, alteration, or improvement to an exclusive-use common element for the benefit of a particular unit, the Board may require the owner of that unit to assume, by written agreement, responsibility for the cost of maintaining, repairing, insuring, and where necessary removing the addition, alteration, or improvement, and any such cost that is not paid when due may be added to the common expenses attributable to that unit."
+  }
+]

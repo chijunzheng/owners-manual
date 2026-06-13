@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVectorSearchPipeline } from './vector-search-pipeline.js'
+import { buildTextSearchPipeline, buildVectorSearchPipeline } from './vector-search-pipeline.js'
 
 describe('buildVectorSearchPipeline', () => {
   it('builds a $vectorSearch stage against the configured index and path', () => {
@@ -39,6 +39,38 @@ describe('buildVectorSearchPipeline', () => {
       citablePathKey: 1,
       text: 1,
       score: { $meta: 'vectorSearchScore' },
+    })
+  })
+})
+
+describe('buildTextSearchPipeline (#14 BM25 stage)', () => {
+  it('builds a $search text stage against the configured index and query', () => {
+    const pipeline = buildTextSearchPipeline({
+      indexName: 'text_bm25',
+      query: 'no pet clause void',
+      topK: 8,
+    })
+    const search = pipeline[0]?.$search
+    expect(search?.index).toBe('text_bm25')
+    expect(search?.text?.query).toBe('no pet clause void')
+    expect(search?.text?.path).toBe('text')
+  })
+
+  it('limits the BM25 results to topK', () => {
+    const pipeline = buildTextSearchPipeline({ indexName: 'text_bm25', query: 'x', topK: 5 })
+    const limit = pipeline.find((stage) => stage.$limit !== undefined)?.$limit
+    expect(limit).toBe(5)
+  })
+
+  it('projects the stored chunk fields plus the BM25 searchScore', () => {
+    const pipeline = buildTextSearchPipeline({ indexName: 'text_bm25', query: 'x', topK: 1 })
+    const project = pipeline.find((stage) => stage.$project !== undefined)?.$project
+    expect(project).toMatchObject({
+      _id: 0,
+      documentId: 1,
+      citablePathKey: 1,
+      text: 1,
+      score: { $meta: 'searchScore' },
     })
   })
 })

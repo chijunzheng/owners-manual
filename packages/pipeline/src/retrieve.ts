@@ -16,8 +16,13 @@ import { SEGMENT_KINDS, type CitablePath, type SegmentKind } from '@owners-manua
 
 import { type EmbeddingProvider } from './embedding.js'
 
-/** The provenance stage a candidate reached the candidate set through. */
-export type RetrievalStage = 'vector' | 'bm25' | 'graph' | 'rerank'
+/**
+ * The provenance stage a candidate reached the candidate set through. `vector`
+ * and `bm25` are the single-stage tags; `hybrid` marks a candidate surfaced by
+ * BOTH the vector and BM25 stages and fused by RRF (#14); `graph` and `rerank`
+ * are reserved for the later agent path (#16).
+ */
+export type RetrievalStage = 'vector' | 'bm25' | 'hybrid' | 'graph' | 'rerank'
 
 /** A raw row returned by the vector search executor. */
 export interface VectorSearchHit {
