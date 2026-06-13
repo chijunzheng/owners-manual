@@ -15,11 +15,16 @@ full-corpus number is the live debug-endpoint run.
 from __future__ import annotations
 
 from owners_manual_evals.compare_hybrid import (
+    _corpus_resolvable_cites,
     load_fixture_retrieval_corpus,
     run_live_comparison,
     run_offline_comparison,
 )
+from owners_manual_evals.golden_item import AnswerPoint, GoldenItem, Provenance
+from owners_manual_evals.golden_loader import GoldenSet
 from owners_manual_evals.golden_v0 import load_golden_v0_documents, load_golden_v0_set
+from owners_manual_evals.metrics import parse_path_key
+from owners_manual_evals.offline_retrieval import RetrievalDoc
 
 
 def test_loads_the_committed_fixture_retrieval_corpus() -> None:
@@ -94,3 +99,62 @@ def test_run_live_comparison_drives_both_modes_over_the_full_golden_set() -> Non
     overall = result.comparison.overall
     assert overall.hybrid_hit_rate >= overall.vector_only_hit_rate
     assert overall.count > 0
+
+
+def test_corpus_resolvable_cites_keeps_only_cites_on_documents_the_corpus_carries() -> None:
+    # The offline corpus carries fixture documents, never statute text. The helper
+    # keeps only the cites whose document the corpus holds, so a mixed-cite item's
+    # statute requirement is dropped from the offline hit-rate denominator.
+    item = GoldenItem(
+        id="mixed",
+        behavior_class="flag-void-clause",
+        verified=True,
+        question="q",
+        answer_points=(AnswerPoint(id="a1", text="t"),),
+        required_cites=(
+            parse_path_key("fixture-lease|section:pets|clause:p-1"),
+            parse_path_key("rta-2006|part:III|section:20|subsection:1"),
+        ),
+        provenance=Provenance(source="s", reference="r"),
+    )
+    kept = _corpus_resolvable_cites(item, frozenset({"fixture-lease"}))
+    assert tuple(cite.document_id for cite in kept) == ("fixture-lease",)
+
+
+def test_offline_comparison_excludes_unretrievable_statute_cites_from_the_denominator() -> None:
+    # A void-clause item that cites BOTH a fixture clause (the offline corpus
+    # carries it) and the RTA section it violates (statute text is never committed,
+    # so it is never in the offline corpus). The offline corpus can only ever
+    # retrieve the fixture cite, so the statute cite is a permanently-unreachable
+    # requirement: it must NOT sit in the hit-rate denominator, or it deflates both
+    # arms and halves the reported delta (Codex P2, PR #40).
+    documents = load_golden_v0_documents()
+    fixture_key = "fixture-lease|section:pets|clause:p-1"
+    item = GoldenItem(
+        id="mixed-cite-void-clause",
+        behavior_class="flag-void-clause",
+        verified=True,
+        question="Is the pet deposit clause void under the RTA?",
+        answer_points=(AnswerPoint(id="a1", text="The pet deposit clause is void."),),
+        required_cites=(
+            parse_path_key(fixture_key),
+            parse_path_key("rta-2006|part:III|section:20|subsection:1"),
+        ),
+        provenance=Provenance(source="test", reference="mixed-cite gate test"),
+    )
+    golden = GoldenSet(version=1, items=(item,))
+    corpus = (
+        RetrievalDoc(
+            document_id="fixture-lease",
+            citable_path_key=fixture_key,
+            text="No pets are allowed and any pet deposit collected is void.",
+        ),
+    )
+
+    result = run_offline_comparison(golden=golden, documents=documents, corpus=corpus, top_k=8)
+
+    # The fixture cite IS retrieved; the unreachable statute cite is filtered out of
+    # the denominator, so the hit rate is 1.0 (1 of 1 fixture cite), not 0.5 (1 of 2
+    # with the statute cite still counted).
+    assert result.comparison.overall.vector_only_hit_rate == 1.0
+    assert result.comparison.overall.hybrid_hit_rate == 1.0

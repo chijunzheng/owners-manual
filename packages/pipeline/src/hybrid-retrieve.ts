@@ -121,6 +121,16 @@ export async function retrieveHybrid(
   ]
   const fused = fuseByRrf(lists, { k: options.rrfK ?? RRF_K_DEFAULT })
 
+  // Authority filter — INTERIM: applied here, AFTER fusion, over stages each
+  // already truncated to `perStageK`. ADR 0002 calls for a true metadata
+  // PRE-filter pushed into `$vectorSearch.filter` / `$search` (the indexes already
+  // declare `documentId` filterable, see atlas-index.ts). Without it, if more than
+  // `perStageK` higher-ranked chunks are all at disallowed authority levels, a
+  // matching higher-authority chunk ranked just below that window is dropped before
+  // this filter sees it. The faithful pre-filter lands with the live hybrid-arm
+  // ingestion (deferred from #14, where it is not reachable end-to-end yet) and is
+  // tracked as a follow-up. This post-filter still GUARANTEES no candidate at a
+  // disallowed authority level is ever returned.
   const allow = options.authorityLevels ? new Set(options.authorityLevels) : undefined
 
   const candidates: HybridCandidate[] = []

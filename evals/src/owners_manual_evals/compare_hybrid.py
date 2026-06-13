@@ -19,9 +19,10 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .arm_comparison import HitRateComparison, build_hit_rate_comparison, render_hit_rate_comparison
+from .citable_path import CitablePath
 from .cite_matcher import resolves_to_node
 from .document_tree import DocumentTree
 from .golden_fixtures import resolve_fixtures_dir
@@ -60,6 +61,21 @@ class OfflineComparisonResult:
     items: tuple[GoldenItem, ...]
 
 
+def _corpus_resolvable_cites(
+    item: GoldenItem, corpus_doc_ids: frozenset[str]
+) -> tuple[CitablePath, ...]:
+    """An item's required cites the offline corpus could actually retrieve — those
+    on a document the corpus carries.
+
+    The offline corpus holds only the designed fixtures (no Crown statute text), so
+    a statute cite can never be retrieved offline. Left in the hit-rate denominator
+    it is a PERMANENTLY-unreachable requirement, not a retrieval miss: it deflates
+    BOTH arms equally and halves the measured delta. Dropping it makes the offline
+    number a clean designed-fixture-cite hit rate (the ``--live`` run measures the
+    full cite set, statute cites included)."""
+    return tuple(cite for cite in item.required_cites if cite.document_id in corpus_doc_ids)
+
+
 def _items_with_corpus_resolvable_cites(
     golden: GoldenSet,
     documents: Sequence[DocumentTree],
@@ -93,15 +109,20 @@ def run_offline_comparison(
     the delta isolates the BM25+RRF mechanism.
     """
     items = _items_with_corpus_resolvable_cites(golden, documents, corpus)
+    corpus_doc_ids = frozenset(doc.document_id for doc in corpus)
 
     vector_scores = []
     hybrid_scores = []
     for item in items:
+        # Score only the cites the offline corpus could retrieve: a statute cite the
+        # fixtures don't carry is a permanently-unreachable requirement, not a
+        # retrieval miss, so it must not sit in the hit-rate denominator (#14 gate).
+        scored_item = replace(item, required_cites=_corpus_resolvable_cites(item, corpus_doc_ids))
         vector = retrieve_vector_only(query=item.question, corpus=corpus, top_k=top_k)
         hybrid = retrieve_hybrid(query=item.question, corpus=corpus, top_k=top_k)
         vector_scores.append(
             score_item(
-                item,
+                scored_item,
                 observed_behavior=item.behavior_class,
                 candidate_cites=(),
                 retrieved_path_keys=tuple(c.citable_path_key for c in vector),
@@ -110,7 +131,7 @@ def run_offline_comparison(
         )
         hybrid_scores.append(
             score_item(
-                item,
+                scored_item,
                 observed_behavior=item.behavior_class,
                 candidate_cites=(),
                 retrieved_path_keys=tuple(c.citable_path_key for c in hybrid),
