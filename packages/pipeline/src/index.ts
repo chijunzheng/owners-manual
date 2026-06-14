@@ -178,3 +178,64 @@ export {
   type AnswerResponse,
   type ServiceDeps,
 } from './service.js'
+
+export {
+  AGENT_LOOP_CAPS,
+  GUARD_VERDICTS,
+  guardVerdictToBehavior,
+  type AgentModel,
+  type AgentRetrieve,
+  type AgentRetrieveDeps,
+  type AgentState,
+  type CriticDecision,
+  type GuardDecision,
+  type GuardVerdict,
+  type RetrievalHop,
+  type RetrievalPlan,
+} from './agent-types.js'
+
+export {
+  AGENT_NODES,
+  AGENT_RECURSION_LIMIT,
+  buildAgentGraph,
+  runAgentGraph,
+  type AgentGraphDeps,
+  type AgentGraphResult,
+  type AgentNodeName,
+} from './agent-graph.js'
+
+export {
+  AGENT_TOP_K_DEFAULT,
+  clampEnvelopeToCandidates,
+  clampPlan,
+  mergeCandidates,
+  rerankByAuthority,
+  routeAfterCritic,
+  routeAfterGuard,
+  type AgentStatePatch,
+} from './agent-nodes.js'
+
+export {
+  runAgent,
+  type AgentTracer,
+  type RunAgentOptions,
+  type RunAgentResult,
+} from './agent-run.js'
+
+export {
+  buildAgentSynthesisPrompt,
+  buildCriticPrompt,
+  buildGuardPrompt,
+  buildPlannerPrompt,
+} from './agent-prompts.js'
+
+export {
+  chatRequestSchema,
+  formatSseEvent,
+  handleChatRequest,
+  parseChatRequest,
+  type ChatEvent,
+  type ChatEventSink,
+  type ChatRequest,
+  type ChatServiceDeps,
+} from './chat-service.js'

@@ -5,18 +5,19 @@
  * from the committed manifest + pinned pipeline config, and serves:
  *
  *   POST /answer          { question, itemId, traceId? }       → AnswerResponse
+ *   POST /chat            { question, itemId, traceId? }       → SSE token/result stream
  *   POST /retrieve/debug  { question, topK?, authorityLevels? } → RetrieveDebugResponse
  *   GET  /retrieve/debug?q=…&topK=…                             → RetrieveDebugResponse
  *   GET  /healthz                                               → { ok: true }
  *
- * The naive-rag `/answer` path is FROZEN (#14): the new `/retrieve/debug`
- * endpoint (ADR 0003: part of the contract) is additive — it exposes hybrid
- * retrieval's ranked candidates WITH stage-provenance so the harness can compute
- * the pre-synthesis hit-rate and the hybrid-vs-vector comparison without a
- * synthesis call. The propagated trace id flows from the request body into the
- * Langfuse trace so the service spans nest under the harness experiment (AC2).
- * Live by design and not unit-tested — every decision it composes is covered
- * upstream against fakes.
+ * The naive-rag `/answer` path is FROZEN (#14): the `/retrieve/debug` endpoint
+ * (ADR 0003) and the `/chat` SSE endpoint (#15) are additive SIBLINGS — `/chat`
+ * runs the bounded Guard→Critic agent (`ChatVertexAI`, ADR 0005) and STREAMS
+ * tokens to the client while the same run yields the structured envelope the
+ * harness scores (one artifact, two consumers). The propagated trace id flows
+ * from the request body into the Langfuse trace so the service spans nest under
+ * the harness experiment (AC2). Live by design and not unit-tested — every
+ * decision it composes is covered upstream against fakes.
  */
 
 import { createServer } from 'node:http'
@@ -27,6 +28,12 @@ import { NAIVE_RAG_PIPELINE_CONFIG } from './pipeline-config.js'
 import { buildRunRecord } from './run-record.js'
 import { handleAnswerRequest, parseAnswerRequest, resolveTraceContext } from './service.js'
 import {
+  formatSseEvent,
+  handleChatRequest,
+  parseChatRequest,
+  type ChatServiceDeps,
+} from './chat-service.js'
+import {
   handleRetrieveDebugRequest,
   parseRetrieveDebugRequest,
   type RetrieveDebugRequest,
@@ -35,6 +42,8 @@ import { GOLDEN_V0_DOCUMENTS, loadFixtureSnapshot } from './corpus-loader.js'
 import { langfuseEnabled, loadRootEnv, repoPath, resolveLiveConfig } from './live/env.js'
 import { connectMongoStore } from './live/mongo-store.js'
 import { createVertexLlm } from './live/vertex-llm.js'
+import { createVertexAgentModel } from './live/vertex-agent.js'
+import { createAgentRetrieve } from './live/agent-retrieve.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
 import { loadManifestSnapshot } from './live/manifest-snapshot.js'
 
@@ -117,6 +126,24 @@ async function main(): Promise<void> {
     topK: config.retrieval.topK,
   }
 
+  // The agent (#15) binds Gemini-on-Vertex behind the four node seams and closes
+  // #14's frozen hybrid retrieval over the same provider + Atlas executors. Its
+  // Langfuse traces carry the agent arm tags so they filter apart from naive-rag.
+  const agentTracerHandle = tracingOn
+    ? createLangfuseTracer(process.env, undefined, ['agent', 'arm:agent'])
+    : undefined
+  const chatDeps: ChatServiceDeps = {
+    model: createVertexAgentModel({ model: config.runtime.model, location: live.vertexLocation }),
+    retrieve: createAgentRetrieve({
+      provider,
+      vectorSearch: store.search,
+      textSearch: store.textSearch,
+    }),
+    runRecord,
+    topK: config.retrieval.topK,
+    tracer: agentTracerHandle?.tracer,
+  }
+
   const server = createServer((req, res) => {
     void (async () => {
       try {
@@ -135,6 +162,24 @@ async function main(): Promise<void> {
           await tracerHandle?.flush()
           res.writeHead(200, { 'content-type': 'application/json' })
           res.end(JSON.stringify(response))
+          return
+        }
+        if (req.method === 'POST' && req.url === '/chat') {
+          const body = parseChatRequest(JSON.parse(await readBody(req)))
+          const context = resolveTraceContext(body.traceId, req.headers.traceparent)
+          const request = { ...body, traceId: context.traceId, parentSpanId: context.parentSpanId }
+          // Open the SSE stream up front; every agent event is written as a frame
+          // and flushed so the client sees tokens as synthesis streams (AC1).
+          res.writeHead(200, {
+            'content-type': 'text/event-stream',
+            'cache-control': 'no-cache',
+            connection: 'keep-alive',
+          })
+          await handleChatRequest(request, chatDeps, (event) => {
+            res.write(formatSseEvent(event))
+          })
+          await agentTracerHandle?.flush()
+          res.end()
           return
         }
         const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`)
@@ -163,6 +208,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (): Promise<void> => {
     await tracerHandle?.shutdown().catch(() => {})
+    await agentTracerHandle?.shutdown().catch(() => {})
     await store.close().catch(() => {})
     server.close()
   }
@@ -173,7 +219,9 @@ async function main(): Promise<void> {
     process.stdout.write(`naive-rag service listening on http://127.0.0.1:${PORT}\n`)
     process.stdout.write(`  build ${runRecord.corpusBuildHash}\n`)
     process.stdout.write(`  model ${config.runtime.model} · embed ${config.embedding.model}\n`)
-    process.stdout.write(`  endpoints: POST /answer · GET|POST /retrieve/debug · GET /healthz\n`)
+    process.stdout.write(
+      `  endpoints: POST /answer · POST /chat (SSE) · GET|POST /retrieve/debug · GET /healthz\n`,
+    )
     process.stdout.write(
       `  langfuse tracing: ${tracingOn ? 'on' : 'off (keys unset/placeholder)'}\n`,
     )
