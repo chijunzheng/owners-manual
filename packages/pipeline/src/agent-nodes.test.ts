@@ -229,6 +229,48 @@ describe('criticNode / routeAfterCritic', () => {
     expect(routeAfterCritic(state({ criticDecision: patch.criticDecision }))).toBe('finish')
   })
 
+  it('overrides a model "grounded" verdict when a claim carries no retrieved cite', async () => {
+    // The model critic sees only prose + sources, not the claim→cite mapping, so it
+    // can pass an envelope whose claim has cites:[] (clampEnvelopeToCandidates can
+    // strip a claim's only cite). The deterministic pin-cite gate must catch that.
+    const envelope = parseAnswerEnvelope({
+      behaviorClass: 'answer',
+      answer: 'The landlord pays. Repairs are always free.',
+      claims: [
+        { text: 'The landlord pays.', cites: [REPAIR_CANDIDATE.path] },
+        { text: 'Repairs are always free.', cites: [] },
+      ],
+    })
+    const patch = await criticNode(
+      state({ candidates: [REPAIR_CANDIDATE], envelope }),
+      scriptedModel({ critiques: [{ grounded: true, ungroundedClaims: [] }] }),
+    )
+    expect(patch.criticDecision?.grounded).toBe(false)
+    expect(patch.criticDecision?.ungroundedClaims).toContain('Repairs are always free.')
+    // and the graph must not finish with an uncited claim
+    expect(routeAfterCritic(state({ criticDecision: patch.criticDecision }))).not.toBe('finish')
+  })
+
+  it('keeps the model grounded verdict when every claim has a retrieved cite', async () => {
+    // The deterministic gate is narrow: a fully pin-cited answer still finishes on a
+    // model pass — the override fires only for genuinely uncited claims.
+    const envelope = parseAnswerEnvelope({
+      behaviorClass: 'answer',
+      answer: 'The landlord must keep the unit in a good state of repair.',
+      claims: [
+        {
+          text: 'The landlord must keep the unit in a good state of repair.',
+          cites: [REPAIR_CANDIDATE.path],
+        },
+      ],
+    })
+    const patch = await criticNode(
+      state({ candidates: [REPAIR_CANDIDATE], envelope }),
+      scriptedModel(),
+    )
+    expect(patch.criticDecision?.grounded).toBe(true)
+  })
+
   it('routes to re-retrieve when ungrounded and under the re-retrieval cap', () => {
     const s = state({
       criticDecision: { grounded: false, ungroundedClaims: ['x'] },
@@ -270,6 +312,29 @@ describe('degradeNode', () => {
     expect(patch.degraded).toBe(true)
     expect(patch.envelope?.claims).toHaveLength(1)
     expect(patch.envelope?.claims[0]!.text).toBe('The landlord pays.')
+  })
+
+  it('rebuilds the degraded prose from kept claims so withheld content never survives', () => {
+    // The dropped claim must not linger in the human-facing answer while the note
+    // says it was withheld — rebuild the prose from the kept claims, not the draft.
+    const envelope = parseAnswerEnvelope({
+      behaviorClass: 'answer',
+      answer: 'The landlord pays. The tenant also pays everything.',
+      claims: [
+        { text: 'The landlord pays.', cites: [REPAIR_CANDIDATE.path] },
+        { text: 'The tenant also pays everything.', cites: [] },
+      ],
+    })
+    const patch = degradeNode(
+      state({
+        candidates: [REPAIR_CANDIDATE],
+        envelope,
+        criticDecision: { grounded: false, ungroundedClaims: ['The tenant also pays everything.'] },
+      }),
+    )
+    expect(patch.envelope?.answer).not.toContain('The tenant also pays everything.')
+    expect(patch.envelope?.answer).toContain('The landlord pays.')
+    expect(patch.envelope?.answer).toMatch(/withheld/i)
   })
 
   it('degrades to an honest no-answer when nothing is grounded', () => {

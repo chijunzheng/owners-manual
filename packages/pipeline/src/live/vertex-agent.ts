@@ -52,16 +52,19 @@ const guardSchema = z
 
 const planSchema = z
   .object({
-    hops: z
-      .array(
-        z
-          .object({
-            query: z.string(),
-            authorityLevels: z.array(z.enum(AUTHORITY_LEVELS)).optional(),
-          })
-          .strict(),
-      )
-      .min(1),
+    // No `.min(1)`: an empty hop list is tolerated here and recovered by the
+    // graph's `clampPlan` (which floors it to a single question-driven hop). The
+    // hop FLOOR lives in clampPlan, not duplicated here — rejecting an empty plan
+    // at parse time would defeat that designed recovery and turn a schema-valid
+    // empty Gemini plan into an error stream instead of safe single-hop retrieval.
+    hops: z.array(
+      z
+        .object({
+          query: z.string(),
+          authorityLevels: z.array(z.enum(AUTHORITY_LEVELS)).optional(),
+        })
+        .strict(),
+    ),
     multiHop: z.boolean(),
   })
   .strict()

@@ -233,7 +233,26 @@ export async function criticNode(state: AgentState, model: AgentModel): Promise<
     answer,
     candidates: state.candidates,
   })
-  return { criticDecision: critic }
+
+  // Deterministic pin-cite gate. The model critic only sees the prose + sources,
+  // not the claim→cite mapping, so it can pass a claim whose cites were all
+  // stripped (clampEnvelopeToCandidates drops any non-retrieved cite). A claim
+  // with no cite is ungrounded BY CONSTRUCTION — and because clamping already
+  // removed unretrieved cites, `cites.length > 0` ⟹ a retrieved cite backs it.
+  // This override is authoritative over the model verdict (CONTEXT.md, "Critic
+  // gate": every claim carries a pin-cite verified against retrieved chunks).
+  const uncited = (state.envelope?.claims ?? []).filter((claim) => claim.cites.length === 0)
+  if (uncited.length === 0) {
+    return { criticDecision: critic }
+  }
+  return {
+    criticDecision: {
+      grounded: false,
+      ungroundedClaims: [
+        ...new Set([...critic.ungroundedClaims, ...uncited.map((claim) => claim.text)]),
+      ],
+    },
+  }
 }
 
 /**
@@ -270,9 +289,13 @@ export function degradeNode(state: AgentState): AgentStatePatch {
   const keptClaims = envelope.claims.filter(
     (claim) => claim.cites.length > 0 && !ungrounded.has(claim.text),
   )
+  // Rebuild the human-facing prose from ONLY the kept claims — never the original
+  // draft. The draft answer contains the ungrounded sentences too, so reusing it
+  // would show withheld content while the note claims it was withheld (CONTEXT.md,
+  // "Critic gate": degrade honestly, never parrot unconfirmed text).
   const note =
     keptClaims.length > 0
-      ? `${envelope.answer}\n\n(Some statements could not be confirmed against the cited sources and were withheld.)`
+      ? `${keptClaims.map((claim) => claim.text).join(' ')}\n\n(Some statements could not be confirmed against the cited sources and were withheld.)`
       : 'The retrieved sources do not confirm an answer to this question; please consult the authoritative source directly.'
   return {
     degraded: true,
