@@ -64,6 +64,8 @@ class AnswerResult:
     corpus_build_hash: str
     pipeline_config_hash: str
     latency_ms: Mapping[str, float]
+    #: The produced answer prose — carried for the offline LLM judge (#18).
+    answer_text: str = ""
 
 
 def _parse_candidate_cites(envelope: dict) -> tuple[CitablePath, ...]:
@@ -108,6 +110,7 @@ class NaiveRagClient:
             corpus_build_hash=run_record["corpusBuildHash"],
             pipeline_config_hash=run_record["pipelineConfigHash"],
             latency_ms=response.get("latencyMs", {}),
+            answer_text=str(envelope.get("answer", "")),
         )
 
 

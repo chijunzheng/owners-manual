@@ -239,3 +239,55 @@ export {
   type ChatRequest,
   type ChatServiceDeps,
 } from './chat-service.js'
+
+export {
+  CORPORA,
+  corpusOfDocument,
+  corpusOfInputFile,
+  documentsForCorpora,
+  type CorpusTag,
+} from './corpus-tag.js'
+
+export {
+  buildStuffedCandidates,
+  permuteCanonicalOrder,
+  stuffedSourceCount,
+  synthesizeStuffed,
+  type StuffLlmComplete,
+  type StuffUsage,
+  type SynthesizeStuffedOptions,
+  type SynthesizeStuffedResult,
+} from './stuff-synthesis.js'
+
+export {
+  runStuff,
+  stuffCostUsd,
+  type RunStuffOptions,
+  type RunStuffResult,
+  type StuffArm,
+  type StuffCostRates,
+  type StuffTracer,
+} from './stuff.js'
+
+export {
+  handleStuffRequest,
+  parseStuffOracleRequest,
+  parseStuffRequest,
+  stuffOracleRequestSchema,
+  stuffRequestSchema,
+  type StuffOracleRequestBody,
+  type StuffRequest,
+  type StuffRequestBody,
+  type StuffResponse,
+  type StuffServiceDeps,
+} from './stuff-service.js'
+
+export {
+  STUFF_RUNTIME_CONFIG,
+  buildChunksForArm,
+  stuffRuntimeConfigSchema,
+  type BuildChunksForArmOptions,
+  type StuffRuntimeConfig,
+} from './stuff-config.js'
+
+export { mapVertexUsage, type VertexUsageMetadata } from './stuff-usage.js'

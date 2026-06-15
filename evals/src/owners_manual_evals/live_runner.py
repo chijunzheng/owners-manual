@@ -116,6 +116,7 @@ def build_live_answer(
             latency_ms=dict(result.latency_ms),
             cost_usd=0.0,  # cost-per-item lands when Vertex usage flows through (#14+)
             trace_id=trace_id,
+            answer_text=result.answer_text,
         )
 
     return answer, langfuse
@@ -172,6 +173,7 @@ def build_offline_answer(*, service_url: str, run_name: str) -> AnswerFn:
             latency_ms=dict(result.latency_ms),
             cost_usd=0.0,
             trace_id=trace_id,
+            answer_text=result.answer_text,
         )
 
     return answer

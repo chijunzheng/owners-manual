@@ -34,7 +34,12 @@ ScoreSink = Callable[..., None]
 @dataclass(frozen=True, slots=True)
 class ItemOutcome:
     """What the service returned for one item — the input to deterministic
-    scoring. The live answer function builds this from the HTTP response."""
+    scoring. The live answer function builds this from the HTTP response.
+
+    ``answer_text`` is the produced answer prose; it is optional (defaults to
+    empty) and ignored by the deterministic scorer, carried here so the offline
+    LLM judge (#18) can grade an item's answer points BESIDE the deterministic
+    metrics without reshaping the frozen single-arm/paired runners."""
 
     item_id: str
     observed_behavior: str
@@ -43,6 +48,7 @@ class ItemOutcome:
     latency_ms: Mapping[str, float]
     cost_usd: float
     trace_id: str | None
+    answer_text: str = ""
 
 
 #: A per-item answer function: take a golden item, return its service outcome.

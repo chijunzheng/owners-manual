@@ -20,9 +20,11 @@ import { type EmbeddingProvider } from './embedding.js'
  * The provenance stage a candidate reached the candidate set through. `vector`
  * and `bm25` are the single-stage tags; `hybrid` marks a candidate surfaced by
  * BOTH the vector and BM25 stages and fused by RRF (#14); `graph` and `rerank`
- * are reserved for the later agent path (#16).
+ * are reserved for the later agent path (#16); `stuffed` marks a candidate that
+ * reached the model with NO retrieval at all — the whole corpus stuffed into
+ * context (#18 stuffing arms), so its provenance is "everything", not a stage.
  */
-export type RetrievalStage = 'vector' | 'bm25' | 'hybrid' | 'graph' | 'rerank'
+export type RetrievalStage = 'vector' | 'bm25' | 'hybrid' | 'graph' | 'rerank' | 'stuffed'
 
 /** A raw row returned by the vector search executor. */
 export interface VectorSearchHit {

@@ -6,15 +6,20 @@
  *
  *   POST /answer          { question, itemId, traceId? }       → AnswerResponse
  *   POST /chat            { question, itemId, traceId? }       → SSE token/result stream
+ *   POST /stuff           { question, itemId, traceId?, orderSeed? } → StuffResponse
+ *   POST /stuff-oracle    { …, corpora: [...] }                → StuffResponse
  *   POST /retrieve/debug  { question, topK?, authorityLevels? } → RetrieveDebugResponse
  *   GET  /retrieve/debug?q=…&topK=…                             → RetrieveDebugResponse
  *   GET  /healthz                                               → { ok: true }
  *
  * The naive-rag `/answer` path is FROZEN (#14): the `/retrieve/debug` endpoint
- * (ADR 0003) and the `/chat` SSE endpoint (#15) are additive SIBLINGS — `/chat`
- * runs the bounded Guard→Critic agent (`ChatVertexAI`, ADR 0005) and STREAMS
- * tokens to the client while the same run yields the structured envelope the
- * harness scores (one artifact, two consumers). The propagated trace id flows
+ * (ADR 0003), the `/chat` SSE endpoint (#15), and the `/stuff` + `/stuff-oracle`
+ * stuffing arms (#18) are additive SIBLINGS — `/chat` runs the bounded
+ * Guard→Critic agent (`ChatVertexAI`, ADR 0005) and STREAMS tokens while the same
+ * run yields the structured envelope the harness scores; `/stuff` and
+ * `/stuff-oracle` run the SAME product model over the whole corpus (or the
+ * oracle-routed subset) with Vertex context caching, emitting the same envelope
+ * plus honest cost-per-question. The propagated trace id flows
  * from the request body into the Langfuse trace so the service spans nest under
  * the harness experiment (AC2). Live by design and not unit-tested — every
  * decision it composes is covered upstream against fakes.
@@ -22,6 +27,8 @@
 
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
+
+import { hierarchyChunker } from '@owners-manual/enrichment'
 
 import { createVoyageEmbeddingProvider } from './embedding.js'
 import { NAIVE_RAG_PIPELINE_CONFIG } from './pipeline-config.js'
@@ -38,10 +45,20 @@ import {
   parseRetrieveDebugRequest,
   type RetrieveDebugRequest,
 } from './retrieve-debug.js'
-import { GOLDEN_V0_DOCUMENTS, loadFixtureSnapshot } from './corpus-loader.js'
+import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest, loadFixtureSnapshot } from './corpus-loader.js'
+import { chunkParsedDocuments, type CorpusChunk } from './chunk-corpus.js'
+import { corpusOfDocument } from './corpus-tag.js'
+import { STUFF_RUNTIME_CONFIG, buildChunksForArm } from './stuff-config.js'
+import {
+  handleStuffRequest,
+  parseStuffOracleRequest,
+  parseStuffRequest,
+  type StuffServiceDeps,
+} from './stuff-service.js'
 import { langfuseEnabled, loadRootEnv, repoPath, resolveLiveConfig } from './live/env.js'
 import { connectMongoStore } from './live/mongo-store.js'
 import { createVertexLlm } from './live/vertex-llm.js'
+import { createVertexStuffLlm } from './live/vertex-stuff-llm.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
@@ -144,6 +161,52 @@ async function main(): Promise<void> {
     tracer: agentTracerHandle?.tracer,
   }
 
+  // The stuffing arms (#18) reuse the SAME product model (ADR 0005) with Vertex
+  // context caching, and stuff the committed corpus chunked by the SAME
+  // hierarchy chunker the index build uses. The chunks are built once here from
+  // the parsed corpus and grouped by document so `stuff` (entire corpus) and
+  // `stuff-oracle` (corpus-tag routed) share one canonical document order. The
+  // arms emit the additive `/stuff` + `/stuff-oracle` routes — the frozen
+  // `/answer` and `/chat` paths above are untouched.
+  const parsedCorpus = await loadCorpusForIngest({
+    documents: GOLDEN_V0_DOCUMENTS,
+    read: (relPath) => readFile(repoPath(relPath), 'utf8'),
+  })
+  const chunksByDocument = new Map<string, readonly CorpusChunk[]>(
+    parsedCorpus.map((entry) => [
+      entry.documentId,
+      chunkParsedDocuments([entry], hierarchyChunker),
+    ]),
+  )
+  const corpusByDocumentId = new Map(
+    GOLDEN_V0_DOCUMENTS.map((doc) => [doc.id, corpusOfDocument(doc)] as const),
+  )
+  const stuffTracerHandle = tracingOn
+    ? createLangfuseTracer(process.env, undefined, ['stuff', 'arm:stuff'])
+    : undefined
+  const stuffDeps: StuffServiceDeps = {
+    // INTERIM (#18 follow-up): no `cachedContentName` is provisioned yet, so live
+    // `/stuff` and `/stuff-oracle` currently run UNCACHED. The per-question cost
+    // stays honest — it is computed from the real `usage_metadata` and reflects no
+    // cache hit — but the promised context-cached baseline is not engaged. Creating
+    // the Vertex `CachedContent` over the canonical corpus prefix (keyed to the
+    // corpus build hash, with refresh/TTL) is a live-only lifecycle deferred to the
+    // live-run milestone (alongside live hybrid-arm ingestion); the adapter already
+    // accepts `cachedContentName` for when it lands. Tracked as a follow-up.
+    complete: createVertexStuffLlm({
+      model: STUFF_RUNTIME_CONFIG.model,
+      location: live.vertexLocation,
+    }),
+    runRecord,
+    chunksForArm: buildChunksForArm({
+      documentIds: GOLDEN_V0_DOCUMENTS.map((doc) => doc.id),
+      chunksByDocument,
+      corpusOfDocument: (id) => corpusByDocumentId.get(id) ?? '',
+    }),
+    costRates: STUFF_RUNTIME_CONFIG.costRates,
+    tracer: stuffTracerHandle?.tracer,
+  }
+
   const server = createServer((req, res) => {
     void (async () => {
       try {
@@ -182,6 +245,35 @@ async function main(): Promise<void> {
           res.end()
           return
         }
+        if (req.method === 'POST' && req.url === '/stuff') {
+          const body = parseStuffRequest(JSON.parse(await readBody(req)))
+          const context = resolveTraceContext(body.traceId, req.headers.traceparent)
+          const response = await handleStuffRequest(
+            { ...body, arm: 'stuff', traceId: context.traceId, parentSpanId: context.parentSpanId },
+            stuffDeps,
+          )
+          await stuffTracerHandle?.flush()
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(response))
+          return
+        }
+        if (req.method === 'POST' && req.url === '/stuff-oracle') {
+          const body = parseStuffOracleRequest(JSON.parse(await readBody(req)))
+          const context = resolveTraceContext(body.traceId, req.headers.traceparent)
+          const response = await handleStuffRequest(
+            {
+              ...body,
+              arm: 'stuff-oracle',
+              traceId: context.traceId,
+              parentSpanId: context.parentSpanId,
+            },
+            stuffDeps,
+          )
+          await stuffTracerHandle?.flush()
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(response))
+          return
+        }
         const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`)
         if (req.method === 'POST' && url.pathname === '/retrieve/debug') {
           const request = parseRetrieveDebugRequest(JSON.parse(await readBody(req)))
@@ -209,6 +301,7 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     await tracerHandle?.shutdown().catch(() => {})
     await agentTracerHandle?.shutdown().catch(() => {})
+    await stuffTracerHandle?.shutdown().catch(() => {})
     await store.close().catch(() => {})
     server.close()
   }
@@ -220,7 +313,10 @@ async function main(): Promise<void> {
     process.stdout.write(`  build ${runRecord.corpusBuildHash}\n`)
     process.stdout.write(`  model ${config.runtime.model} · embed ${config.embedding.model}\n`)
     process.stdout.write(
-      `  endpoints: POST /answer · POST /chat (SSE) · GET|POST /retrieve/debug · GET /healthz\n`,
+      `  endpoints: POST /answer · POST /chat (SSE) · POST /stuff · POST /stuff-oracle · GET|POST /retrieve/debug · GET /healthz\n`,
+    )
+    process.stdout.write(
+      `  stuff arms: model ${STUFF_RUNTIME_CONFIG.model} · context caching ${STUFF_RUNTIME_CONFIG.contextCaching ? 'on' : 'off'}\n`,
     )
     process.stdout.write(
       `  langfuse tracing: ${tracingOn ? 'on' : 'off (keys unset/placeholder)'}\n`,
