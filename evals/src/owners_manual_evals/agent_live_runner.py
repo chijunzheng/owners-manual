@@ -88,6 +88,7 @@ def _outcome(item: GoldenItem, result: Any, trace_id: str) -> ItemOutcome:
         latency_ms=dict(result.latency_ms),
         cost_usd=0.0,  # cost-per-item lands when Vertex usage flows through (later)
         trace_id=trace_id,
+        answer_text=getattr(result, "answer_text", ""),
     )
 
 

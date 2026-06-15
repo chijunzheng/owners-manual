@@ -78,6 +78,8 @@ class ChatResult:
     latency_ms: Mapping[str, float]
     degraded: bool
     tokens: tuple[str, ...] = field(default=())
+    #: The produced answer prose — carried for the offline LLM judge (#18).
+    answer_text: str = ""
 
 
 def _parse_candidate_cites(envelope: dict) -> tuple[CitablePath, ...]:
@@ -178,6 +180,7 @@ class AgentChatClient:
             latency_ms=result_event.get("latencyMs", {}),
             degraded=bool(result_event.get("degraded", False)),
             tokens=tuple(tokens),
+            answer_text=str(envelope.get("answer", "")),
         )
 
 
