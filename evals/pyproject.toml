@@ -21,6 +21,7 @@ compare-hybrid = "owners_manual_evals.compare_hybrid:main"
 compare-arms = "owners_manual_evals.compare_arms:main"
 compare-four-arms = "owners_manual_evals.compare_four_arms:main"
 order-probe = "owners_manual_evals.order_probe:main"
+run-variance = "owners_manual_evals.run_variance:main"
 
 [dependency-groups]
 dev = [
