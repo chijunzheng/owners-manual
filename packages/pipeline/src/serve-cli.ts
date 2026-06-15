@@ -185,6 +185,14 @@ async function main(): Promise<void> {
     ? createLangfuseTracer(process.env, undefined, ['stuff', 'arm:stuff'])
     : undefined
   const stuffDeps: StuffServiceDeps = {
+    // INTERIM (#18 follow-up): no `cachedContentName` is provisioned yet, so live
+    // `/stuff` and `/stuff-oracle` currently run UNCACHED. The per-question cost
+    // stays honest — it is computed from the real `usage_metadata` and reflects no
+    // cache hit — but the promised context-cached baseline is not engaged. Creating
+    // the Vertex `CachedContent` over the canonical corpus prefix (keyed to the
+    // corpus build hash, with refresh/TTL) is a live-only lifecycle deferred to the
+    // live-run milestone (alongside live hybrid-arm ingestion); the adapter already
+    // accepts `cachedContentName` for when it lands. Tracked as a follow-up.
     complete: createVertexStuffLlm({
       model: STUFF_RUNTIME_CONFIG.model,
       location: live.vertexLocation,

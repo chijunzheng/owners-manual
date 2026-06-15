@@ -208,6 +208,35 @@ def scripted_judge(
     return _ScriptedJudge(credited_by_point=credited_by_point, rationale=rationale)
 
 
+@dataclass(frozen=True, slots=True)
+class _NoOpJudge:
+    """A judge that credits NOTHING but returns a verdict for EVERY supplied point."""
+
+    rationale: str = "no-judge (uncredited)"
+
+    def judge(
+        self,
+        *,
+        question: str,
+        answer_text: str,
+        points: Sequence[AnswerPoint],
+    ) -> Sequence[JudgePointVerdict]:
+        _ = (question, answer_text)
+        return [
+            JudgePointVerdict(point_id=point.id, credited=False, rationale=self.rationale)
+            for point in points
+        ]
+
+
+def no_op_judge(*, rationale: str = "no-judge (uncredited)") -> JudgeClient:
+    """Build a no-op judge for ``--no-judge``: it credits nothing yet returns one
+    verdict per rubric point, so :func:`judge_item` does not raise and the
+    point-score column reads 0.0. Unlike an empty :func:`scripted_judge` (which
+    omits every point and violates the one-verdict-per-point contract), this is the
+    safe fallback before the live judge (Claude via the Agent SDK) is wired."""
+    return _NoOpJudge(rationale=rationale)
+
+
 __all__ = [
     "JudgePointVerdict",
     "JudgeResult",
@@ -216,4 +245,5 @@ __all__ = [
     "parse_judge_response",
     "judge_item",
     "scripted_judge",
+    "no_op_judge",
 ]

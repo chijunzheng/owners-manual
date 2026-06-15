@@ -69,7 +69,7 @@ def _run_arm(
     answer: AnswerFn,
     contexts: Mapping[str, Sequence[str]],
     judge_client: JudgeClient,
-    context_evaluator: ContextEvaluator,
+    context_evaluator: ContextEvaluator | None,
     score_sink: ScoreSink,
 ) -> ArmColumn:
     """Run one arm over the items: deterministic score + judge + (RAG-only) RAGAS,
@@ -95,17 +95,21 @@ def _run_arm(
         point_scores[item.id] = verdict.point_score
         write_judge_scores(verdict, trace_id=outcome.trace_id, score_sink=score_sink)
 
-        # RAGAS context metrics — RAG arms only (None for stuffing arms).
-        metrics = evaluate_context_metrics(
-            arm=arm,
-            question=item.question,
-            contexts=contexts.get(item.id, ()),
-            answer=outcome.answer_text,
-            required_cites=tuple(outcome.retrieved_path_keys),
-            evaluator=context_evaluator,
-        )
-        if metrics is not None:
-            context_metrics[item.id] = metrics
+        # RAGAS context metrics — RAG arms only, and only when RAGAS is enabled.
+        # Opt-in: a None evaluator leaves the RAG columns without RAGAS rather than
+        # forcing the live `ragas` build (a deferred ADR; `ragas` is not a declared
+        # dependency), so the four-arm table still renders.
+        if context_evaluator is not None:
+            metrics = evaluate_context_metrics(
+                arm=arm,
+                question=item.question,
+                contexts=contexts.get(item.id, ()),
+                answer=outcome.answer_text,
+                required_cites=tuple(outcome.retrieved_path_keys),
+                evaluator=context_evaluator,
+            )
+            if metrics is not None:
+                context_metrics[item.id] = metrics
 
     return ArmColumn(
         scores=tuple(scores),
@@ -121,7 +125,7 @@ def run_four_arm_comparison(
     answers: Mapping[str, AnswerFn],
     contexts_by_arm: Mapping[str, Mapping[str, Sequence[str]]],
     judge_client: JudgeClient,
-    context_evaluator: ContextEvaluator,
+    context_evaluator: ContextEvaluator | None,
     score_sink: ScoreSink,
 ) -> FourArmComparisonResult:
     """Run the identical item set through all four arms and build the four-arm table.
@@ -172,7 +176,13 @@ def _parse_args(argv: Sequence[str]):  # noqa: ANN202 — argparse.Namespace
     parser.add_argument(
         "--no-judge",
         action="store_true",
-        help="Skip the LLM judge (deterministic + RAGAS only). Use before the SDK credit is wired.",
+        help="Skip the LLM judge (deterministic only). Use before the SDK credit is wired.",
+    )
+    parser.add_argument(
+        "--ragas",
+        action="store_true",
+        help="Enable live RAGAS context metrics for the RAG arms (needs `ragas` installed). "
+        "Off by default; without it the RAG columns render without RAGAS values.",
     )
     return parser.parse_args(argv)
 
@@ -247,7 +257,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
     }
 
     judge_client = _resolve_judge(no_judge=args.no_judge)
-    context_evaluator = _resolve_context_evaluator()
+    context_evaluator = _resolve_context_evaluator(enable_ragas=args.ragas)
 
     try:
         result = run_four_arm_comparison(
@@ -270,19 +280,27 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
 
 def _resolve_judge(*, no_judge: bool):  # pragma: no cover - live wiring
     """The live judge (Claude via the Agent SDK), or a no-op when ``--no-judge``."""
-    from .judge import scripted_judge  # noqa: PLC0415
-
     if no_judge:
-        # A judge that credits nothing — leaves the point-score column at 0 until
-        # the Agent SDK credit is wired. The seam is identical to the live judge.
-        return scripted_judge({})
+        # Credits nothing, but returns one verdict per rubric point so judge_item
+        # does not raise and the point-score column reads 0.0 until the Agent SDK
+        # credit is wired. The seam is identical to the live judge.
+        from .judge import no_op_judge  # noqa: PLC0415
+
+        return no_op_judge()
     from .judge_live import build_claude_judge  # noqa: PLC0415
 
     return build_claude_judge()
 
 
-def _resolve_context_evaluator():  # pragma: no cover - live wiring
-    """The live RAGAS evaluator (lazy import keeps ragas out of the unit suite)."""
+def _resolve_context_evaluator(*, enable_ragas: bool):  # pragma: no cover - live wiring
+    """The live RAGAS evaluator when ``--ragas`` is set, else ``None`` (RAGAS off).
+
+    RAGAS-on-Vertex wiring is a deferred ADR and ``ragas`` is not a declared
+    dependency, so it is OPT-IN: without ``--ragas`` the comparison runs with the
+    RAG columns simply carrying no RAGAS metrics, instead of the live ``ragas``
+    build raising and taking the whole four-arm table down with it."""
+    if not enable_ragas:
+        return None
     from .ragas_live import build_ragas_context_evaluator  # noqa: PLC0415
 
     return build_ragas_context_evaluator()

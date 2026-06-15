@@ -173,6 +173,29 @@ def test_deterministic_scores_still_written_beside_the_judge() -> None:
     assert "judge_point_score" in names
 
 
+def test_runs_without_a_context_evaluator_when_ragas_is_disabled() -> None:
+    # RAGAS is opt-in: with no evaluator the four-arm comparison still runs (the
+    # RAG columns simply carry no RAGAS metrics) instead of the live RAGAS build
+    # crashing the whole table before any arm runs.
+    items = (_item("a1"), _item("a2"))
+    result = run_four_arm_comparison(
+        items=items,
+        documents=_DOCUMENTS,
+        answers={
+            "stuff": _arm_fn("stuff"),
+            "stuff-oracle": _arm_fn("oracle"),
+            "naive-rag": _arm_fn("naive"),
+            "agent": _arm_fn("agent"),
+        },
+        contexts_by_arm={},
+        judge_client=_judge(),
+        context_evaluator=None,
+        score_sink=lambda **_kw: None,
+    )
+    assert len(result.items) == 2
+    assert result.dashboard is not None
+
+
 def test_rejects_an_arm_with_a_missing_answer_function() -> None:
     items = (_item("a1"),)
     try:

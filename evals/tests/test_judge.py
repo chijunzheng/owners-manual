@@ -9,11 +9,14 @@ agent's scripted-fake-model convention from #15).
 
 from __future__ import annotations
 
+import pytest
+
 from owners_manual_evals.golden_item import parse_golden_item
 from owners_manual_evals.judge import (
     JudgePointVerdict,
     build_judge_prompt,
     judge_item,
+    no_op_judge,
     scripted_judge,
 )
 
@@ -64,6 +67,23 @@ def test_judge_item_point_score_is_the_fraction_of_points_credited() -> None:
     judge = scripted_judge({"duty": True, "covers-unit": False})
     result = judge_item(_item(), answer_text="…", judge_client=judge)
     assert result.point_score == 0.5  # 1 of 2 credited
+
+
+def test_empty_scripted_judge_violates_the_one_verdict_per_point_contract() -> None:
+    # Documents why --no-judge cannot use scripted_judge({}): the empty map emits
+    # NO verdicts, and judge_item requires one per rubric point, so it raises.
+    with pytest.raises(ValueError, match="omitted a verdict"):
+        judge_item(_item(), answer_text="…", judge_client=scripted_judge({}))
+
+
+def test_no_op_judge_credits_nothing_but_satisfies_the_per_point_contract() -> None:
+    # The --no-judge fallback: a verdict for EVERY point (so judge_item does not
+    # raise) but crediting nothing, leaving the point-score column at 0.0.
+    result = judge_item(_item(), answer_text="anything", judge_client=no_op_judge())
+    assert result.point_score == 0.0
+    assert len(result.point_verdicts) == 2
+    assert all(not v.credited for v in result.point_verdicts)
+    assert not result.all_points_credited
 
 
 def test_judge_item_all_points_credited_is_a_perfect_point_score() -> None:
