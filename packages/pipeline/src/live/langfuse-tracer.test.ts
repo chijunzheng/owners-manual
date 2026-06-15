@@ -89,4 +89,17 @@ describe('createLangfuseTracer', () => {
     handle.tracer.startTrace({ name: 'n', parentSpanId: 'b'.repeat(16) })
     expect(calls[0]?.kind).toBe('trace')
   })
+
+  it('tags a root-mode trace with the naive-rag arm by default', () => {
+    const { client, calls } = fakeClient()
+    createLangfuseTracer(env, client).tracer.startTrace({ name: 'n', traceId: 'a'.repeat(32) })
+    expect(calls[0]?.args).toMatchObject({ tags: ['naive-rag', 'arm:naive-rag'] })
+  })
+
+  it('tags a root-mode trace with the agent arm when agent tags are supplied (#15)', () => {
+    const { client, calls } = fakeClient()
+    const handle = createLangfuseTracer(env, client, ['agent', 'arm:agent'])
+    handle.tracer.startTrace({ name: 'owners-manual.agent', traceId: 'a'.repeat(32) })
+    expect(calls[0]?.args).toMatchObject({ tags: ['agent', 'arm:agent'] })
+  })
 })

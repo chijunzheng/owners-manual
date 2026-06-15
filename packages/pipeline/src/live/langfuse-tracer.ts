@@ -65,10 +65,17 @@ export interface LangfuseTracerHandle {
 
 const TAGS = ['naive-rag', 'arm:naive-rag']
 
-/** Build a Langfuse-backed tracer from env credentials. */
+/** Build a Langfuse-backed tracer from env credentials.
+ *
+ * `tags` label the root-mode trace by arm (default: the naive-rag arm); the
+ * agent route (#15) passes its own arm tags so naive-rag and agent runs are
+ * filterable apart in Langfuse without a second tracer implementation. In nested
+ * mode (the harness owns the trace) tags are not upserted — only the root span.
+ */
 export function createLangfuseTracer(
   env: NodeJS.ProcessEnv = process.env,
   client?: LangfuseLikeClient,
+  tags: string[] = TAGS,
 ): LangfuseTracerHandle {
   const publicKey = env.LANGFUSE_PUBLIC_KEY?.trim()
   const secretKey = env.LANGFUSE_SECRET_KEY?.trim()
@@ -111,7 +118,7 @@ export function createLangfuseTracer(
         name: options.name,
         input: options.input,
         metadata: options.metadata,
-        tags: TAGS,
+        tags,
       })
       const handle: TraceHandle = {
         span(name, input) {

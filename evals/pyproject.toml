@@ -18,6 +18,7 @@ dependencies = [
 hello-trace = "owners_manual_evals.hello_trace_cli:main"
 run-naive-rag = "owners_manual_evals.run_naive_rag:main"
 compare-hybrid = "owners_manual_evals.compare_hybrid:main"
+compare-arms = "owners_manual_evals.compare_arms:main"
 
 [dependency-groups]
 dev = [
