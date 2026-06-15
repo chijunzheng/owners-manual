@@ -176,9 +176,14 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
         iterations=args.iterations,
     )
 
-    from .gap_dashboard import render_gap_dashboard  # noqa: PLC0415
+    from .gap_dashboard import render_gap_dashboard, render_noise_floor  # noqa: PLC0415
 
-    print(render_gap_dashboard(result.dashboard, run_name=f"{args.run_name} ({tier.value})"))
+    run_label = f"{args.run_name} ({tier.value})"
+    # Publish BOTH: the gap dashboard (CIs + within-noise labels) and the per-arm
+    # noise floor those labels are judged against, so the thresholds are auditable.
+    print(render_gap_dashboard(result.dashboard, run_name=run_label))
+    print()
+    print(render_noise_floor(result.variance_audit, run_name=run_label))
     return 0
 
 

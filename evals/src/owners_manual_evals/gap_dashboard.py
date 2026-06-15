@@ -246,6 +246,37 @@ def render_gap_dashboard(dashboard: GapDashboard, *, run_name: str) -> str:
     return "\n".join(lines)
 
 
+def render_noise_floor(audit: VarianceAudit, *, run_name: str) -> str:
+    """Render the per-arm run-to-run noise floor the variance audit measured.
+
+    Publishes the spread (max − min strict-pass rate over the repeats) that every
+    'within noise' label is judged against, with the per-repeat rates so the
+    threshold itself is auditable — not just the labels derived from it. Without
+    this the CLI prints the verdicts but hides the bar they were measured against
+    (CONTEXT.md: variance mode exists to *publish* the per-arm noise floor)."""
+    lines = [
+        f"=== {run_name} — per-arm noise floor (variance audit, x{audit.repeats}) ===",
+        "",
+        "Run-to-run spread of each arm's strict-pass rate with nothing changed but "
+        "the model's own nondeterminism. A gap no larger than the spread of the arms "
+        "it spans is the threshold for the 'within noise' labels.",
+        "",
+    ]
+    header = f"{'arm':<14}{'noise floor':>12}  {'min ✓':>8}  {'max ✓':>8}  per-repeat ✓"
+    lines.append(header)
+    lines.append("-" * len(header))
+    ordered = [arm for arm in ARM_ORDER if arm in audit.noise_floor_by_arm]
+    extra = sorted(arm for arm in audit.noise_floor_by_arm if arm not in ARM_ORDER)
+    for arm in (*ordered, *extra):
+        floor = audit.noise_floor_by_arm[arm]
+        rates = ", ".join(f"{rate:.2%}" for rate in floor.per_repeat_rates)
+        lines.append(
+            f"{arm:<14}{floor.spread:>12.2%}  {floor.min_rate:>8.2%}  "
+            f"{floor.max_rate:>8.2%}  {rates}"
+        )
+    return "\n".join(lines)
+
+
 __all__ = [
     "DEFAULT_GAP_PAIRS",
     "GapRow",
@@ -253,4 +284,5 @@ __all__ = [
     "GapDashboard",
     "build_gap_dashboard",
     "render_gap_dashboard",
+    "render_noise_floor",
 ]

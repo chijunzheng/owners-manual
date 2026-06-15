@@ -20,6 +20,7 @@ from owners_manual_evals.gap_dashboard import (
     DEFAULT_GAP_PAIRS,
     build_gap_dashboard,
     render_gap_dashboard,
+    render_noise_floor,
 )
 from owners_manual_evals.metrics import ItemScore
 from owners_manual_evals.variance_audit import NoiseFloor, VarianceAudit
@@ -162,6 +163,32 @@ def test_render_states_paired_ci_and_within_noise_and_dev_holdout() -> None:
     assert "95% CI" in text or "CI" in text
     assert "within noise" in text.lower()
     assert "holdout" in text.lower() and "dev" in text.lower()
+
+
+def test_render_noise_floor_publishes_each_arms_measured_spread() -> None:
+    # The 'within noise' labels above are only auditable if the floor MAGNITUDES
+    # they are judged against are published too — a reader checking a verdict needs
+    # the threshold, not just the label. (Codex on PR #47: the CLI rendered the
+    # labels but never the per-arm noise floors behind them.)
+    audit = VarianceAudit(
+        noise_floor_by_arm={
+            "stuff": NoiseFloor("stuff", (0.50, 0.50, 0.50), 0.50, 0.50),  # constant → 0 floor
+            "agent": NoiseFloor("agent", (0.40, 0.55, 0.60), 0.40, 0.60),  # spread 0.20
+        },
+        repeats=3,
+    )
+    text = render_noise_floor(audit, run_name="variance-v0")
+    assert "variance-v0" in text
+    assert "noise floor" in text.lower()
+    # Both arms are named, in canonical ARM_ORDER.
+    assert text.index("stuff") < text.index("agent")
+    # The measured spread (the floor itself) is published per arm.
+    assert "0.00%" in text  # the constant arm's floor is zero
+    assert "20.00%" in text  # the agent arm's measured spread (0.60 − 0.40)
+    # The per-repeat rates are shown so the threshold is auditable, and the repeat
+    # count is stated.
+    assert "55.00%" in text  # an agent per-repeat rate that is neither min/max/spread
+    assert "x3" in text
 
 
 def test_rejects_arms_not_covering_the_same_items() -> None:
