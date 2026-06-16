@@ -227,6 +227,7 @@ export {
   buildCriticPrompt,
   buildGuardPrompt,
   buildPlannerPrompt,
+  buildSessionSummaryPrompt,
 } from './agent-prompts.js'
 
 export {
@@ -239,6 +240,34 @@ export {
   type ChatRequest,
   type ChatServiceDeps,
 } from './chat-service.js'
+
+export {
+  OWNER_PROFILE_FACT_KEYS,
+  ownerProfileFactsSchema,
+  ownerProfileSchema,
+  parseOwnerProfile,
+  renderOwnerProfileContext,
+  type OwnerProfile,
+  type OwnerProfileFactKey,
+  type OwnerProfileFacts,
+  type ProfileStore,
+} from './owner-profile.js'
+
+export {
+  SESSION_SUMMARY_MAX_CHARS,
+  appendTurn,
+  emptySessionMemory,
+  parseSessionMemory,
+  renderSessionMemoryContext,
+  sessionMemorySchema,
+  type SessionMemory,
+  type SessionMemoryStore,
+  type SessionSummarizer,
+} from './session-memory.js'
+
+export { type AgentGraphInitialMemory } from './agent-graph.js'
+
+export { type AgentSynthesisMemory } from './agent-types.js'
 
 export {
   CORPORA,

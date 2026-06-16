@@ -5,7 +5,7 @@
  * from the committed manifest + pinned pipeline config, and serves:
  *
  *   POST /answer          { question, itemId, traceId? }       → AnswerResponse
- *   POST /chat            { question, itemId, traceId? }       → SSE token/result stream
+ *   POST /chat            { question, itemId, traceId?, ownerId?, sessionId? } → SSE token/result stream
  *   POST /stuff           { question, itemId, traceId?, orderSeed? } → StuffResponse
  *   POST /stuff-oracle    { …, corpora: [...] }                → StuffResponse
  *   POST /retrieve/debug  { question, topK?, authorityLevels? } → RetrieveDebugResponse
@@ -63,9 +63,11 @@ import {
   resolveLiveConfig,
 } from './live/env.js'
 import { connectMongoStore } from './live/mongo-store.js'
+import { connectProfileSessionStore } from './live/profile-session-store.js'
 import { createVertexLlm } from './live/vertex-llm.js'
 import { createVertexStuffLlm } from './live/vertex-stuff-llm.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
+import { createVertexSummarizer } from './live/vertex-summarizer.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
 import { createCohereRerank } from './live/cohere-rerank.js'
 import { createLlmRerank } from './live/llm-rerank.js'
@@ -120,6 +122,14 @@ async function main(): Promise<void> {
     collection: config.collection,
     indexName: config.indexName,
     dimensions: config.embedding.dimensions,
+  })
+  // The two #17 memory mechanisms persist in the SAME database as the chunk
+  // collection (ADR 0002): the owner profile (cross-session facts) and the
+  // bounded session summary, in their own collections, behind the mockable store
+  // contracts the chat handler reads through.
+  const memoryStore = await connectProfileSessionStore({
+    uri: live.mongoUri,
+    db: live.mongoDb,
   })
 
   const corpusIds = GOLDEN_V0_DOCUMENTS.filter((d) => d.kind === 'corpus').map((d) => d.id)
@@ -190,6 +200,15 @@ async function main(): Promise<void> {
     }),
     rerank: agentRerank,
     flags: agentFlags,
+    // The #17 stores + summarizer: the chat handler loads the owner profile and
+    // the prior session summary, injects both (distinct mechanisms) into the run,
+    // and folds each substantive turn back into the bounded summary.
+    profileStore: memoryStore.profiles,
+    sessionStore: memoryStore.sessions,
+    summarize: createVertexSummarizer({
+      model: config.runtime.model,
+      location: live.vertexLocation,
+    }),
     runRecord,
     topK: config.retrieval.topK,
     tracer: agentTracerHandle?.tracer,
@@ -337,6 +356,7 @@ async function main(): Promise<void> {
     await agentTracerHandle?.shutdown().catch(() => {})
     await stuffTracerHandle?.shutdown().catch(() => {})
     await store.close().catch(() => {})
+    await memoryStore.close().catch(() => {})
     server.close()
   }
   process.on('SIGINT', () => void shutdown().then(() => process.exit(0)))

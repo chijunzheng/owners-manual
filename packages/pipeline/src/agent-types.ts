@@ -17,6 +17,8 @@ import { type CrossReferenceEdge, type DefinitionsIndex } from '@owners-manual/e
 import { type AnswerBehaviorClass } from './answer-envelope.js'
 import { type AuthorityLevel } from './authority.js'
 import { type HybridCandidate, type RetrieveHybridOptions } from './hybrid-retrieve.js'
+import { type OwnerProfile } from './owner-profile.js'
+import { type SessionMemory } from './session-memory.js'
 
 /**
  * The bounded-loop caps — the heart of "all iteration is explicit bounded edges"
@@ -93,11 +95,15 @@ export interface AgentModel {
    * model output the envelope is parsed from (one artifact, two consumers).
    * `definitions` are the #16 `definitionsInPrompt` attachments (empty when the
    * flag is off — the documented fallback), surfaced in the synthesis prompt.
+   * `memory` carries the two DISTINCT #17 mechanisms — the owner profile
+   * (cross-session facts) and the bounded session summary — for the prompt to
+   * surface as separate blocks; absent when neither is set (the off fallback).
    */
   synthesize(input: {
     readonly question: string
     readonly candidates: readonly HybridCandidate[]
     readonly definitions?: readonly import('./graph-expansion.js').DefinitionAttachment[]
+    readonly memory?: AgentSynthesisMemory
     readonly onToken?: (token: string) => void
   }): Promise<string>
   /** Critique the drafted answer: does every claim map to a retrieved candidate? */
@@ -221,6 +227,35 @@ export interface AgentState {
   readonly envelope?: import('./answer-envelope.js').AnswerEnvelope
   /** The raw model synthesis text, kept for trace capture. */
   readonly rawModelOutput?: string
+  /**
+   * The owner profile (#17): cross-session facts (unit, building, policy)
+   * injected into INITIAL state by the API and surfaced to synthesis. DISTINCT
+   * from {@link sessionMemory}. Undefined when no profile is supplied (the
+   * off-state fallback), keeping a no-profile run identical to the #15 baseline.
+   */
+  readonly ownerProfile?: OwnerProfile
+  /**
+   * The bounded session summary (#17): the rolling conversation summary injected
+   * into INITIAL state by the API and surfaced to synthesis. DISTINCT from
+   * {@link ownerProfile} — it is a per-conversation bounded summary, never
+   * cross-session facts. Undefined for a fresh/absent session (the off fallback).
+   */
+  readonly sessionMemory?: SessionMemory
+}
+
+/**
+ * The two DISTINCT #17 memory mechanisms a synthesis call may carry (CONTEXT.md
+ * flagged ambiguity: owner profile = cross-session facts, session memory =
+ * bounded summary — never merged). The shared shape the prompt builder and the
+ * model seam both read; both optional, so a run with neither is the #15/#16
+ * baseline. Lives here (the contract module) so `agent-prompts` and the nodes
+ * import it without a cycle.
+ */
+export interface AgentSynthesisMemory {
+  /** The owner's cross-session facts (unit, building, policy); absent → no block. */
+  readonly ownerProfile?: OwnerProfile
+  /** The bounded conversation summary so far; absent → no block. */
+  readonly sessionMemory?: SessionMemory
 }
 
 /** Map a non-pass guard verdict to its terminal behavior class. */

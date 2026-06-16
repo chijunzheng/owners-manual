@@ -216,6 +216,27 @@ describe('synthesizeNode', () => {
       /JSON/i,
     )
   })
+
+  it('passes the owner profile + session memory from state into synthesize (#17)', async () => {
+    const model = scriptedModel()
+    await synthesizeNode(
+      state({
+        candidates: [REPAIR_CANDIDATE],
+        ownerProfile: { ownerId: 'o', facts: { unit: 'Unit 1203' } },
+        sessionMemory: { sessionId: 's', summary: 'asked about repairs', turnCount: 1 },
+      }),
+      model,
+    )
+    expect(model.lastSynthesizeInput?.memory?.ownerProfile?.facts.unit).toBe('Unit 1203')
+    expect(model.lastSynthesizeInput?.memory?.sessionMemory?.summary).toBe('asked about repairs')
+  })
+
+  it('passes no memory when state carries none (the off-state fallback)', async () => {
+    const model = scriptedModel()
+    await synthesizeNode(state({ candidates: [REPAIR_CANDIDATE] }), model)
+    expect(model.lastSynthesizeInput?.memory?.ownerProfile).toBeUndefined()
+    expect(model.lastSynthesizeInput?.memory?.sessionMemory).toBeUndefined()
+  })
 })
 
 describe('criticNode / routeAfterCritic', () => {

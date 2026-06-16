@@ -25,6 +25,14 @@ import {
 import { type AgentQueryFlags } from './agent-query-flags.js'
 import { runAgent, type AgentTracer } from './agent-run.js'
 import { type RunRecord } from './run-record.js'
+import { type OwnerProfile, type ProfileStore } from './owner-profile.js'
+import {
+  appendTurn,
+  emptySessionMemory,
+  type SessionMemory,
+  type SessionMemoryStore,
+  type SessionSummarizer,
+} from './session-memory.js'
 
 /** The chat request the client / harness POSTs. Mirrors `answerRequestSchema`. */
 export const chatRequestSchema = z
@@ -36,6 +44,18 @@ export const chatRequestSchema = z
       .string()
       .regex(/^[0-9a-f]{32}$/)
       .optional(),
+    /**
+     * The owner whose profile (#17) to load and inject — cross-session facts.
+     * Optional: a request with no owner id runs with no profile (the off-state).
+     */
+    ownerId: z.string().min(1).optional(),
+    /**
+     * The conversation whose bounded session summary (#17) to load, inject, and
+     * update after the turn. Optional: no session id runs with no session memory.
+     * DISTINCT from {@link ownerId} — one keys cross-session facts, the other a
+     * per-conversation summary.
+     */
+    sessionId: z.string().min(1).optional(),
   })
   .strict()
 
@@ -76,18 +96,86 @@ export interface ChatServiceDeps {
   readonly enrichment?: AgentEnrichmentAccess
   /** The #16 query-time ablation flags; defaults to all-off downstream. */
   readonly flags?: AgentQueryFlags
+  /**
+   * The #17 owner-profile store (mockable; live binding is Mongo). Absent →
+   * profiles are never loaded, so a request's `ownerId` is a no-op (off-state).
+   */
+  readonly profileStore?: ProfileStore
+  /**
+   * The #17 session-memory store (mockable; live binding is Mongo). Absent →
+   * session memory is never loaded or persisted, so `sessionId` is a no-op.
+   */
+  readonly sessionStore?: SessionMemoryStore
+  /**
+   * The #17 session summarizer — folds each turn into the bounded summary. Absent
+   * → session memory is read but not updated. Injected so the bound is tested
+   * offline against a deterministic fake; the live binding wraps the runtime model.
+   */
+  readonly summarize?: SessionSummarizer
   readonly runRecord: RunRecord
   readonly topK: number
   readonly tracer?: AgentTracer
 }
 
+/** Load the owner profile for the request, or undefined when not applicable. */
+async function loadProfile(
+  request: ChatRequest,
+  deps: ChatServiceDeps,
+): Promise<OwnerProfile | undefined> {
+  if (!request.ownerId || !deps.profileStore) return undefined
+  return deps.profileStore.load(request.ownerId)
+}
+
 /**
- * Handle one chat request: stream synthesis tokens to the sink as the agent
- * runs, then emit one terminal `result` event carrying the schema-validated
+ * Load the session memory for the request, or undefined when not applicable. A
+ * fresh session (no stored summary) becomes an empty memory so the first turn
+ * still records a baseline — the load is what makes a session's history available
+ * to the next turn, while the profile is what makes facts available across sessions.
+ */
+async function loadSession(
+  request: ChatRequest,
+  deps: ChatServiceDeps,
+): Promise<SessionMemory | undefined> {
+  if (!request.sessionId || !deps.sessionStore) return undefined
+  const stored = await deps.sessionStore.load(request.sessionId)
+  return stored ?? emptySessionMemory(request.sessionId)
+}
+
+/**
+ * Fold the just-finished turn into the bounded session summary and persist it
+ * (#17 AC2). Skipped for a refusal — a refusal is not a substantive turn worth
+ * summarizing, and folding it would pollute later turns with off-topic noise.
+ * Requires a session id, a store, AND a summarizer; any missing piece is a no-op,
+ * so the off-state never persists. The summary stays bounded because
+ * {@link appendTurn} hard-caps it regardless of what the summarizer returns.
+ */
+async function persistSession(
+  request: ChatRequest,
+  deps: ChatServiceDeps,
+  priorSession: SessionMemory | undefined,
+  envelope: AnswerEnvelope,
+): Promise<void> {
+  if (!request.sessionId || !deps.sessionStore || !deps.summarize) return
+  if (envelope.behaviorClass !== 'answer' && envelope.behaviorClass !== 'flag-void-clause') return
+  const base = priorSession ?? emptySessionMemory(request.sessionId)
+  const updated = await appendTurn(base, {
+    question: request.question,
+    answer: envelope.answer,
+    summarize: deps.summarize,
+  })
+  await deps.sessionStore.save(updated)
+}
+
+/**
+ * Handle one chat request: load the owner profile + session memory (#17), inject
+ * BOTH (distinct mechanisms) into the agent run, stream synthesis tokens to the
+ * sink, then emit one terminal `result` event carrying the schema-validated
  * envelope, the retrieved path keys (the harness's hit-rate input), the run
- * record, and the degraded flag. On failure it emits a single `error` event
- * rather than throwing across the stream boundary — the caller has already
- * opened the SSE response, so the error must travel as an event.
+ * record, and the degraded flag. After a substantive turn it folds the turn into
+ * the bounded session summary and persists it — so the next turn sees this one,
+ * while the durable profile is what later SESSIONS see (AC1). On failure it emits
+ * a single `error` event rather than throwing across the stream boundary — the
+ * caller has already opened the SSE response, so the error must travel as an event.
  */
 export async function handleChatRequest(
   request: ChatRequest,
@@ -95,6 +183,11 @@ export async function handleChatRequest(
   emit: ChatEventSink,
 ): Promise<void> {
   try {
+    const [ownerProfile, sessionMemory] = await Promise.all([
+      loadProfile(request, deps),
+      loadSession(request, deps),
+    ])
+
     const result = await runAgent({
       question: request.question,
       itemId: request.itemId,
@@ -106,9 +199,13 @@ export async function handleChatRequest(
       rerank: deps.rerank,
       enrichment: deps.enrichment,
       flags: deps.flags,
+      ownerProfile,
+      sessionMemory,
       onToken: (token) => emit({ type: 'token', token }),
       tracer: deps.tracer,
     })
+
+    await persistSession(request, deps, sessionMemory, result.envelope)
 
     emit({
       type: 'result',

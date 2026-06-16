@@ -13,7 +13,9 @@
 
 import { type HybridCandidate } from './hybrid-retrieve.js'
 import { type DefinitionAttachment } from './graph-expansion.js'
-import { GUARD_VERDICTS } from './agent-types.js'
+import { GUARD_VERDICTS, type AgentSynthesisMemory } from './agent-types.js'
+import { renderOwnerProfileContext } from './owner-profile.js'
+import { renderSessionMemoryContext, SESSION_SUMMARY_MAX_CHARS } from './session-memory.js'
 
 /** Render one candidate as a numbered, addressable source block (shared shape). */
 function renderCandidate(candidate: HybridCandidate, index: number): string {
@@ -100,20 +102,33 @@ function renderDefinitions(definitions: readonly DefinitionAttachment[]): string
   return `\n\nDEFINED TERMS (cite the defining provision if you rely on a definition):\n${lines.join('\n')}`
 }
 
+/** Join only the non-empty memory blocks, each separated by a blank line. */
+function renderMemory(memory: AgentSynthesisMemory | undefined): string {
+  if (!memory) return ''
+  const blocks = [
+    renderOwnerProfileContext(memory.ownerProfile),
+    renderSessionMemoryContext(memory.sessionMemory),
+  ].filter((block) => block.length > 0)
+  return blocks.length > 0 ? `\n\n${blocks.join('\n\n')}` : ''
+}
+
 /**
  * The synthesis prompt: instruction, numbered sources, the attached definitions
- * (when the `definitionsInPrompt` flag surfaced any — otherwise nothing), then
- * the question. The definitions argument defaults to empty so the #15 two-arg
- * call shape is unchanged and the off-state prompt carries no definitions block.
+ * (when the `definitionsInPrompt` flag surfaced any — otherwise nothing), the
+ * owner-profile + session-memory blocks (#17, when supplied — otherwise nothing),
+ * then the question. The definitions and memory arguments default to empty so
+ * the #15 two-arg call shape is unchanged and the off-state prompt carries no
+ * definitions and no memory blocks.
  */
 export function buildAgentSynthesisPrompt(
   question: string,
   candidates: readonly HybridCandidate[],
   definitions: readonly DefinitionAttachment[] = [],
+  memory?: AgentSynthesisMemory,
 ): string {
   return `${SYNTHESIS_INSTRUCTION}\n\nSOURCES:\n${renderSources(candidates)}${renderDefinitions(
     definitions,
-  )}\n\nQUESTION:\n${question}`
+  )}${renderMemory(memory)}\n\nQUESTION:\n${question}`
 }
 
 /**
@@ -162,4 +177,35 @@ ${question}
 
 DRAFT ANSWER:
 ${answer}`
+}
+
+/**
+ * The session-summary prompt (#17): fold the latest turn into the rolling
+ * conversation summary. The instruction drives BOUNDED summarization — keep the
+ * durable thread (what the owner is dealing with, decisions reached) and DROP
+ * verbatim prose, so the summary does not grow into a transcript (AC2). The
+ * char bound is stated so the model targets a bounded length; the caller's
+ * {@link import('./session-memory.js').appendTurn} hard-caps the result anyway,
+ * so the bound holds even if the model overshoots. Returns bare summary text (no
+ * JSON) — the live binding takes the reply verbatim and lets `appendTurn` cap it.
+ */
+export function buildSessionSummaryPrompt(input: {
+  readonly priorSummary: string
+  readonly question: string
+  readonly answer: string
+}): string {
+  const prior = input.priorSummary.trim().length > 0 ? input.priorSummary : '(no earlier turns yet)'
+  return `You maintain a running SUMMARY of a condo owner's conversation with the assistant. Update it with the latest turn.
+
+Rules:
+- Summarize and CONDENSE — keep the owner's durable situation and the thread of what they are asking; DROP verbatim wording. This is a summary, not a transcript.
+- Keep it under ${SESSION_SUMMARY_MAX_CHARS} characters; prefer the most recent and most load-bearing facts if you must cut.
+- Output ONLY the updated summary as plain text — no quotes, no JSON, no preamble.
+
+SUMMARY SO FAR:
+${prior}
+
+LATEST TURN:
+Q: ${input.question}
+A: ${input.answer}`
 }

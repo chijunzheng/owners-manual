@@ -102,8 +102,11 @@ export function createVertexAgentModel(options: VertexAgentOptions): AgentModel 
       return planSchema.parse(parseJsonObject(raw, 'planner'))
     },
 
-    async synthesize({ question, candidates, definitions, onToken }) {
-      const prompt = buildAgentSynthesisPrompt(question, candidates, definitions)
+    async synthesize({ question, candidates, definitions, memory, onToken }) {
+      // Forward the #17 memory so the owner profile + bounded session summary
+      // surface as their distinct prompt blocks live, exactly as they do under
+      // the scripted fake; absent memory adds no block (the off-state).
+      const prompt = buildAgentSynthesisPrompt(question, candidates, definitions, memory)
       // Stream so the SSE endpoint relays tokens as they arrive; accumulate the
       // full text to parse into the envelope (one artifact, two consumers).
       let text = ''
