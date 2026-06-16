@@ -20,10 +20,13 @@ import { END, START, StateGraph } from '@langchain/langgraph'
 
 import {
   AGENT_LOOP_CAPS,
+  type AgentEnrichmentAccess,
   type AgentModel,
+  type AgentRerank,
   type AgentRetrieve,
   type AgentState,
 } from './agent-types.js'
+import { AGENT_QUERY_FLAGS_OFF, type AgentQueryFlags } from './agent-query-flags.js'
 import {
   AGENT_TOP_K_DEFAULT,
   bumpCriticReretrieval,
@@ -31,12 +34,15 @@ import {
   degradeNode,
   guardNode,
   plannerNode,
+  reformulateNode,
   rerankNode,
   retrieveNode,
   routeAfterCritic,
   routeAfterGuard,
+  routeAfterRetrieve,
   synthesizeNode,
 } from './agent-nodes.js'
+import { authorityRerank } from './rerank.js'
 import { AgentAnnotation } from './agent-state.js'
 
 /** The graph node names — exported so the topology test asserts them by name. */
@@ -44,6 +50,7 @@ export const AGENT_NODES = [
   'guard',
   'planner',
   'retrieve',
+  'reformulate',
   'rerank',
   'synthesize',
   'critic',
@@ -53,10 +60,26 @@ export const AGENT_NODES = [
 
 export type AgentNodeName = (typeof AGENT_NODES)[number]
 
-/** The seams the graph closes over: the model, retrieval, top-k, token sink. */
+/**
+ * The seams the graph closes over: the model, retrieval, the rerank provider,
+ * the query-time enrichment access, the ablation flags, top-k, token sink.
+ *
+ * The #16 additions are all optional with a documented all-off fallback, so the
+ * #15 call shape ({ model, retrieve }) still compiles and runs the plain bounded
+ * graph: `flags` defaults to {@link AGENT_QUERY_FLAGS_OFF} (no expansion, no
+ * definitions, no reformulation, raw RRF order), `rerank` defaults to the
+ * deterministic authority reranker (only consulted when the `rerank` flag is on),
+ * and `enrichment` is absent (graph expansion / definitions both no-op).
+ */
 export interface AgentGraphDeps {
   readonly model: AgentModel
   readonly retrieve: AgentRetrieve
+  /** The injected rerank provider; only consulted when the `rerank` flag is on. */
+  readonly rerank?: AgentRerank
+  /** Read-only access to #13's tree-level sidecars; absent disables expansion/defs. */
+  readonly enrichment?: AgentEnrichmentAccess
+  /** The query-time ablation flags; defaults to the all-off fallback. */
+  readonly flags?: AgentQueryFlags
   readonly topK?: number
   /** Streamed-token sink for the SSE endpoint; absent in scoring-only runs. */
   readonly onToken?: (token: string) => void
@@ -77,12 +100,17 @@ export const AGENT_RECURSION_LIMIT = 24
  */
 export function buildAgentGraph(deps: AgentGraphDeps) {
   const topK = deps.topK ?? AGENT_TOP_K_DEFAULT
+  const flags = deps.flags ?? AGENT_QUERY_FLAGS_OFF
+  const rerank = deps.rerank ?? authorityRerank
 
   const graph = new StateGraph(AgentAnnotation)
     .addNode('guard', (state) => guardNode(state, deps.model))
     .addNode('planner', (state) => plannerNode(state, deps.model))
-    .addNode('retrieve', (state) => retrieveNode(state, deps.retrieve, topK))
-    .addNode('rerank', (state) => rerankNode(state))
+    .addNode('retrieve', (state) =>
+      retrieveNode(state, deps.retrieve, topK, { flags, enrichment: deps.enrichment }),
+    )
+    .addNode('reformulate', (state) => reformulateNode(state))
+    .addNode('rerank', (state) => rerankNode(state, { flags, rerank }))
     .addNode('synthesize', (state) => synthesizeNode(state, deps.model, deps.onToken))
     .addNode('critic', (state) => criticNode(state, deps.model))
     .addNode('reretrieve', (state) => bumpCriticReretrieval(state))
@@ -91,7 +119,14 @@ export function buildAgentGraph(deps: AgentGraphDeps) {
     .addEdge(START, 'guard')
     .addConditionalEdges('guard', routeAfterGuard, { plan: 'planner', refused: END })
     .addEdge('planner', 'retrieve')
-    .addEdge('retrieve', 'rerank')
+    // The one bounded reformulation (#16): retrieve → reformulate → planner (re-plan)
+    // at most maxReformulations times, ONLY behind the flag and only on a thin
+    // result; otherwise straight to rerank. With the flag off this is a no-op edge.
+    .addConditionalEdges('retrieve', (state) => routeAfterRetrieve(state, flags), {
+      rerank: 'rerank',
+      reformulate: 'reformulate',
+    })
+    .addEdge('reformulate', 'planner')
     .addEdge('rerank', 'synthesize')
     .addEdge('synthesize', 'critic')
     // The one bounded re-retrieval: critic → reretrieve → planner (re-plan) once.

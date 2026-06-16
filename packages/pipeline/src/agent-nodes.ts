@@ -20,11 +20,15 @@ import {
 import {
   AGENT_LOOP_CAPS,
   guardVerdictToBehavior,
+  type AgentEnrichmentAccess,
   type AgentModel,
+  type AgentRerank,
   type AgentRetrieve,
   type AgentState,
   type RetrievalPlan,
 } from './agent-types.js'
+import { type AgentQueryFlags } from './agent-query-flags.js'
+import { attachDefinitions, expandOneHop } from './graph-expansion.js'
 import { citablePathsEqual, type CitablePath } from '@owners-manual/core'
 import { authorityRank } from './authority.js'
 import { type HybridCandidate } from './hybrid-retrieve.js'
@@ -98,15 +102,33 @@ export function clampPlan(plan: RetrievalPlan): RetrievalPlan {
 // --- retrieve --------------------------------------------------------------
 
 /**
+ * The #16 query-time extras the retrieve node closes over: the ablation flags
+ * and the read-only access to #13's tree-level sidecars. Optional so the #15
+ * call shape (retrieve only) still works and behaves as the all-off fallback.
+ */
+export interface RetrieveNodeExtras {
+  readonly flags: AgentQueryFlags
+  readonly enrichment?: AgentEnrichmentAccess
+}
+
+/**
  * Retrieve node: run the planned hops through the injected (frozen #14) hybrid
  * retrieval and merge their candidates, de-duplicated by citable-path key,
  * highest fused score kept. Consumes the question for an empty-query hop so a
  * degenerate plan still retrieves something to ground the answer on.
+ *
+ * Then, behind #16's flags (default off — the documented fallback is the
+ * #15 path): when `xrefExpansion` is on, expand ONE hop over the cross-reference
+ * sidecar (tagging pulled-in candidates `graph-expansion`); when
+ * `definitionsInPrompt` is on, select the definitions the candidates mention so
+ * synthesis can use them. Both consume the injected enrichment access — no flag,
+ * no enrichment access, or no edges all collapse to the plain hybrid result.
  */
 export async function retrieveNode(
   state: AgentState,
   retrieve: AgentRetrieve,
   topK: number = AGENT_TOP_K_DEFAULT,
+  extras?: RetrieveNodeExtras,
 ): Promise<AgentStatePatch> {
   const plan = state.plan ?? { hops: [{ query: state.question }], multiHop: false }
   const perHop = await Promise.all(
@@ -118,7 +140,27 @@ export async function retrieveNode(
       }),
     ),
   )
-  return { candidates: mergeCandidates(perHop.flat()) }
+  const retrieved = mergeCandidates(perHop.flat())
+
+  const flags = extras?.flags
+  const enrichment = extras?.enrichment
+  if (!flags || !enrichment) {
+    return { candidates: retrieved }
+  }
+
+  const candidates = flags.xrefExpansion
+    ? expandOneHop({
+        seeds: retrieved,
+        crossReferences: enrichment.crossReferencesFor(retrieved),
+        lookup: enrichment.lookup,
+      })
+    : retrieved
+
+  const definitionAttachments = flags.definitionsInPrompt
+    ? attachDefinitions({ candidates, definitions: enrichment.definitionsFor(candidates) })
+    : []
+
+  return { candidates, definitionAttachments }
 }
 
 /** Merge candidate lists, keeping the highest-scored row per path key, score-desc. */
@@ -133,17 +175,73 @@ export function mergeCandidates(lists: readonly HybridCandidate[]): readonly Hyb
   return [...byKey.values()].sort((a, b) => b.score - a.score)
 }
 
-// --- rerank ----------------------------------------------------------------
+// --- reformulate (bounded edge, #16) ---------------------------------------
 
 /**
- * Rerank node (basic): authority-weighted, then fused-score. ADR 0002's
- * authority hierarchy is the tiebreak — a higher-authority candidate outranks a
- * lower-authority one at equal-ish relevance, so the synthesizer sees the
- * governing source first. Deterministic and provider-free (the "basic" rerank
- * the issue calls for; a cross-encoder is a later component on the ladder).
+ * Reformulate node (#16): count one query reformulation before re-entering
+ * planning. The cap ({@link AGENT_LOOP_CAPS.maxReformulations}) is enforced by the
+ * ROUTER ({@link routeAfterRetrieve}), so this never exceeds it.
+ *
+ * LIMITATION (tracked as a follow-up): this bounded edge currently only counts the
+ * pass and re-enters planning with the SAME `state.question`, so a deterministic
+ * planner reissues the identical retrieval — reformulation-on does not yet differ
+ * from reformulation-off for such planners. Actually REWRITING the query (so the
+ * second pass differs) needs a reformulation-strategy decision (model-driven
+ * rewrite vs. deterministic broadening) and is deferred to that follow-up; the
+ * edge, flag, bounding, and routing are in place here. [Codex P2, PR #52]
  */
-export function rerankNode(state: AgentState): AgentStatePatch {
-  return { candidates: rerankByAuthority(state.candidates) }
+export function reformulateNode(state: AgentState): AgentStatePatch {
+  return { reformulations: state.reformulations + 1 }
+}
+
+/**
+ * Route after retrieve (#16): the bounded reformulation decision. Reformulate
+ * ONLY when the flag is on, the candidate set came back thin (empty), AND the
+ * reformulation budget is unspent — otherwise proceed to rerank. With the flag
+ * off (the documented fallback) this ALWAYS routes to rerank: a single retrieve
+ * pass, never a reformulation, so Guard/Critic still always run and the
+ * trajectory stays bounded and comparable (CONTEXT.md, "Planner").
+ */
+export function routeAfterRetrieve(
+  state: AgentState,
+  flags: AgentQueryFlags,
+): 'rerank' | 'reformulate' {
+  if (!flags.queryReformulation) return 'rerank'
+  if (state.candidates.length > 0) return 'rerank'
+  if (state.reformulations >= AGENT_LOOP_CAPS.maxReformulations) return 'rerank'
+  return 'reformulate'
+}
+
+// --- rerank ----------------------------------------------------------------
+
+/** The #16 rerank extras the rerank node closes over: the flags and the seam. */
+export interface RerankNodeExtras {
+  readonly flags: AgentQueryFlags
+  readonly rerank: AgentRerank
+}
+
+/**
+ * Rerank node (#16): when the `rerank` flag is on, run the INJECTED reranker
+ * (authority / Cohere / LLM — selected by `rerankProvider`, bound live), which
+ * tags its survivors `rerank-survivor`. When off (the documented fallback) the
+ * candidates pass through UNCHANGED in their raw RRF/similarity (fused-score)
+ * order — no authority weighting, no survivor tag. The seam is always injected so
+ * the node stays provider-free; the flag only decides whether it fires.
+ *
+ * Returns a promise when reranking is on (the seam is async) and a plain patch
+ * when off — both are valid LangGraph node returns, and the off path stays
+ * synchronous so the fallback never awaits a provider it will not call.
+ */
+export function rerankNode(
+  state: AgentState,
+  extras: RerankNodeExtras,
+): AgentStatePatch | Promise<AgentStatePatch> {
+  if (!extras.flags.rerank) {
+    return { candidates: state.candidates }
+  }
+  return extras
+    .rerank({ question: state.question, candidates: state.candidates })
+    .then((candidates) => ({ candidates }))
 }
 
 /** Stable authority-then-score ordering (higher authority and score first). */
@@ -176,6 +274,7 @@ export async function synthesizeNode(
   const raw = await model.synthesize({
     question: state.question,
     candidates: state.candidates,
+    definitions: state.definitionAttachments,
     onToken,
   })
   const envelope = clampEnvelopeToCandidates(parseRawEnvelope(raw), state.candidates)

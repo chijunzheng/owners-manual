@@ -14,7 +14,13 @@
  */
 
 import { type AnswerEnvelope } from './answer-envelope.js'
-import { type AgentModel, type AgentRetrieve } from './agent-types.js'
+import {
+  type AgentEnrichmentAccess,
+  type AgentModel,
+  type AgentRerank,
+  type AgentRetrieve,
+} from './agent-types.js'
+import { type AgentQueryFlags } from './agent-query-flags.js'
 import { runAgentGraph } from './agent-graph.js'
 import { type HybridCandidate } from './hybrid-retrieve.js'
 import { type NaiveRagTracer } from './naive-rag.js'
@@ -35,6 +41,12 @@ export interface RunAgentOptions {
   readonly topK: number
   readonly model: AgentModel
   readonly retrieve: AgentRetrieve
+  /** The #16 rerank provider seam; only consulted when the `rerank` flag is on. */
+  readonly rerank?: AgentRerank
+  /** Read-only access to #13's sidecars; absent disables expansion/definitions. */
+  readonly enrichment?: AgentEnrichmentAccess
+  /** The #16 query-time ablation flags; defaults to all-off downstream. */
+  readonly flags?: AgentQueryFlags
   /** Streamed-token sink for the SSE endpoint; absent in scoring-only runs. */
   readonly onToken?: (token: string) => void
   readonly tracer?: AgentTracer
@@ -53,8 +65,20 @@ export interface RunAgentResult {
 
 /** Run the agent arm for one question, emitting a propagated-id trace. */
 export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult> {
-  const { question, itemId, traceId, parentSpanId, topK, model, retrieve, onToken, tracer } =
-    options
+  const {
+    question,
+    itemId,
+    traceId,
+    parentSpanId,
+    topK,
+    model,
+    retrieve,
+    rerank,
+    enrichment,
+    flags,
+    onToken,
+    tracer,
+  } = options
   const trace = tracer?.startTrace({
     name: 'owners-manual.agent',
     traceId,
@@ -67,7 +91,11 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   const graphSpan = trace?.span('agent-graph', { question, topK })
   let state
   try {
-    state = await runAgentGraph(question, { model, retrieve, topK, onToken }, itemId)
+    state = await runAgentGraph(
+      question,
+      { model, retrieve, rerank, enrichment, flags, topK, onToken },
+      itemId,
+    )
     // Record the answer on the synthesis span (the agent-graph span) before
     // closing it — the prose is the whole point of a debuggable trace.
     if (state.envelope) {

@@ -17,7 +17,9 @@ import {
   type ScriptedModelOptions,
 } from './agent-fixtures.js'
 import { ANSWER_BEHAVIOR_CLASSES } from './answer-envelope.js'
-import { type AgentRetrieve } from './agent-types.js'
+import { type AgentEnrichmentAccess, type AgentRetrieve } from './agent-types.js'
+import { AGENT_QUERY_FLAGS_OFF } from './agent-query-flags.js'
+import { scriptedRerank } from './rerank.js'
 
 /** A retrieve seam that always returns the repair candidate. */
 const retrieveRepair: AgentRetrieve = async () => [REPAIR_CANDIDATE]
@@ -92,7 +94,10 @@ describe('agent graph — answer with pin-cites', () => {
     expect(tokens.join('')).toContain('behaviorClass')
   })
 
-  it('reranks an Act above a contract before synthesis', async () => {
+  it('reranks an Act above a contract before synthesis WHEN the rerank flag is on', async () => {
+    // #16 makes rerank ablatable; with the flag ON the authority reranker promotes
+    // the Act ahead of the contract. (The OFF fallback — raw RRF order — is pinned
+    // in the dedicated `agent graph — #16 flagged components` block below.)
     const retrieveBoth: AgentRetrieve = async () => [VOID_CLAUSE_CANDIDATE, REPAIR_CANDIDATE]
     let firstSeen: string | undefined
     const model = scriptedModel()
@@ -103,7 +108,11 @@ describe('agent graph — answer with pin-cites', () => {
         return model.synthesize(input)
       },
     }
-    await runAgentGraph('who pays for damage?', { model: spyModel, retrieve: retrieveBoth })
+    await runAgentGraph('who pays for damage?', {
+      model: spyModel,
+      retrieve: retrieveBoth,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, rerank: true },
+    })
     expect(firstSeen).toBe('rta-2006')
   })
 })
@@ -251,5 +260,169 @@ describe('agent graph — bounded-loop caps', () => {
     const state = await runAgentGraph('q', d)
     expect(state.envelope).toBeDefined()
     expect(d.model.calls.guard).toBe(1)
+  })
+})
+
+// --- #16 flagged components (end-to-end, against fakes) ---------------------
+
+describe('agent graph — #16 flagged components', () => {
+  const XREF_TARGET = candidate(
+    'rta-2006|part:III|section:30',
+    'Despite section 20, the tenant may apply to the Board.',
+    0.4,
+  )
+  /** Enrichment access exposing one xref edge from REPAIR to XREF_TARGET + a defn. */
+  const enrichment: AgentEnrichmentAccess = {
+    crossReferencesFor: () => [
+      {
+        from: REPAIR_CANDIDATE.citablePathKey,
+        to: XREF_TARGET.citablePathKey,
+        kind: 'referenced-by',
+      },
+    ],
+    definitionsFor: () => ({ 'good state of repair': 'rta-2006|part:I|section:2|clause:def' }),
+    lookup: (key) => [REPAIR_CANDIDATE, XREF_TARGET].find((c) => c.citablePathKey === key),
+  }
+
+  it('rerank OFF (default): the synthesizer sees the raw fused-score order, Act NOT promoted', async () => {
+    // A discriminating fixture: the contract candidate has the HIGHER fused score,
+    // so the rerank-off fallback (raw RRF/similarity order from mergeCandidates)
+    // puts the contract first — whereas the authority reranker would promote the
+    // Act. Seeing the contract first proves no authority weighting was applied.
+    const highScoreContract = candidate('fixture-lease|section:7', 'tenant pays', 0.97)
+    const lowScoreAct = candidate(
+      'rta-2006|part:III|section:20|subsection:1',
+      'landlord repairs',
+      0.5,
+    )
+    const retrieveBoth: AgentRetrieve = async () => [lowScoreAct, highScoreContract]
+    let firstSeen: string | undefined
+    const model = scriptedModel()
+    const spyModel = {
+      ...model,
+      synthesize: async (input: Parameters<typeof model.synthesize>[0]) => {
+        firstSeen = input.candidates[0]?.documentId
+        return model.synthesize(input)
+      },
+    }
+    await runAgentGraph('who pays for damage?', { model: spyModel, retrieve: retrieveBoth })
+    expect(firstSeen).toBe('fixture-lease')
+  })
+
+  it('rerank ON via an injected (Cohere/LLM-shaped) provider drives the order', async () => {
+    const retrieveBoth: AgentRetrieve = async () => [REPAIR_CANDIDATE, VOID_CLAUSE_CANDIDATE]
+    let seen: readonly string[] = []
+    const model = scriptedModel()
+    const spyModel = {
+      ...model,
+      synthesize: async (input: Parameters<typeof model.synthesize>[0]) => {
+        seen = input.candidates.map((c) => c.citablePathKey)
+        return model.synthesize(input)
+      },
+    }
+    await runAgentGraph('who pays for damage?', {
+      model: spyModel,
+      retrieve: retrieveBoth,
+      rerank: scriptedRerank([
+        VOID_CLAUSE_CANDIDATE.citablePathKey,
+        REPAIR_CANDIDATE.citablePathKey,
+      ]),
+      flags: { ...AGENT_QUERY_FLAGS_OFF, rerank: true, rerankProvider: 'cohere' },
+    })
+    expect(seen[0]).toBe(VOID_CLAUSE_CANDIDATE.citablePathKey)
+  })
+
+  it('xrefExpansion OFF (default): the candidate set is exactly hybrid retrieval', async () => {
+    let seen: readonly string[] = []
+    const model = scriptedModel()
+    const spyModel = {
+      ...model,
+      synthesize: async (input: Parameters<typeof model.synthesize>[0]) => {
+        seen = input.candidates.map((c) => c.citablePathKey)
+        return model.synthesize(input)
+      },
+    }
+    await runAgentGraph('who repairs the unit?', {
+      model: spyModel,
+      retrieve: async () => [REPAIR_CANDIDATE],
+      enrichment,
+    })
+    expect(seen).toEqual([REPAIR_CANDIDATE.citablePathKey])
+  })
+
+  it('xrefExpansion ON: a one-hop neighbour reaches synthesis tagged graph-expansion', async () => {
+    let seen: readonly { key: string; stage: string }[] = []
+    const model = scriptedModel()
+    const spyModel = {
+      ...model,
+      synthesize: async (input: Parameters<typeof model.synthesize>[0]) => {
+        seen = input.candidates.map((c) => ({ key: c.citablePathKey, stage: c.stage }))
+        return model.synthesize(input)
+      },
+    }
+    const state = await runAgentGraph('who repairs the unit?', {
+      model: spyModel,
+      retrieve: async () => [REPAIR_CANDIDATE],
+      enrichment,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, xrefExpansion: true },
+    })
+    const expanded = seen.find((c) => c.key === XREF_TARGET.citablePathKey)
+    expect(expanded?.stage).toBe('graph-expansion')
+    expect(state.candidates.map((c) => c.citablePathKey)).toContain(XREF_TARGET.citablePathKey)
+  })
+
+  it('definitionsInPrompt ON: the matched definition is attached to state', async () => {
+    const state = await runAgentGraph('who repairs the unit?', {
+      model: scriptedModel(),
+      retrieve: async () => [REPAIR_CANDIDATE],
+      enrichment,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, definitionsInPrompt: true },
+    })
+    expect(state.definitionAttachments.map((d) => d.term)).toContain('good state of repair')
+  })
+
+  it('definitionsInPrompt OFF (default): no definitions attached', async () => {
+    const state = await runAgentGraph('who repairs the unit?', {
+      model: scriptedModel(),
+      retrieve: async () => [REPAIR_CANDIDATE],
+      enrichment,
+    })
+    expect(state.definitionAttachments).toEqual([])
+  })
+
+  it('queryReformulation OFF (default): the reformulate edge never fires (single retrieve pass)', async () => {
+    // Empty retrieval still drives the INDEPENDENT Critic re-retrieval loop (it is
+    // separately capped); the reformulation counter, however, must stay at zero —
+    // the reformulate edge is the thing under test and it must not fire when off.
+    const d = deps({}, async () => []) // retrieval always empty
+    const state = await runAgentGraph('q', d)
+    expect(state.reformulations).toBe(0)
+    expect(state.envelope).toBeDefined()
+  })
+
+  it('queryReformulation ON: a thin result reformulates exactly once then proceeds (BOUNDED)', async () => {
+    // Retrieval stays empty so the reformulation rescue condition holds on every
+    // pass; the cap MUST stop it at exactly one reformulation — never an open loop.
+    const model = scriptedModel()
+    const state = await runAgentGraph('q', {
+      model,
+      retrieve: async () => [],
+      flags: { ...AGENT_QUERY_FLAGS_OFF, queryReformulation: true },
+    })
+    // The reformulation loop is bounded by its own cap, independent of the Critic
+    // re-retrieval loop (also empty → also fires once, separately capped).
+    expect(state.reformulations).toBe(AGENT_LOOP_CAPS.maxReformulations)
+    expect(state.criticReretrievals).toBeLessThanOrEqual(AGENT_LOOP_CAPS.maxCriticReretrievals)
+    // Guard ran exactly once; the run terminated with an envelope (never looped open).
+    expect(model.calls.guard).toBe(1)
+    expect(state.envelope).toBeDefined()
+  })
+
+  it('the reformulate node is wired as retrieve→reformulate→planner', () => {
+    const graph = buildAgentGraph(deps())
+    const edges = graph.getGraph().edges.map((e) => `${e.source}->${e.target}`)
+    expect(edges).toContain('reformulate->planner')
+    expect(edges.some((e) => e.startsWith('retrieve->') && e.includes('reformulate'))).toBe(true)
+    expect(edges.some((e) => e.startsWith('retrieve->') && e.includes('rerank'))).toBe(true)
   })
 })

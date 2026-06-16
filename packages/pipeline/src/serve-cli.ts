@@ -55,14 +55,24 @@ import {
   parseStuffRequest,
   type StuffServiceDeps,
 } from './stuff-service.js'
-import { langfuseEnabled, loadRootEnv, repoPath, resolveLiveConfig } from './live/env.js'
+import {
+  langfuseEnabled,
+  loadRootEnv,
+  repoPath,
+  resolveCohereApiKey,
+  resolveLiveConfig,
+} from './live/env.js'
 import { connectMongoStore } from './live/mongo-store.js'
 import { createVertexLlm } from './live/vertex-llm.js'
 import { createVertexStuffLlm } from './live/vertex-stuff-llm.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
+import { createCohereRerank } from './live/cohere-rerank.js'
+import { createLlmRerank } from './live/llm-rerank.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
 import { loadManifestSnapshot } from './live/manifest-snapshot.js'
+import { resolveAgentQueryFlags } from './agent-query-flags.js'
+import { selectReranker } from './rerank-select.js'
 
 const PORT = Number(process.env.NAIVE_RAG_PORT ?? 8787)
 
@@ -149,6 +159,28 @@ async function main(): Promise<void> {
   const agentTracerHandle = tracingOn
     ? createLangfuseTracer(process.env, undefined, ['agent', 'arm:agent'])
     : undefined
+
+  // The #16 query-time ablation flags + rerank A/B. Flags are resolved from env so
+  // a flip is a restart against the SAME corpus build — never a re-index. The
+  // rerank provider is selected from the flag: `authority` (deterministic),
+  // `cohere` (Rerank 3.5; only when a key resolves — else degrades to authority),
+  // or `llm` (the runtime Gemini). The selector is consulted only when the
+  // `rerank` flag is on; off-state is the raw RRF order in the rerank node.
+  const agentFlags = resolveAgentQueryFlags()
+  const cohereApiKey = resolveCohereApiKey()
+  const agentRerank = selectReranker(agentFlags.rerankProvider, {
+    cohere: cohereApiKey ? createCohereRerank({ apiKey: cohereApiKey }) : undefined,
+    llm: createLlmRerank({ model: config.runtime.model, location: live.vertexLocation }),
+  })
+
+  // INTERIM (#16 / live-run milestone): the agent's query-time graph expansion and
+  // definitions attachment consume #13's tree-level sidecars, but loading the
+  // PERSISTED sidecars + an Atlas-backed expansion-target lookup is deferred to the
+  // live-run milestone (alongside live hybrid-arm ingestion and the `/stuff`
+  // context-cache lifecycle). Until then `enrichment` is left undefined, so the
+  // `xrefExpansion` / `definitionsInPrompt` flags fall back to their documented
+  // off-state (no expansion, no definitions) even if toggled on — the mechanism is
+  // unit-tested against `createAgentEnrichmentAccess`; only the live load is pending.
   const chatDeps: ChatServiceDeps = {
     model: createVertexAgentModel({ model: config.runtime.model, location: live.vertexLocation }),
     retrieve: createAgentRetrieve({
@@ -156,6 +188,8 @@ async function main(): Promise<void> {
       vectorSearch: store.search,
       textSearch: store.textSearch,
     }),
+    rerank: agentRerank,
+    flags: agentFlags,
     runRecord,
     topK: config.retrieval.topK,
     tracer: agentTracerHandle?.tracer,
