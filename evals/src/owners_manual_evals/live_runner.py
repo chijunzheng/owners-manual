@@ -27,6 +27,7 @@ from typing import Any
 
 from .document_tree import DocumentTree
 from .golden_item import GoldenItem
+from .harness_envelope import build_harness_output
 from .run_naive_rag import AnswerFn, ItemOutcome
 from .service_client import NaiveRagClient
 
@@ -71,6 +72,8 @@ def build_live_answer(
     service_url: str,
     run_name: str,
     documents: Sequence[DocumentTree],
+    langfuse: Any | None = None,
+    client: NaiveRagClient | None = None,
 ) -> tuple[AnswerFn, Any]:
     """Build the per-item answer function and return it with the Langfuse client.
 
@@ -78,9 +81,14 @@ def build_live_answer(
     service client; the client reuses the trace id, so harness and service share
     one trace. ``documents`` is accepted for symmetry with the scoring path
     (cite parsing happens in the client) and to keep the signature stable.
+
+    ``langfuse`` and ``client`` are an injection seam (issue #50): a unit test can
+    pass a fake client / span recorder and assert what the harness writes to its
+    OWNED root observation — no live Langfuse server. Both default to the live
+    bindings, so the production behavior is unchanged.
     """
-    langfuse = _build_langfuse()
-    client = NaiveRagClient(base_url=service_url)
+    langfuse = langfuse if langfuse is not None else _build_langfuse()
+    client = client if client is not None else NaiveRagClient(base_url=service_url)
     _ = documents  # cites are parsed in the client; kept for a stable signature
 
     def answer(item: GoldenItem) -> ItemOutcome:
@@ -106,7 +114,18 @@ def build_live_answer(
                 trace_id=trace_id,
                 parent_span_id=span.id,
             )
-            span.update(output={"behaviorClass": result.behavior_class})
+            # The harness OWNS this root observation in nested mode (the TS tracer
+            # never clobbers it — #48). Record the full envelope here, not just
+            # the behavior class, so an eval-run trace shows the answer at the top
+            # (issue #50). The `stuff` arm runs root-mode (the TS service owns the
+            # trace) and is already full-envelope at root via #48 — no change.
+            span.update(
+                output=build_harness_output(
+                    behavior_class=result.behavior_class,
+                    answer_text=result.answer_text,
+                    claims=result.claims,
+                )
+            )
 
         return ItemOutcome(
             item_id=item.id,
