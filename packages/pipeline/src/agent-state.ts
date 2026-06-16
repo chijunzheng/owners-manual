@@ -39,6 +39,10 @@ function lastWriteWins<T>(left: T, right: T | undefined): T {
 export const AgentAnnotation = Annotation.Root({
   question: Annotation<string>({ reducer: lastWriteWins, default: () => '' }),
   itemId: Annotation<string | undefined>({ reducer: lastWriteWins, default: () => undefined }),
+  reformulatedQuestion: Annotation<string | undefined>({
+    reducer: lastWriteWins,
+    default: () => undefined,
+  }),
   guardDecision: Annotation<GuardDecision | undefined>({
     reducer: lastWriteWins,
     default: () => undefined,

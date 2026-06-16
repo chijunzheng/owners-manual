@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
 import { AGENT_QUERY_FLAGS_OFF, type AgentQueryFlags } from './agent-query-flags.js'
-import { candidate, REPAIR_CANDIDATE, VOID_CLAUSE_CANDIDATE } from './agent-fixtures.js'
+import {
+  candidate,
+  defaultReformulation,
+  REPAIR_CANDIDATE,
+  scriptedModel,
+  VOID_CLAUSE_CANDIDATE,
+} from './agent-fixtures.js'
 import {
   AGENT_TOP_K_DEFAULT,
+  plannerNode,
   reformulateNode,
   rerankNode,
   retrieveNode,
@@ -146,7 +153,7 @@ describe('rerankNode — rerank flag + injected seam', () => {
 
 // --- reformulation edge: bounded, flagged ----------------------------------
 
-describe('reformulateNode / routeAfterRetrieve — bounded reformulation', () => {
+describe('routeAfterRetrieve — bounded reformulation routing', () => {
   it('OFF (fallback): never reformulates — routes straight to rerank', () => {
     const route = routeAfterRetrieve(
       state({ candidates: [REPAIR_CANDIDATE] }),
@@ -183,14 +190,114 @@ describe('reformulateNode / routeAfterRetrieve — bounded reformulation', () =>
     )
     expect(route).toBe('rerank')
   })
+})
 
-  it('reformulateNode bumps the reformulations counter by one', () => {
-    const patch = reformulateNode(state({ reformulations: 0 }))
+describe('reformulateNode — real query rewrite (#53)', () => {
+  it('calls the injected reformulate seam and stores the rewrite as reformulatedQuestion', async () => {
+    const model = scriptedModel()
+    const patch = await reformulateNode(state({ question: 'who repairs the unit?' }), model)
+    expect(model.calls.reformulate).toBe(1)
+    expect(patch.reformulatedQuestion).toBe(defaultReformulation('who repairs the unit?'))
+  })
+
+  it('preserves the ORIGINAL question (provenance) — only reformulatedQuestion changes', async () => {
+    const model = scriptedModel()
+    const patch = await reformulateNode(state({ question: 'who repairs the unit?' }), model)
+    // The node never overwrites `question`; the original is kept for the trace.
+    expect(patch.question).toBeUndefined()
+    expect(patch.reformulatedQuestion).not.toBe('who repairs the unit?')
+  })
+
+  it('reformulates from the ORIGINAL question, not a prior rewrite (single bounded rewrite)', async () => {
+    // Even if state already carries a stale reformulatedQuestion, the rewrite is
+    // derived from the original question so provenance is stable (cap is 1 anyway).
+    const model = scriptedModel()
+    const patch = await reformulateNode(
+      state({ question: 'who repairs the unit?', reformulatedQuestion: 'stale' }),
+      model,
+    )
+    expect(patch.reformulatedQuestion).toBe(defaultReformulation('who repairs the unit?'))
+  })
+
+  it('bumps the reformulations counter by one', async () => {
+    const patch = await reformulateNode(state({ reformulations: 0 }), scriptedModel())
     expect(patch.reformulations).toBe(1)
   })
 
-  it('reformulateNode never exceeds the cap in a single bump from the cap-1 state', () => {
-    const patch = reformulateNode(state({ reformulations: AGENT_LOOP_CAPS.maxReformulations - 1 }))
+  it('never exceeds the cap in a single bump from the cap-1 state', async () => {
+    const patch = await reformulateNode(
+      state({ reformulations: AGENT_LOOP_CAPS.maxReformulations - 1 }),
+      scriptedModel(),
+    )
     expect(patch.reformulations).toBe(AGENT_LOOP_CAPS.maxReformulations)
+  })
+
+  it('OFF-state has no reformulate seam dependency: reformulateNode is never reached when off', () => {
+    // The off-state guarantee lives in routing (above): with the flag off the
+    // router never returns "reformulate", so reformulateNode — and thus the
+    // injected reformulate seam — is never invoked. Pinned here as the contract.
+    const route = routeAfterRetrieve(state({ candidates: [] }), AGENT_QUERY_FLAGS_OFF)
+    expect(route).not.toBe('reformulate')
+  })
+})
+
+describe('reformulation — the second retrieve pass reads the rewritten query (#53)', () => {
+  // The reformulate edge is retrieve → reformulate → planner → retrieve. After a
+  // rewrite, the re-planned hops AND the empty-query fallback must derive from the
+  // rewritten query so the SECOND retrieve differs from the first. This pins the
+  // planner+retrieve node flow directly (the graph-level e2e lives in the graph test).
+
+  /** A planner fake that echoes whatever question it is asked into a single hop. */
+  const echoPlanner = (question: string) =>
+    scriptedModel({ plans: [{ hops: [{ query: question }], multiHop: false }] })
+
+  it('the planner re-plans over the rewritten question after a reformulation', async () => {
+    const model = echoPlanner('IGNORED — echo uses the input question')
+    // Simulate the post-reformulation state: reformulatedQuestion is set.
+    const afterReformulate = state({
+      question: 'who repairs the unit?',
+      reformulatedQuestion: 'who is responsible for repairs under the RTA?',
+    })
+    const patch = await plannerNode(afterReformulate, {
+      ...model,
+      async plan({ question }) {
+        return { hops: [{ query: question }], multiHop: false }
+      },
+    })
+    expect(patch.plan?.hops[0]?.query).toBe('who is responsible for repairs under the RTA?')
+  })
+
+  it('the retrieve empty-query fallback uses the rewritten query, not the original', async () => {
+    const seen: string[] = []
+    const retrieve = async ({ question }: { question: string }) => {
+      seen.push(question)
+      return [REPAIR_CANDIDATE]
+    }
+    // A degenerate (empty-query) hop must fall back to the rewritten question.
+    await retrieveNode(
+      state({
+        question: 'who repairs the unit?',
+        reformulatedQuestion: 'landlord repair obligation Ontario',
+        plan: { hops: [{ query: '' }], multiHop: false },
+      }),
+      retrieve,
+    )
+    expect(seen).toEqual(['landlord repair obligation Ontario'])
+  })
+
+  it('before any reformulation, retrieve still uses the original question (off-path unchanged)', async () => {
+    const seen: string[] = []
+    const retrieve = async ({ question }: { question: string }) => {
+      seen.push(question)
+      return []
+    }
+    await retrieveNode(
+      state({
+        question: 'who repairs the unit?',
+        plan: { hops: [{ query: '' }], multiHop: false },
+      }),
+      retrieve,
+    )
+    expect(seen).toEqual(['who repairs the unit?'])
   })
 })

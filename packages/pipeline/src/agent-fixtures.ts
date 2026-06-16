@@ -53,6 +53,15 @@ export const VOID_CLAUSE_CANDIDATE = candidate(
 )
 
 /**
+ * The deterministic default rewrite the scripted fake's `reformulate` applies:
+ * a recognizable, pure transform of the question (no network) so a test can
+ * assert the SECOND retrieve pass saw the rewritten query, not the original.
+ */
+export function defaultReformulation(question: string): string {
+  return `${question} (reformulated)`
+}
+
+/**
  * Options for the scripted fake: each decision is fixed, and `synthesize`
  * returns a fixed raw envelope JSON (optionally streamed token-by-token).
  */
@@ -64,6 +73,12 @@ export interface ScriptedModelOptions {
   readonly synthesisOutputs?: readonly string[]
   /** A queue of critic decisions returned in order; last one repeats. */
   readonly critiques?: readonly CriticDecision[]
+  /**
+   * The reformulation strategy the fake applies (#53). A pure function of the
+   * original question so the rewrite is deterministic and offline; defaults to
+   * {@link defaultReformulation} (appends a recognizable marker).
+   */
+  readonly reformulate?: (question: string) => string
   /** Stream the synthesis output in this many chunks (default 1, whole string). */
   readonly streamChunks?: number
 }
@@ -75,6 +90,7 @@ export interface ScriptedModel extends AgentModel {
     plan: number
     synthesize: number
     critique: number
+    reformulate: number
   }
 }
 
@@ -132,8 +148,9 @@ export function scriptedModel(options: ScriptedModelOptions = {}): ScriptedModel
   const plans = options.plans ?? [SINGLE_HOP_PLAN]
   const synthesisOutputs = options.synthesisOutputs ?? [ANSWER_OUTPUT]
   const critiques = options.critiques ?? [GROUNDED_CRITIC]
+  const reformulate = options.reformulate ?? defaultReformulation
   const streamChunks = options.streamChunks ?? 1
-  const calls = { guard: 0, plan: 0, synthesize: 0, critique: 0 }
+  const calls = { guard: 0, plan: 0, synthesize: 0, critique: 0, reformulate: 0 }
 
   return {
     calls,
@@ -156,6 +173,10 @@ export function scriptedModel(options: ScriptedModelOptions = {}): ScriptedModel
       const out = at(critiques, calls.critique)
       calls.critique += 1
       return out
+    },
+    async reformulate({ question }) {
+      calls.reformulate += 1
+      return reformulate(question)
     },
   }
 }

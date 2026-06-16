@@ -1,8 +1,9 @@
 /**
- * The live agent-model binding (#15): an {@link AgentModel} backed by the stock
- * `ChatVertexAI` (ADR 0005 — Gemini on Vertex, keyless ADC). One chat client
- * serves all four node seams (guard, plan, synthesize, critique) via the pure
- * prompt builders; synthesis STREAMS so the SSE endpoint relays tokens.
+ * The live agent-model binding (#15, + #53 reformulate): an {@link AgentModel}
+ * backed by the stock `ChatVertexAI` (ADR 0005 — Gemini on Vertex, keyless ADC).
+ * One chat client serves every node seam (guard, plan, synthesize, critique,
+ * reformulate) via the pure prompt builders; synthesis STREAMS so the SSE
+ * endpoint relays tokens.
  *
  * The model string is the pinned flagship from pipeline config — never hardcoded
  * here — so a swap is a config change (matching `createVertexLlm`). Live by
@@ -21,6 +22,7 @@ import {
   buildCriticPrompt,
   buildGuardPrompt,
   buildPlannerPrompt,
+  buildReformulatePrompt,
 } from '../agent-prompts.js'
 import { type AgentModel } from '../agent-types.js'
 
@@ -119,6 +121,16 @@ export function createVertexAgentModel(options: VertexAgentOptions): AgentModel 
     async critique({ question, answer, candidates }) {
       const raw = await complete(buildCriticPrompt(question, answer, candidates))
       return criticSchema.parse(parseJsonObject(raw, 'critic'))
+    },
+
+    async reformulate({ question }) {
+      // The reformulator returns BARE query text (not JSON): the rewrite is a
+      // string the second retrieve embeds. Trim and strip any stray wrapping
+      // quotes; fall back to the original question if the model returns nothing,
+      // so a degenerate reply never blanks out the second retrieval (ADR 0006).
+      const raw = (await complete(buildReformulatePrompt(question))).trim()
+      const unquoted = raw.replace(/^["']|["']$/g, '').trim()
+      return unquoted.length > 0 ? unquoted : question
     },
   }
 }

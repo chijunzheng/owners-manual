@@ -78,9 +78,9 @@ export interface CriticDecision {
 }
 
 /**
- * The injected model seam — the agent's three LLM-shaped decisions, each a
- * narrow string-in/value-out call so the whole graph is driven by a SCRIPTED
- * FAKE in tests. The live binding wraps one `ChatVertexAI` (ADR 0005).
+ * The injected model seam — the agent's LLM-shaped decisions, each a narrow
+ * string-in/value-out call so the whole graph is driven by a SCRIPTED FAKE in
+ * tests. The live binding wraps one `ChatVertexAI` (ADR 0005).
  */
 export interface AgentModel {
   /** Guard the question: jurisdiction, topical scope, injection, advice boundary. */
@@ -106,6 +106,20 @@ export interface AgentModel {
     readonly answer: string
     readonly candidates: readonly HybridCandidate[]
   }): Promise<CriticDecision>
+  /**
+   * Rewrite the question for a second retrieval pass (#53, ADR 0006). Invoked
+   * ONLY by the bounded reformulate edge, which fires solely when the
+   * `queryReformulation` flag is on AND the first pass came back thin — so with
+   * the flag off this seam is never called and the off-state is byte-identical to
+   * the #15 baseline. `candidates` is the (thin/empty) first-pass result, passed
+   * so a binding can condition the rewrite on what little came back; the resolved
+   * string is the rewritten query the second retrieve uses (the original
+   * `question` is preserved on {@link AgentState} for provenance).
+   */
+  reformulate(input: {
+    readonly question: string
+    readonly candidates: readonly HybridCandidate[]
+  }): Promise<string>
 }
 
 /**
@@ -171,6 +185,15 @@ export interface AgentState {
   readonly question: string
   readonly itemId?: string
   /**
+   * The rewritten query the reformulate edge produced (#53), or undefined before
+   * any reformulation. The ORIGINAL {@link question} is never overwritten — it is
+   * preserved for provenance/trace — and {@link effectiveQuestion} prefers this
+   * rewrite once set, so the planner re-plans and the second retrieve searches
+   * the rewritten query. Stays undefined whenever `queryReformulation` is off (the
+   * edge never fires), keeping an off run byte-identical to the #15 baseline.
+   */
+  readonly reformulatedQuestion?: string
+  /**
    * The Guard decision; set by the guard node. Named `guardDecision` (not
    * `guard`) because a LangGraph state channel may not share a name with a graph
    * node — and `guard` is a node.
@@ -206,4 +229,15 @@ export function guardVerdictToBehavior(verdict: GuardVerdict): AnswerBehaviorCla
     throw new Error('guardVerdictToBehavior called on a passing verdict')
   }
   return verdict
+}
+
+/**
+ * The query the planner plans for and the retrieve node falls back to: the
+ * reformulated query once the reformulate edge has run (#53), else the original
+ * question. The single point where the rewrite takes effect — so the off-state
+ * (where {@link AgentState.reformulatedQuestion} is always undefined) collapses
+ * to exactly `state.question`, the #15 behaviour.
+ */
+export function effectiveQuestion(state: AgentState): string {
+  return state.reformulatedQuestion ?? state.question
 }

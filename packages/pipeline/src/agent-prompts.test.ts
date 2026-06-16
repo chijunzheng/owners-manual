@@ -5,6 +5,7 @@ import {
   buildCriticPrompt,
   buildGuardPrompt,
   buildPlannerPrompt,
+  buildReformulatePrompt,
 } from './agent-prompts.js'
 import { REPAIR_CANDIDATE } from './agent-fixtures.js'
 
@@ -66,5 +67,20 @@ describe('buildCriticPrompt', () => {
     expect(prompt).toContain('"ungroundedClaims"')
     expect(prompt).toContain('Do NOT rewrite')
     expect(prompt).toContain('the landlord pays')
+  })
+})
+
+describe('buildReformulatePrompt', () => {
+  it('asks to broaden recall, keep scope, and embeds the question', () => {
+    const prompt = buildReformulatePrompt('who fixes it?')
+    expect(prompt).toContain('BROADEN')
+    expect(prompt).toContain('Ontario condo-ownership scope')
+    expect(prompt).toContain('who fixes it?')
+  })
+
+  it('asks for a single plain-text query (no JSON) so the rewrite is bare text', () => {
+    const prompt = buildReformulatePrompt('q')
+    expect(prompt).toMatch(/no JSON/i)
+    expect(prompt).toMatch(/single line of plain text/i)
   })
 })
