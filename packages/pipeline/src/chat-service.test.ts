@@ -363,6 +363,37 @@ describe('owner profile + session memory (#17)', () => {
     ).toBe('o')
     expect(() => parseChatRequest({ question: 'q', itemId: 'x', ownerId: '' })).toThrow()
   })
+
+  it('still emits the result when the summarizer fails — best-effort persistence must not mask a valid answer (Codex P2)', async () => {
+    const failingSummarize: SessionSummarizer = async () => {
+      throw new Error('summarizer unavailable')
+    }
+    const events = await collect(
+      { question: 'who repairs the unit?', itemId: 'x', sessionId: 'sess-fail' },
+      deps({ sessionStore: fakeSessionStore(), summarize: failingSummarize }),
+    )
+    // runAgent already streamed the answer and succeeded; a post-hoc persistence
+    // failure must not turn the valid answer into an error event.
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(0)
+    expect(events.filter((e) => e.type === 'result')).toHaveLength(1)
+    expect(events.at(-1)?.type).toBe('result')
+  })
+
+  it('still emits the result when the session store save fails (Codex P2)', async () => {
+    const failingStore: SessionMemoryStore = {
+      load: async () => undefined,
+      save: async () => {
+        throw new Error('mongo save failed')
+      },
+    }
+    const events = await collect(
+      { question: 'who repairs the unit?', itemId: 'x', sessionId: 'sess-save-fail' },
+      deps({ sessionStore: failingStore, summarize }),
+    )
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(0)
+    expect(events.filter((e) => e.type === 'result')).toHaveLength(1)
+    expect(events.at(-1)?.type).toBe('result')
+  })
 })
 
 describe('formatSseEvent', () => {

@@ -117,7 +117,18 @@ export interface ChatServiceDeps {
   readonly tracer?: AgentTracer
 }
 
-/** Load the owner profile for the request, or undefined when not applicable. */
+/**
+ * Load the owner profile for the request, or undefined when not applicable.
+ *
+ * SECURITY — v1 trust boundary (Codex P1 on PR #55): `ownerId` here and
+ * `sessionId` in {@link loadSession} are taken from the request body and trusted
+ * as-is. v1 is single-user, owner-side BYOD tooling, so there is no authenticated
+ * principal to bind them to — auth/multi-tenancy is an explicit PRD non-goal
+ * ("Out of Scope"). BEFORE any multi-tenant deploy (#24) these keys MUST be
+ * derived from server-side auth/session state, not the body; otherwise a caller
+ * could load another owner's profile or conversation summary by guessing an id
+ * (IDOR). Tracked as a follow-up.
+ */
 async function loadProfile(
   request: ChatRequest,
   deps: ChatServiceDeps,
@@ -171,9 +182,10 @@ async function persistSession(
  * BOTH (distinct mechanisms) into the agent run, stream synthesis tokens to the
  * sink, then emit one terminal `result` event carrying the schema-validated
  * envelope, the retrieved path keys (the harness's hit-rate input), the run
- * record, and the degraded flag. After a substantive turn it folds the turn into
- * the bounded session summary and persists it — so the next turn sees this one,
- * while the durable profile is what later SESSIONS see (AC1). On failure it emits
+ * record, and the degraded flag. AFTER emitting that result it folds a substantive
+ * turn into the bounded session summary and persists it as a best-effort write (a
+ * persistence failure never masks the already-valid answer) — so the next turn
+ * sees this one, while the durable profile is what later SESSIONS see (AC1). On failure it emits
  * a single `error` event rather than throwing across the stream boundary — the
  * caller has already opened the SSE response, so the error must travel as an event.
  */
@@ -205,8 +217,9 @@ export async function handleChatRequest(
       tracer: deps.tracer,
     })
 
-    await persistSession(request, deps, sessionMemory, result.envelope)
-
+    // Emit the terminal result BEFORE persisting session memory: the answer has
+    // already streamed and is valid, so a persistence failure must not mask it
+    // with an error event (Codex P2 on PR #55).
     emit({
       type: 'result',
       traceId: request.traceId,
@@ -216,6 +229,17 @@ export async function handleChatRequest(
       degraded: result.degraded,
       latencyMs: result.latencyMs,
     })
+
+    // Session persistence is best-effort (#17): folding and persisting the bounded
+    // summary serves the NEXT turn, not this answer. A summarizer or Mongo `save`
+    // failure must never turn an already-valid, already-emitted answer into an
+    // error event — the same best-effort idiom as loadRootEnv in live/env.ts.
+    try {
+      await persistSession(request, deps, sessionMemory, result.envelope)
+    } catch {
+      // best-effort: the run is recorded on the tracer; the next turn simply
+      // resumes from the last persisted summary.
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     emit({ type: 'error', message })
