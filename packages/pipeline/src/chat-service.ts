@@ -16,7 +16,13 @@
 import { z } from 'zod'
 
 import { type AnswerEnvelope } from './answer-envelope.js'
-import { type AgentModel, type AgentRetrieve } from './agent-types.js'
+import {
+  type AgentEnrichmentAccess,
+  type AgentModel,
+  type AgentRerank,
+  type AgentRetrieve,
+} from './agent-types.js'
+import { type AgentQueryFlags } from './agent-query-flags.js'
 import { runAgent, type AgentTracer } from './agent-run.js'
 import { type RunRecord } from './run-record.js'
 
@@ -64,6 +70,12 @@ export type ChatEventSink = (event: ChatEvent) => void
 export interface ChatServiceDeps {
   readonly model: AgentModel
   readonly retrieve: AgentRetrieve
+  /** The #16 rerank provider seam; only consulted when the `rerank` flag is on. */
+  readonly rerank?: AgentRerank
+  /** Read-only access to #13's sidecars; absent disables expansion/definitions. */
+  readonly enrichment?: AgentEnrichmentAccess
+  /** The #16 query-time ablation flags; defaults to all-off downstream. */
+  readonly flags?: AgentQueryFlags
   readonly runRecord: RunRecord
   readonly topK: number
   readonly tracer?: AgentTracer
@@ -91,6 +103,9 @@ export async function handleChatRequest(
       topK: deps.topK,
       model: deps.model,
       retrieve: deps.retrieve,
+      rerank: deps.rerank,
+      enrichment: deps.enrichment,
+      flags: deps.flags,
       onToken: (token) => emit({ type: 'token', token }),
       tracer: deps.tracer,
     })

@@ -100,8 +100,8 @@ export function createVertexAgentModel(options: VertexAgentOptions): AgentModel 
       return planSchema.parse(parseJsonObject(raw, 'planner'))
     },
 
-    async synthesize({ question, candidates, onToken }) {
-      const prompt = buildAgentSynthesisPrompt(question, candidates)
+    async synthesize({ question, candidates, definitions, onToken }) {
+      const prompt = buildAgentSynthesisPrompt(question, candidates, definitions)
       // Stream so the SSE endpoint relays tokens as they arrive; accumulate the
       // full text to parse into the envelope (one artifact, two consumers).
       let text = ''

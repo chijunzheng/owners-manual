@@ -12,6 +12,8 @@
  * naive-rag arm binds its `LlmComplete`.
  */
 
+import { type CrossReferenceEdge, type DefinitionsIndex } from '@owners-manual/enrichment'
+
 import { type AnswerBehaviorClass } from './answer-envelope.js'
 import { type AuthorityLevel } from './authority.js'
 import { type HybridCandidate, type RetrieveHybridOptions } from './hybrid-retrieve.js'
@@ -89,10 +91,13 @@ export interface AgentModel {
    * Synthesize a streamed answer from the candidates. `onToken` is called with
    * each chunk so the SSE endpoint streams; the resolved string is the full raw
    * model output the envelope is parsed from (one artifact, two consumers).
+   * `definitions` are the #16 `definitionsInPrompt` attachments (empty when the
+   * flag is off — the documented fallback), surfaced in the synthesis prompt.
    */
   synthesize(input: {
     readonly question: string
     readonly candidates: readonly HybridCandidate[]
+    readonly definitions?: readonly import('./graph-expansion.js').DefinitionAttachment[]
     readonly onToken?: (token: string) => void
   }): Promise<string>
   /** Critique the drafted answer: does every claim map to a retrieved candidate? */
@@ -115,11 +120,46 @@ export type AgentRetrieve = (input: {
   readonly authorityLevels?: readonly AuthorityLevel[]
 }) => Promise<readonly HybridCandidate[]>
 
+/**
+ * The injected RERANK seam (#16) — exactly the AgentModel/AgentRetrieve pattern,
+ * so the rerank A/B (authority vs Cohere Rerank vs LLM-rerank) is driven by a
+ * SCRIPTED FAKE in tests and never a live Cohere/Vertex call. A reranker takes
+ * the question + candidates and returns them reordered; the live `cohere`/`llm`
+ * bindings wrap the real provider (the key never passes through code or tests),
+ * the deterministic `authority` binding is provider-free. Which binding runs is
+ * the `rerankProvider` flag's job; whether rerank runs at all is the `rerank`
+ * flag's (off-state = the raw RRF/similarity order, applied by the rerank node).
+ */
+export type AgentRerank = (input: {
+  readonly question: string
+  readonly candidates: readonly HybridCandidate[]
+}) => Promise<readonly HybridCandidate[]>
+
 /** The injected options the live binding closes `retrieveHybrid` over. */
 export type AgentRetrieveDeps = Pick<
   RetrieveHybridOptions,
   'provider' | 'vectorSearch' | 'textSearch'
 >
+
+/**
+ * The injected access to #13's tree-level sidecars at QUERY time (#16) — the seam
+ * the retrieve node reads cross-reference edges and definitions through, and
+ * resolves an expansion target's path key to a candidate. Injected (the
+ * AgentRetrieve pattern) so graph expansion and definitions attachment are
+ * unit-tested offline against a fixed sidecar; the live binding closes over the
+ * loaded {@link import('@owners-manual/enrichment').TreeEnrichment} sidecars and
+ * the same Atlas chunk store the agent retrieves from. Reads only — the producer
+ * (#13) is never re-run by a query (ADR 0004: flags flip at consumers, never
+ * producers).
+ */
+export interface AgentEnrichmentAccess {
+  /** The cross-reference edges relevant to a candidate set (the one-hop graph). */
+  crossReferencesFor(candidates: readonly HybridCandidate[]): readonly CrossReferenceEdge[]
+  /** The definitions index relevant to a candidate set (defined term → path key). */
+  definitionsFor(candidates: readonly HybridCandidate[]): DefinitionsIndex
+  /** Resolve an expansion target's citable-path key to its candidate row. */
+  lookup(citablePathKey: string): HybridCandidate | undefined
+}
 
 /**
  * The agent's full state (the LangGraph channels). Immutable per CONTEXT/coding
@@ -140,6 +180,12 @@ export interface AgentState {
   readonly plan?: RetrievalPlan
   /** The current retrieved candidate set; replaced each retrieve pass. */
   readonly candidates: readonly HybridCandidate[]
+  /**
+   * Definitions attached to synthesis (#16, `definitionsInPrompt` flag): the
+   * defined terms the retrieved candidates mention, with where each is defined.
+   * Empty when the flag is off (the documented fallback) or nothing matched.
+   */
+  readonly definitionAttachments: readonly import('./graph-expansion.js').DefinitionAttachment[]
   /** How many reformulations have happened at retrieve (cap: maxReformulations). */
   readonly reformulations: number
   /** How many Critic re-retrievals have happened (cap: maxCriticReretrievals). */

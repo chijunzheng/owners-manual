@@ -54,6 +54,19 @@ export function resolveLiveConfig(): LiveConfig {
 const PLACEHOLDER = /PLACEHOLDER|CHANGEME/i
 
 /**
+ * The Cohere Rerank API key, or `undefined` when unset or still a placeholder
+ * (#16 rerank A/B). Optional by design: with no usable key the rerank-provider
+ * selector degrades the `cohere` arm to the deterministic authority reranker
+ * rather than failing — a missing key pins the deterministic arm, never breaks a
+ * run. Never echoes the value.
+ */
+export function resolveCohereApiKey(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const key = env.COHERE_API_KEY?.trim()
+  if (!key || PLACEHOLDER.test(key)) return undefined
+  return key
+}
+
+/**
  * True when Langfuse tracing is usable: both keys present and not placeholders,
  * and not explicitly disabled via NAIVE_RAG_NO_LANGFUSE. When false the service
  * runs without harness-side trace export rather than spamming 401s — the

@@ -41,6 +41,22 @@ describe('buildAgentSynthesisPrompt', () => {
     const prompt = buildAgentSynthesisPrompt('q', [])
     expect(prompt).toContain('(no sources retrieved)')
   })
+
+  it('omits the definitions block when no definitions are attached (the off fallback)', () => {
+    const prompt = buildAgentSynthesisPrompt('q', [REPAIR_CANDIDATE], [])
+    expect(prompt).not.toContain('DEFINED TERMS')
+  })
+
+  it('renders attached definitions (#16 definitionsInPrompt) with their defining path', () => {
+    const prompt = buildAgentSynthesisPrompt(
+      'q',
+      [REPAIR_CANDIDATE],
+      [{ term: 'good state of repair', definedAtPathKey: 'rta-2006|part:I|section:2|clause:def' }],
+    )
+    expect(prompt).toContain('DEFINED TERMS')
+    expect(prompt).toContain('good state of repair')
+    expect(prompt).toContain('rta-2006|part:I|section:2|clause:def')
+  })
 })
 
 describe('buildCriticPrompt', () => {

@@ -27,6 +27,7 @@ import {
   type GuardDecision,
   type RetrievalPlan,
 } from './agent-types.js'
+import { type DefinitionAttachment } from './graph-expansion.js'
 import { type HybridCandidate } from './hybrid-retrieve.js'
 
 /** A last-write-wins reducer: a node update replaces the prior value. */
@@ -47,6 +48,10 @@ export const AgentAnnotation = Annotation.Root({
     default: () => undefined,
   }),
   candidates: Annotation<readonly HybridCandidate[]>({
+    reducer: lastWriteWins,
+    default: () => [],
+  }),
+  definitionAttachments: Annotation<readonly DefinitionAttachment[]>({
     reducer: lastWriteWins,
     default: () => [],
   }),

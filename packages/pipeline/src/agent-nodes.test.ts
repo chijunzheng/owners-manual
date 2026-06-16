@@ -29,6 +29,7 @@ function state(overrides: Partial<AgentState> = {}): AgentState {
   return {
     question: 'who repairs the unit?',
     candidates: [],
+    definitionAttachments: [],
     reformulations: 0,
     criticReretrievals: 0,
     degraded: false,

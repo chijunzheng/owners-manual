@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { langfuseEnabled } from './env.js'
+import { langfuseEnabled, resolveCohereApiKey } from './env.js'
 
 describe('langfuseEnabled', () => {
   it('is true when both keys are present and not placeholders', () => {
@@ -30,5 +30,19 @@ describe('langfuseEnabled', () => {
         NAIVE_RAG_NO_LANGFUSE: '1',
       }),
     ).toBe(false)
+  })
+})
+
+describe('resolveCohereApiKey', () => {
+  it('returns the key when set and not a placeholder', () => {
+    expect(resolveCohereApiKey({ COHERE_API_KEY: 'co-real-key' })).toBe('co-real-key')
+  })
+
+  it('returns undefined when the key is still the example placeholder', () => {
+    expect(resolveCohereApiKey({ COHERE_API_KEY: 'PLACEHOLDER-REPLACE-ME' })).toBeUndefined()
+  })
+
+  it('returns undefined when the key is unset (rerank degrades to authority)', () => {
+    expect(resolveCohereApiKey({})).toBeUndefined()
   })
 })

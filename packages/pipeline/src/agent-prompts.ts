@@ -12,6 +12,7 @@
  */
 
 import { type HybridCandidate } from './hybrid-retrieve.js'
+import { type DefinitionAttachment } from './graph-expansion.js'
 import { GUARD_VERDICTS } from './agent-types.js'
 
 /** Render one candidate as a numbered, addressable source block (shared shape). */
@@ -87,12 +88,32 @@ Rules:
 - If a lease or contract clause conflicts with a statute in the sources, use "flag-void-clause" and cite both the clause and the overriding section.
 - Never fabricate facts beyond the sources.`
 
-/** The synthesis prompt: instruction, numbered sources, then the question. */
+/**
+ * Render the attached definitions (#16 `definitionsInPrompt`) as a reference
+ * block: each defined term the sources mention and where it is authoritatively
+ * defined. Empty input renders nothing — the off-state fallback adds no block,
+ * so an off run's prompt is byte-identical to the #15 prompt.
+ */
+function renderDefinitions(definitions: readonly DefinitionAttachment[]): string {
+  if (definitions.length === 0) return ''
+  const lines = definitions.map((d) => `- "${d.term}" is defined at ${d.definedAtPathKey}`)
+  return `\n\nDEFINED TERMS (cite the defining provision if you rely on a definition):\n${lines.join('\n')}`
+}
+
+/**
+ * The synthesis prompt: instruction, numbered sources, the attached definitions
+ * (when the `definitionsInPrompt` flag surfaced any — otherwise nothing), then
+ * the question. The definitions argument defaults to empty so the #15 two-arg
+ * call shape is unchanged and the off-state prompt carries no definitions block.
+ */
 export function buildAgentSynthesisPrompt(
   question: string,
   candidates: readonly HybridCandidate[],
+  definitions: readonly DefinitionAttachment[] = [],
 ): string {
-  return `${SYNTHESIS_INSTRUCTION}\n\nSOURCES:\n${renderSources(candidates)}\n\nQUESTION:\n${question}`
+  return `${SYNTHESIS_INSTRUCTION}\n\nSOURCES:\n${renderSources(candidates)}${renderDefinitions(
+    definitions,
+  )}\n\nQUESTION:\n${question}`
 }
 
 /**
