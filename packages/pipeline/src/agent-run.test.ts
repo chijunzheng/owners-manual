@@ -6,9 +6,21 @@ import { type AgentRetrieve } from './agent-types.js'
 
 const retrieve: AgentRetrieve = async () => [REPAIR_CANDIDATE]
 
-/** A recording tracer fake that captures the span tree shape and trace id. */
-function recordingTracer(): { tracer: AgentTracer; spans: string[]; traceId?: string } {
+/**
+ * A recording tracer fake that captures the span tree shape, the per-span
+ * outputs (keyed by span name), the trace-level output, and the trace id — so
+ * tests can pin full-envelope-on-trace and answer-on-agent-graph-span.
+ */
+function recordingTracer(): {
+  tracer: AgentTracer
+  spans: string[]
+  spanOutputs: Record<string, unknown>
+  traceOutput?: unknown
+  traceId?: string
+} {
   const spans: string[] = []
+  const spanOutputs: Record<string, unknown> = {}
+  let traceOutput: unknown
   let traceId: string | undefined
   const tracer: AgentTracer = {
     startTrace: (opts) => {
@@ -16,9 +28,16 @@ function recordingTracer(): { tracer: AgentTracer; spans: string[]; traceId?: st
       return {
         span: (name) => {
           spans.push(name)
-          return { end: () => {} }
+          return {
+            setOutput: (output) => {
+              spanOutputs[name] = output
+            },
+            end: () => {},
+          }
         },
-        setOutput: () => {},
+        setOutput: (output) => {
+          traceOutput = output
+        },
       }
     },
   }
@@ -27,6 +46,10 @@ function recordingTracer(): { tracer: AgentTracer; spans: string[]; traceId?: st
     get traceId() {
       return traceId
     },
+    get traceOutput() {
+      return traceOutput
+    },
+    spanOutputs,
     spans,
   }
 }
@@ -91,7 +114,7 @@ describe('runAgent', () => {
     const tracer: AgentTracer = {
       startTrace: (opts) => {
         seenParent = opts.parentSpanId
-        return { span: () => ({ end: () => {} }), setOutput: () => {} }
+        return { span: () => ({ setOutput: () => {}, end: () => {} }), setOutput: () => {} }
       },
     }
     await runAgent({
@@ -136,7 +159,10 @@ describe('runAgent', () => {
   it('ends the graph span it opens', async () => {
     const ends = vi.fn()
     const tracer: AgentTracer = {
-      startTrace: () => ({ span: () => ({ end: ends }), setOutput: () => {} }),
+      startTrace: () => ({
+        span: () => ({ setOutput: () => {}, end: ends }),
+        setOutput: () => {},
+      }),
     }
     await runAgent({
       question: 'q',
@@ -147,6 +173,37 @@ describe('runAgent', () => {
       tracer,
     })
     expect(ends).toHaveBeenCalled()
+  })
+
+  it('sets the trace output to the full envelope (behaviorClass, answer, claims, degraded)', async () => {
+    const recording = recordingTracer()
+    const result = await runAgent({
+      question: 'who repairs the unit?',
+      itemId: 'answer-repair-duty-condo',
+      topK: 8,
+      model: scriptedModel(),
+      retrieve,
+      tracer: recording.tracer,
+    })
+    expect(recording.traceOutput).toEqual({
+      behaviorClass: 'answer',
+      answer: result.envelope.answer,
+      claims: result.envelope.claims,
+      degraded: result.degraded,
+    })
+  })
+
+  it('records the answer prose on the agent-graph span output', async () => {
+    const recording = recordingTracer()
+    const result = await runAgent({
+      question: 'who repairs the unit?',
+      itemId: 'answer-repair-duty-condo',
+      topK: 8,
+      model: scriptedModel(),
+      retrieve,
+      tracer: recording.tracer,
+    })
+    expect(recording.spanOutputs['agent-graph']).toEqual({ answer: result.envelope.answer })
   })
 
   it('refuses out-of-scope without retrieving when Guard blocks (jurisdiction)', async () => {

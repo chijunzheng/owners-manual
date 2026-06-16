@@ -105,7 +105,7 @@ describe('handleAnswerRequest', () => {
         tracer: {
           startTrace: (opts) => {
             seen = opts.traceId
-            return { span: () => ({ end: () => {} }), setOutput: () => {} }
+            return { span: () => ({ setOutput: () => {}, end: () => {} }), setOutput: () => {} }
           },
         },
       },
@@ -122,7 +122,7 @@ describe('handleAnswerRequest', () => {
         tracer: {
           startTrace: (opts) => {
             seenParent = opts.parentSpanId
-            return { span: () => ({ end: () => {} }), setOutput: () => {} }
+            return { span: () => ({ setOutput: () => {}, end: () => {} }), setOutput: () => {} }
           },
         },
       },

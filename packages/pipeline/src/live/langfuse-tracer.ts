@@ -101,7 +101,12 @@ export function createLangfuseTracer(
         const handle: TraceHandle = {
           span(name, input) {
             const span = serviceRoot.span({ name, input })
-            return { end: () => span.end() }
+            return {
+              setOutput: (output) => {
+                span.update({ output })
+              },
+              end: () => span.end(),
+            }
           },
           setOutput(output) {
             serviceRoot.update({ output })
@@ -123,7 +128,12 @@ export function createLangfuseTracer(
       const handle: TraceHandle = {
         span(name, input) {
           const span = trace.span({ name, input })
-          return { end: () => span.end() }
+          return {
+            setOutput: (output) => {
+              span.update({ output })
+            },
+            end: () => span.end(),
+          }
         },
         setOutput(output) {
           trace.update({ output })

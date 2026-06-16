@@ -140,6 +140,7 @@ export async function runStuff(options: RunStuffOptions): Promise<RunStuffResult
   let synthesized
   try {
     synthesized = await synthesizeStuffed({ question, candidates, complete })
+    synthesizeSpan?.setOutput({ answer: synthesized.envelope.answer })
   } finally {
     synthesizeSpan?.end()
   }
@@ -147,6 +148,8 @@ export async function runStuff(options: RunStuffOptions): Promise<RunStuffResult
 
   trace?.setOutput({
     behaviorClass: synthesized.envelope.behaviorClass,
+    answer: synthesized.envelope.answer,
+    claims: synthesized.envelope.claims,
     stuffedSourceCount: candidates.length,
   })
 

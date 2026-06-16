@@ -102,4 +102,44 @@ describe('createLangfuseTracer', () => {
     handle.tracer.startTrace({ name: 'owners-manual.agent', traceId: 'a'.repeat(32) })
     expect(calls[0]?.args).toMatchObject({ tags: ['agent', 'arm:agent'] })
   })
+
+  it('writes a child-span output through the SDK update call in root mode', () => {
+    const { client, calls } = fakeClient()
+    const handle = createLangfuseTracer(env, client)
+    const trace = handle.tracer.startTrace({ name: 'n', traceId: 'a'.repeat(32) })
+    const span = trace.span('synthesize')
+    span.setOutput({ answer: 'The landlord must maintain the unit.' })
+    span.end()
+
+    // setOutput on a child span must update THAT span (not the trace).
+    const childUpdate = calls.find(
+      (c) => c.kind === 'update' && (c.args as { output?: unknown }).output != null,
+    )
+    expect(childUpdate?.args).toEqual({
+      output: { answer: 'The landlord must maintain the unit.' },
+    })
+  })
+
+  it('writes a child-span output through the SDK update call in nested mode', () => {
+    const { client, calls } = fakeClient()
+    const handle = createLangfuseTracer(env, client)
+    const trace = handle.tracer.startTrace({
+      name: 'owners-manual.naive-rag',
+      traceId: 'a'.repeat(32),
+      parentSpanId: 'b'.repeat(16),
+    })
+    const span = trace.span('synthesize')
+    span.setOutput({ answer: 'The landlord must maintain the unit.' })
+    span.end()
+
+    // The child span lives under the service root span; its output is updated
+    // on the child observation, not upserted onto the (harness-owned) trace.
+    expect(calls.some((c) => c.kind === 'trace')).toBe(false)
+    const childUpdate = calls.find(
+      (c) => c.kind === 'update' && (c.args as { output?: unknown }).output != null,
+    )
+    expect(childUpdate?.args).toEqual({
+      output: { answer: 'The landlord must maintain the unit.' },
+    })
+  })
 })

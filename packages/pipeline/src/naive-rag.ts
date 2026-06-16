@@ -18,8 +18,10 @@ import { synthesize, type LlmComplete } from './synthesize.js'
 import { type AnswerEnvelope } from './answer-envelope.js'
 import { type EmbeddingProvider } from './embedding.js'
 
-/** A span opened under a trace: name it, get an `end()`. */
+/** A span opened under a trace: name it, attach its output, get an `end()`. */
 export interface TraceSpan {
+  /** Attach the span's output (e.g. the answer prose on the synthesis span). */
+  setOutput(output: unknown): void
   end(): void
 }
 
@@ -94,12 +96,17 @@ export async function runNaiveRag(options: RunNaiveRagOptions): Promise<RunNaive
   let synthesized
   try {
     synthesized = await synthesize({ question, candidates: retrieval.candidates, complete })
+    synthesizeSpan?.setOutput({ answer: synthesized.envelope.answer })
   } finally {
     synthesizeSpan?.end()
   }
   const synthesisMs = performance.now() - synthesisStart
 
-  trace?.setOutput({ behaviorClass: synthesized.envelope.behaviorClass })
+  trace?.setOutput({
+    behaviorClass: synthesized.envelope.behaviorClass,
+    answer: synthesized.envelope.answer,
+    claims: synthesized.envelope.claims,
+  })
 
   return {
     envelope: synthesized.envelope,
