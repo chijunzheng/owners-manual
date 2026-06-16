@@ -19,6 +19,7 @@ from typing import Any
 
 from .agent_client import AgentChatClient
 from .golden_item import GoldenItem
+from .harness_envelope import build_harness_output
 from .run_naive_rag import AnswerFn, ItemOutcome
 
 #: A seed suffix so the agent arm's trace id differs from naive-rag's for the
@@ -31,6 +32,7 @@ def build_agent_answer(
     service_url: str,
     run_name: str,
     langfuse: Any | None,
+    client: AgentChatClient | None = None,
 ) -> AnswerFn:
     """Build the agent arm's per-item answer function.
 
@@ -40,8 +42,13 @@ def build_agent_answer(
     still propagated so the service's own trace is correlatable, but no harness
     span/score is emitted and no ``parent_span_id`` is sent (there is no span to
     nest under).
+
+    ``client`` is an injection seam (issue #50): a unit test can pass a fake chat
+    client (with a fake ``langfuse``) and assert what the harness writes to its
+    OWNED root observation — no live server. It defaults to the live SSE client,
+    so the production behavior is unchanged.
     """
-    client = AgentChatClient(base_url=service_url)
+    client = client if client is not None else AgentChatClient(base_url=service_url)
 
     if langfuse is None:
         import hashlib  # noqa: PLC0415
@@ -70,8 +77,18 @@ def build_agent_answer(
                 trace_id=trace_id,
                 parent_span_id=span.id,
             )
+            # The harness OWNS this root observation in nested mode (the TS tracer
+            # never clobbers it — #48). Record the full envelope here (+ degraded),
+            # not just the behavior class, so an eval-run trace shows the answer at
+            # the top (issue #50). The `stuff` arm runs root-mode (the TS service
+            # owns the trace) and is already full-envelope at root via #48.
             span.update(
-                output={"behaviorClass": result.behavior_class, "degraded": result.degraded}
+                output=build_harness_output(
+                    behavior_class=result.behavior_class,
+                    answer_text=result.answer_text,
+                    candidate_cites=result.candidate_cites,
+                    degraded=result.degraded,
+                )
             )
         return _outcome(item, result, trace_id)
 
