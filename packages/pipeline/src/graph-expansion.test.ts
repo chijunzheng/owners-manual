@@ -55,7 +55,10 @@ describe('expandOneHop — bounded cross-reference expansion', () => {
     const added = expanded.find((c) => c.citablePathKey === DESPITE_TARGET.citablePathKey)
     expect(added).toBeDefined()
     expect(added!.stage).toBe('graph-expansion')
-    expect(added!.stages).toContain('graph-expansion')
+    // ONLY graph-expansion provenance — NOT the looked-up row's stored vector/bm25
+    // tags — so a cite reached solely by expansion is credited to graph expansion
+    // ALONE in the per-stage rescue stats (Codex P1, PR #52).
+    expect(added!.stages).toEqual(['graph-expansion'])
   })
 
   it('is bounded to ONE hop — never follows the neighbour of a neighbour', () => {

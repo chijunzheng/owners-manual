@@ -179,11 +179,16 @@ export function mergeCandidates(lists: readonly HybridCandidate[]): readonly Hyb
 
 /**
  * Reformulate node (#16): count one query reformulation before re-entering
- * retrieval. The reformulated query itself is the Planner's job on the next pass
- * (the edge routes reformulate → planner), so this node only bumps the bounded
- * counter — exactly as `bumpCriticReretrieval` does for the Critic loop. The cap
- * ({@link AGENT_LOOP_CAPS.maxReformulations}) is enforced by the ROUTER
- * ({@link routeAfterRetrieve}), so this never exceeds it.
+ * planning. The cap ({@link AGENT_LOOP_CAPS.maxReformulations}) is enforced by the
+ * ROUTER ({@link routeAfterRetrieve}), so this never exceeds it.
+ *
+ * LIMITATION (tracked as a follow-up): this bounded edge currently only counts the
+ * pass and re-enters planning with the SAME `state.question`, so a deterministic
+ * planner reissues the identical retrieval — reformulation-on does not yet differ
+ * from reformulation-off for such planners. Actually REWRITING the query (so the
+ * second pass differs) needs a reformulation-strategy decision (model-driven
+ * rewrite vs. deterministic broadening) and is deferred to that follow-up; the
+ * edge, flag, bounding, and routing are in place here. [Codex P2, PR #52]
  */
 export function reformulateNode(state: AgentState): AgentStatePatch {
   return { reformulations: state.reformulations + 1 }

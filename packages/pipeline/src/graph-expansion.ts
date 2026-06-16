@@ -36,10 +36,17 @@ export interface ExpandOneHopInput {
   readonly lookup: CandidateByPathKey
 }
 
-/** Tag a resolved expansion target with `graph-expansion` provenance. */
+/** Tag a resolved expansion target with `graph-expansion` provenance ONLY.
+ *
+ * A target reaching here was NOT in the retrieved set (seeds are skipped above),
+ * so the looked-up row's stored vector/bm25 provenance is irrelevant to THIS
+ * query — graph expansion ALONE surfaced it. Carrying only `graph-expansion`
+ * keeps the per-stage rescue stats honest: otherwise a cite reached solely by
+ * expansion would look multi-stage, and `build_rescue_stats` would never credit
+ * graph expansion as its SOLE rescuer — the exact ablation metric #16 produces.
+ * [Codex P1, PR #52] */
 function asGraphExpansion(target: HybridCandidate): HybridCandidate {
-  const stages = [...new Set([...target.stages, 'graph-expansion' as const])].sort()
-  return { ...target, stage: 'graph-expansion', stages }
+  return { ...target, stage: 'graph-expansion', stages: ['graph-expansion' as const] }
 }
 
 /**
