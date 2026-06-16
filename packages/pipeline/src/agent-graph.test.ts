@@ -480,6 +480,30 @@ describe('agent graph — #16 flagged components', () => {
     expect(state.envelope).toBeDefined()
   })
 
+  it('queryReformulation ON: a thin pass AFTER the Critic re-retrieval does NOT reformulate (rescues the first pass only) [Codex P2, PR #54]', async () => {
+    // Healthy first pass → no reformulation. The Critic (ungrounded) fires its one
+    // bounded re-retrieval; THAT pass comes back empty. Reformulation must NOT fire
+    // on the critic-recovery pass — it rescues a thin FIRST pass only, never the
+    // Critic path (which would add an extra model rewrite + retrieve cycle and
+    // divert the bounded degrade route). The run still degrades honestly.
+    const ungrounded = { grounded: false, ungroundedClaims: ['x'] }
+    let pass = 0
+    const retrieve: AgentRetrieve = async () => {
+      pass += 1
+      return pass === 1 ? [REPAIR_CANDIDATE] : []
+    }
+    const model = scriptedModel({ critiques: [ungrounded, ungrounded, ungrounded] })
+    const state = await runAgentGraph('who repairs the unit?', {
+      model,
+      retrieve,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, queryReformulation: true },
+    })
+    expect(model.calls.reformulate).toBe(0)
+    expect(state.reformulations).toBe(0)
+    expect(state.reformulatedQuestion).toBeUndefined()
+    expect(state.degraded).toBe(true)
+  })
+
   it('the reformulate node is wired as retrieve→reformulate→planner', () => {
     const graph = buildAgentGraph(deps())
     const edges = graph.getGraph().edges.map((e) => `${e.source}->${e.target}`)

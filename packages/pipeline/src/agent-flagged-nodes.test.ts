@@ -190,6 +190,18 @@ describe('routeAfterRetrieve — bounded reformulation routing', () => {
     )
     expect(route).toBe('rerank')
   })
+
+  it('ON + thin + AFTER a Critic re-retrieval: routes to rerank (rescues the FIRST pass only)', () => {
+    // The retrieve→route edge is reused after critic→reretrieve→planner→retrieve.
+    // A thin Critic-recovery pass (criticReretrievals > 0) must NOT reformulate —
+    // that would add an extra model rewrite + retrieve cycle and divert the bounded
+    // degrade path. Reformulation rescues a thin FIRST pass only. [Codex P2, PR #54]
+    const route = routeAfterRetrieve(
+      state({ candidates: [], reformulations: 0, criticReretrievals: 1 }),
+      flags({ queryReformulation: true }),
+    )
+    expect(route).toBe('rerank')
+  })
 })
 
 describe('reformulateNode — real query rewrite (#53)', () => {

@@ -222,17 +222,25 @@ export async function reformulateNode(
 
 /**
  * Route after retrieve (#16): the bounded reformulation decision. Reformulate
- * ONLY when the flag is on, the candidate set came back thin (empty), AND the
- * reformulation budget is unspent — otherwise proceed to rerank. With the flag
- * off (the documented fallback) this ALWAYS routes to rerank: a single retrieve
- * pass, never a reformulation, so Guard/Critic still always run and the
- * trajectory stays bounded and comparable (CONTEXT.md, "Planner").
+ * ONLY when the flag is on, this is the FIRST (pre-Critic) retrieve pass, the
+ * candidate set came back thin (empty), AND the reformulation budget is unspent —
+ * otherwise proceed to rerank. With the flag off (the documented fallback) this
+ * ALWAYS routes to rerank: a single retrieve pass, never a reformulation, so
+ * Guard/Critic still always run and the trajectory stays bounded and comparable
+ * (CONTEXT.md, "Planner").
+ *
+ * The first-pass guard (`criticReretrievals === 0`) matters because this same
+ * edge is reused after critic → reretrieve → planner → retrieve: reformulation is
+ * a rescue for a thin FIRST pass, not the Critic recovery path. Letting it fire on
+ * a thin re-retrieval would add an extra model rewrite + retrieve cycle and divert
+ * the bounded degrade route the Critic loop is supposed to reach. [Codex P2, PR #54]
  */
 export function routeAfterRetrieve(
   state: AgentState,
   flags: AgentQueryFlags,
 ): 'rerank' | 'reformulate' {
   if (!flags.queryReformulation) return 'rerank'
+  if (state.criticReretrievals > 0) return 'rerank'
   if (state.candidates.length > 0) return 'rerank'
   if (state.reformulations >= AGENT_LOOP_CAPS.maxReformulations) return 'rerank'
   return 'reformulate'
