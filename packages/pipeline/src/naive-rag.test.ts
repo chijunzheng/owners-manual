@@ -43,9 +43,21 @@ const llm: LlmComplete = async () =>
     ],
   })
 
-/** A recording tracer fake that captures the span tree shape. */
-function recordingTracer(): { tracer: NaiveRagTracer; spans: string[]; traceId?: string } {
+/**
+ * A recording tracer fake that captures the span tree shape, the per-span
+ * outputs (keyed by span name), and the trace-level output — so tests can pin
+ * both the full-envelope-on-trace and the answer-on-synthesis-span criteria.
+ */
+function recordingTracer(): {
+  tracer: NaiveRagTracer
+  spans: string[]
+  spanOutputs: Record<string, unknown>
+  traceOutput?: unknown
+  traceId?: string
+} {
   const spans: string[] = []
+  const spanOutputs: Record<string, unknown> = {}
+  let traceOutput: unknown
   let traceId: string | undefined
   const tracer: NaiveRagTracer = {
     startTrace: (opts) => {
@@ -53,9 +65,16 @@ function recordingTracer(): { tracer: NaiveRagTracer; spans: string[]; traceId?:
       return {
         span: (name) => {
           spans.push(name)
-          return { end: () => {} }
+          return {
+            setOutput: (output) => {
+              spanOutputs[name] = output
+            },
+            end: () => {},
+          }
         },
-        setOutput: () => {},
+        setOutput: (output) => {
+          traceOutput = output
+        },
       }
     },
   }
@@ -64,6 +83,10 @@ function recordingTracer(): { tracer: NaiveRagTracer; spans: string[]; traceId?:
     get traceId() {
       return traceId
     },
+    get traceOutput() {
+      return traceOutput
+    },
+    spanOutputs,
     spans,
   }
 }
@@ -150,7 +173,10 @@ describe('runNaiveRag', () => {
   it('ends every span it opens even on the happy path', async () => {
     const ends = vi.fn()
     const tracer: NaiveRagTracer = {
-      startTrace: () => ({ span: () => ({ end: ends }), setOutput: () => {} }),
+      startTrace: () => ({
+        span: () => ({ setOutput: () => {}, end: ends }),
+        setOutput: () => {},
+      }),
     }
     await runNaiveRag({
       question: 'q',
@@ -162,5 +188,38 @@ describe('runNaiveRag', () => {
       tracer,
     })
     expect(ends).toHaveBeenCalledTimes(2)
+  })
+
+  it('sets the trace output to the full answer envelope (behaviorClass, answer, claims)', async () => {
+    const recording = recordingTracer()
+    const result = await runNaiveRag({
+      question: 'who repairs the unit?',
+      itemId: 'answer-repair-duty-condo',
+      topK: 8,
+      provider,
+      search,
+      complete: llm,
+      tracer: recording.tracer,
+    })
+    // The trace output is the human-debuggable envelope, not just behaviorClass.
+    expect(recording.traceOutput).toEqual({
+      behaviorClass: 'answer',
+      answer: result.envelope.answer,
+      claims: result.envelope.claims,
+    })
+  })
+
+  it('records the answer prose on the synthesize span output', async () => {
+    const recording = recordingTracer()
+    const result = await runNaiveRag({
+      question: 'who repairs the unit?',
+      itemId: 'answer-repair-duty-condo',
+      topK: 8,
+      provider,
+      search,
+      complete: llm,
+      tracer: recording.tracer,
+    })
+    expect(recording.spanOutputs.synthesize).toEqual({ answer: result.envelope.answer })
   })
 })

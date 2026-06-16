@@ -68,6 +68,11 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   let state
   try {
     state = await runAgentGraph(question, { model, retrieve, topK, onToken }, itemId)
+    // Record the answer on the synthesis span (the agent-graph span) before
+    // closing it — the prose is the whole point of a debuggable trace.
+    if (state.envelope) {
+      graphSpan?.setOutput({ answer: state.envelope.answer })
+    }
   } finally {
     graphSpan?.end()
   }
@@ -78,7 +83,12 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
     throw new Error('agent graph terminated without an answer envelope')
   }
 
-  trace?.setOutput({ behaviorClass: state.envelope.behaviorClass, degraded: state.degraded })
+  trace?.setOutput({
+    behaviorClass: state.envelope.behaviorClass,
+    answer: state.envelope.answer,
+    claims: state.envelope.claims,
+    degraded: state.degraded,
+  })
 
   return {
     envelope: state.envelope,

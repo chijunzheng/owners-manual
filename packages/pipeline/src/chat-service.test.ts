@@ -106,7 +106,7 @@ describe('handleChatRequest — streaming', () => {
           startTrace: (opts) => {
             seenTrace = opts.traceId
             seenParent = opts.parentSpanId
-            return { span: () => ({ end: () => {} }), setOutput: () => {} }
+            return { span: () => ({ setOutput: () => {}, end: () => {} }), setOutput: () => {} }
           },
         },
       }),

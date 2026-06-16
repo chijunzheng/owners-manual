@@ -45,14 +45,22 @@ const llm: StuffLlmComplete = async () => ({
   usage: { promptTokens: 1000, cachedPromptTokens: 900, completionTokens: 50 },
 })
 
-/** A recording tracer fake that captures the trace id, arm, and span names. */
+/**
+ * A recording tracer fake that captures the trace id, arm, span names, the
+ * per-span outputs (keyed by span name), and the trace-level output — so tests
+ * can pin full-envelope-on-trace and answer-on-synthesize-span.
+ */
 function recordingTracer(): {
   tracer: StuffTracer
   spans: string[]
+  spanOutputs: Record<string, unknown>
+  traceOutput?: unknown
   traceId?: string
   arm?: unknown
 } {
   const spans: string[] = []
+  const spanOutputs: Record<string, unknown> = {}
+  let traceOutput: unknown
   let traceId: string | undefined
   let arm: unknown
   const tracer: NaiveRagTracer = {
@@ -62,9 +70,16 @@ function recordingTracer(): {
       return {
         span: (name) => {
           spans.push(name)
-          return { end: () => {} }
+          return {
+            setOutput: (output) => {
+              spanOutputs[name] = output
+            },
+            end: () => {},
+          }
         },
-        setOutput: () => {},
+        setOutput: (output) => {
+          traceOutput = output
+        },
       }
     },
   }
@@ -73,9 +88,13 @@ function recordingTracer(): {
     get traceId() {
       return traceId
     },
+    get traceOutput() {
+      return traceOutput
+    },
     get arm() {
       return arm
     },
+    spanOutputs,
     spans,
   }
 }
@@ -182,10 +201,44 @@ describe('runStuff', () => {
   it('ends every span it opens even on the happy path', async () => {
     const ends = vi.fn()
     const tracer: StuffTracer = {
-      startTrace: () => ({ span: () => ({ end: ends }), setOutput: () => {} }),
+      startTrace: () => ({
+        span: () => ({ setOutput: () => {}, end: ends }),
+        setOutput: () => {},
+      }),
     }
     await runStuff({ question: 'q', itemId: 'x', arm: 'stuff', chunks, complete: llm, tracer })
     expect(ends).toHaveBeenCalled()
+  })
+
+  it('sets the trace output to the full envelope plus stuffedSourceCount', async () => {
+    const recording = recordingTracer()
+    const result = await runStuff({
+      question: 'who repairs the unit?',
+      itemId: 'answer-repair-duty-condo',
+      arm: 'stuff',
+      chunks,
+      complete: llm,
+      tracer: recording.tracer,
+    })
+    expect(recording.traceOutput).toEqual({
+      behaviorClass: 'answer',
+      answer: result.envelope.answer,
+      claims: result.envelope.claims,
+      stuffedSourceCount: result.candidates.length,
+    })
+  })
+
+  it('records the answer prose on the synthesize span output', async () => {
+    const recording = recordingTracer()
+    const result = await runStuff({
+      question: 'who repairs the unit?',
+      itemId: 'answer-repair-duty-condo',
+      arm: 'stuff',
+      chunks,
+      complete: llm,
+      tracer: recording.tracer,
+    })
+    expect(recording.spanOutputs.synthesize).toEqual({ answer: result.envelope.answer })
   })
 
   it('throws when given no chunks to stuff (a build bug, not an empty answer)', async () => {
