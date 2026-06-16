@@ -17,6 +17,7 @@ from typing import Any
 
 from owners_manual_evals.agent_client import ChatResult
 from owners_manual_evals.agent_live_runner import build_agent_answer
+from owners_manual_evals.answer_claim import AnswerClaim
 from owners_manual_evals.citable_path import CitablePath, CitablePathSegment
 from owners_manual_evals.golden_item import AnswerPoint, GoldenItem, Provenance
 
@@ -42,12 +43,24 @@ _CITE = CitablePath(
     ),
 )
 
+_CLAIM_TEXT = "Landlords must keep the rental unit in a good state of repair."
+
+_CITE_WIRE = {
+    "documentId": "rta-2006",
+    "segments": [
+        {"kind": "part", "label": "III"},
+        {"kind": "section", "label": "20"},
+        {"kind": "subsection", "label": "1"},
+    ],
+}
+
 
 def _chat_result(*, degraded: bool = False) -> ChatResult:
     return ChatResult(
         trace_id="c" * 32,
         behavior_class="answer",
         candidate_cites=(_CITE,),
+        claims=(AnswerClaim(text=_CLAIM_TEXT, cites=(_CITE,)),),
         retrieved_path_keys=("rta-2006|part:III|section:20|subsection:1",),
         corpus_build_hash="a" * 64,
         pipeline_config_hash="f" * 64,
@@ -135,20 +148,8 @@ def test_harness_root_claims_carry_the_envelope_cite_wire_shape() -> None:
 
     output = langfuse.span.outputs[0]
     assert output["degraded"] is False
-    assert output["claims"] == [
-        {
-            "cites": [
-                {
-                    "documentId": "rta-2006",
-                    "segments": [
-                        {"kind": "part", "label": "III"},
-                        {"kind": "section", "label": "20"},
-                        {"kind": "subsection", "label": "1"},
-                    ],
-                }
-            ]
-        }
-    ]
+    # A valid envelope claim carries text AND cites (answerClaimSchema), not cites alone.
+    assert output["claims"] == [{"text": _CLAIM_TEXT, "cites": [_CITE_WIRE]}]
 
 
 def test_injected_client_nests_the_agent_under_the_harness_span() -> None:

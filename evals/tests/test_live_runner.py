@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+from owners_manual_evals.answer_claim import AnswerClaim
 from owners_manual_evals.citable_path import CitablePath, CitablePathSegment
 from owners_manual_evals.golden_item import AnswerPoint, GoldenItem, Provenance
 from owners_manual_evals.live_runner import build_live_answer
@@ -46,12 +47,40 @@ _CITE = CitablePath(
     ),
 )
 
+_CITE2 = CitablePath(
+    document_id="rta-2006",
+    segments=(
+        CitablePathSegment("section", "62"),
+        CitablePathSegment("subsection", "1"),
+    ),
+)
+
+_CLAIM_TEXT = "Landlords must keep the rental unit in a good state of repair."
+
+_CITE_WIRE = {
+    "documentId": "rta-2006",
+    "segments": [
+        {"kind": "part", "label": "III"},
+        {"kind": "section", "label": "20"},
+        {"kind": "subsection", "label": "1"},
+    ],
+}
+
+_CITE2_WIRE = {
+    "documentId": "rta-2006",
+    "segments": [
+        {"kind": "section", "label": "62"},
+        {"kind": "subsection", "label": "1"},
+    ],
+}
+
 
 def _answer_result() -> AnswerResult:
     return AnswerResult(
         trace_id="c" * 32,
         behavior_class="answer",
         candidate_cites=(_CITE,),
+        claims=(AnswerClaim(text=_CLAIM_TEXT, cites=(_CITE,)),),
         retrieved_path_keys=("rta-2006|part:III|section:20|subsection:1",),
         corpus_build_hash="a" * 64,
         pipeline_config_hash="f" * 64,
@@ -129,7 +158,9 @@ def test_harness_root_records_the_full_envelope_not_just_behavior() -> None:
     assert output["answer"] == "The landlord must maintain the unit."
 
 
-def test_harness_root_claims_carry_the_envelope_cite_wire_shape() -> None:
+def test_harness_root_claims_carry_text_and_the_cite_wire_shape() -> None:
+    """A claim on the root must be a valid envelope claim — ``text`` AND ``cites``
+    (the shared ``answerClaimSchema`` requires both), not cites alone."""
     langfuse = _FakeLangfuse()
     client = _FakeClient(_answer_result())
     answer, _ = _build(langfuse, client)
@@ -137,20 +168,30 @@ def test_harness_root_claims_carry_the_envelope_cite_wire_shape() -> None:
     answer(_item())
 
     claims = langfuse.span.outputs[0]["claims"]
-    assert claims == [
-        {
-            "cites": [
-                {
-                    "documentId": "rta-2006",
-                    "segments": [
-                        {"kind": "part", "label": "III"},
-                        {"kind": "section", "label": "20"},
-                        {"kind": "subsection", "label": "1"},
-                    ],
-                }
-            ]
-        }
-    ]
+    assert claims == [{"text": _CLAIM_TEXT, "cites": [_CITE_WIRE]}]
+
+
+def test_harness_root_preserves_claim_grouping_not_one_per_cite() -> None:
+    """A single claim citing two sections stays ONE claim entry with both cites —
+    the harness must mirror the service's claim objects, never splay one-per-cite."""
+    langfuse = _FakeLangfuse()
+    result = AnswerResult(
+        trace_id="c" * 32,
+        behavior_class="answer",
+        candidate_cites=(_CITE, _CITE2),
+        claims=(AnswerClaim(text=_CLAIM_TEXT, cites=(_CITE, _CITE2)),),
+        retrieved_path_keys=(),
+        corpus_build_hash="a" * 64,
+        pipeline_config_hash="f" * 64,
+        latency_ms={"total": 950.0},
+        answer_text="The landlord must maintain the unit.",
+    )
+    answer, _ = _build(langfuse, _FakeClient(result))
+
+    answer(_item())
+
+    claims = langfuse.span.outputs[0]["claims"]
+    assert claims == [{"text": _CLAIM_TEXT, "cites": [_CITE_WIRE, _CITE2_WIRE]}]
 
 
 def test_injected_client_still_nests_the_service_under_the_harness_span() -> None:

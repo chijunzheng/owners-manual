@@ -123,7 +123,7 @@ def build_live_answer(
                 output=build_harness_output(
                     behavior_class=result.behavior_class,
                     answer_text=result.answer_text,
-                    candidate_cites=result.candidate_cites,
+                    claims=result.claims,
                 )
             )
 

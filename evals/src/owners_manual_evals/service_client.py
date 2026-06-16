@@ -21,7 +21,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from .citable_path import CitablePath, parse_citable_path
+from .answer_claim import AnswerClaim, flatten_cites, parse_answer_claims
+from .citable_path import CitablePath
 
 
 class HttpTransport(Protocol):
@@ -66,14 +67,10 @@ class AnswerResult:
     latency_ms: Mapping[str, float]
     #: The produced answer prose — carried for the offline LLM judge (#18).
     answer_text: str = ""
-
-
-def _parse_candidate_cites(envelope: dict) -> tuple[CitablePath, ...]:
-    cites: list[CitablePath] = []
-    for claim in envelope.get("claims", []):
-        for cite in claim.get("cites", []):
-            cites.append(parse_citable_path(cite))
-    return tuple(cites)
+    #: The answer's claims (text + cites), retained so the harness can write the
+    #: full envelope to its owned root observation in nested mode (#50). Empty for
+    #: refusals. ``candidate_cites`` is these claims' cites, flattened.
+    claims: tuple[AnswerClaim, ...] = ()
 
 
 class NaiveRagClient:
@@ -102,10 +99,12 @@ class NaiveRagClient:
         response = self._transport.post_json(f"{self._base_url}/answer", body, headers)
         envelope = response["envelope"]
         run_record = response["runRecord"]
+        claims = parse_answer_claims(envelope)
         return AnswerResult(
             trace_id=response.get("traceId"),
             behavior_class=envelope["behaviorClass"],
-            candidate_cites=_parse_candidate_cites(envelope),
+            candidate_cites=flatten_cites(claims),
+            claims=claims,
             retrieved_path_keys=tuple(response.get("retrievedCitablePathKeys", [])),
             corpus_build_hash=run_record["corpusBuildHash"],
             pipeline_config_hash=run_record["pipelineConfigHash"],

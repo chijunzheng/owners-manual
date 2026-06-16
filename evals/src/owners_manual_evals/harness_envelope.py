@@ -8,18 +8,20 @@ harness-owned root in nested mode (``langfuse-tracer.ts``). So the harness must
 write the full envelope to that root itself — otherwise an eval-run trace shows
 only ``behaviorClass`` at the top with the answer one level down (issue #50).
 
-The harness holds ``answer_text`` and the parsed candidate cites (claim text is
-not retained past parsing — it lives on the TS child span via #48/#49). So the
-harness root carries ``behaviorClass`` + ``answer`` + the cites it parsed,
-serialized back to the envelope's machine-readable cite wire shape (the same
-``{documentId, segments:[{kind, label}]}`` the service emits) — never a lossy
-display string. New dicts are built; nothing is mutated.
+The harness holds the parsed answer envelope — ``answer_text`` plus the typed
+claims (text + cites) the client retains (#50). So the harness root carries the
+full envelope ``{behaviorClass, answer, claims}`` (+ ``degraded`` for the agent),
+each claim serialized to the envelope's wire shape — ``text`` plus
+``{documentId, segments:[{kind, label}]}`` cites — mirroring exactly what the
+service emitted, never flattened or textless. New dicts are built; nothing is
+mutated.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
+from .answer_claim import AnswerClaim
 from .citable_path import CitablePath
 
 
@@ -31,35 +33,34 @@ def _cite_to_wire(cite: CitablePath) -> dict:
     }
 
 
-def _claims_from_cites(cites: Sequence[CitablePath]) -> list[dict]:
-    """Render the harness's parsed candidate cites as the root's ``claims``.
-
-    Claim-level text is dropped at parse time (only the flattened cites survive on
-    the result), so the harness root carries one claim entry per cite it holds —
-    machine-readable, on the envelope cite contract — while the full claim text
-    lives on the TS child span via #48/#49.
-    """
-    return [{"cites": [_cite_to_wire(cite)]} for cite in cites]
+def _claim_to_wire(claim: AnswerClaim) -> dict:
+    """Serialize one :class:`AnswerClaim` to the envelope's claim wire shape —
+    ``{text, cites}`` (the shared ``answerClaimSchema``), grouping preserved."""
+    return {
+        "text": claim.text,
+        "cites": [_cite_to_wire(cite) for cite in claim.cites],
+    }
 
 
 def build_harness_output(
     *,
     behavior_class: str,
     answer_text: str,
-    candidate_cites: Sequence[CitablePath],
+    claims: Sequence[AnswerClaim],
     degraded: bool | None = None,
 ) -> dict:
     """Build the full-envelope ``output`` for the harness-owned root observation.
 
     Mirrors the trace-root envelope the TS half writes (#48/#49):
-    ``{behaviorClass, answer, claims}``, plus ``degraded`` for the agent arm
-    (omitted entirely when ``degraded`` is ``None`` so the naive-rag root stays
-    exactly the three-key envelope).
+    ``{behaviorClass, answer, claims}`` with each claim carrying ``text`` AND its
+    ``cites`` (the shared ``answerClaimSchema``), plus ``degraded`` for the agent
+    arm (omitted entirely when ``degraded`` is ``None`` so the naive-rag root
+    stays exactly the three-key envelope). Refusals carry an empty ``claims`` list.
     """
     output: dict = {
         "behaviorClass": behavior_class,
         "answer": answer_text,
-        "claims": _claims_from_cites(candidate_cites),
+        "claims": [_claim_to_wire(claim) for claim in claims],
     }
     if degraded is not None:
         return {**output, "degraded": degraded}
