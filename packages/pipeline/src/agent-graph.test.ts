@@ -400,6 +400,68 @@ describe('agent graph — #16 flagged components', () => {
     expect(state.envelope).toBeDefined()
   })
 
+  it('queryReformulation OFF: the reformulate seam is NEVER called (byte-identical to baseline)', async () => {
+    // The off-state invariant (#53): no reformulation work happens at all — the
+    // injected reformulate seam is never invoked and no rewrite is stored, so an
+    // off run is indistinguishable from the #15 baseline that had no seam.
+    const d = deps({}, async () => []) // retrieval always empty → would reformulate IF on
+    const state = await runAgentGraph('q', d)
+    expect(d.model.calls.reformulate).toBe(0)
+    expect(state.reformulatedQuestion).toBeUndefined()
+  })
+
+  it('queryReformulation ON: the SECOND retrieve sees the REWRITTEN query, not the original (#53)', async () => {
+    // The heart of #53: with the flag on and a thin first pass, the reformulate
+    // edge rewrites the query so the second retrieve differs from the first.
+    const ORIGINAL = 'who fixes it?'
+    const REWRITE = 'who is responsible for repairs under the Residential Tenancies Act?'
+    const seenQueries: string[] = []
+    // First retrieve returns empty (triggers reformulation); the second returns a
+    // candidate so the run proceeds to synthesis and terminates.
+    let pass = 0
+    const retrieve: AgentRetrieve = async ({ question }) => {
+      seenQueries.push(question)
+      pass += 1
+      return pass === 1 ? [] : [REPAIR_CANDIDATE]
+    }
+    // A planner that echoes the question it is asked into its single hop, plus a
+    // deterministic reformulate that returns the known rewrite.
+    const model = scriptedModel({ reformulate: () => REWRITE })
+    const echoModel = {
+      ...model,
+      async plan({ question }: { question: string }) {
+        return { hops: [{ query: question }], multiHop: false }
+      },
+    }
+    const state = await runAgentGraph(ORIGINAL, {
+      model: echoModel,
+      retrieve,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, queryReformulation: true },
+    })
+    // First retrieve saw the original; the second saw the rewrite — demonstrably different.
+    expect(seenQueries[0]).toBe(ORIGINAL)
+    expect(seenQueries[1]).toBe(REWRITE)
+    expect(seenQueries[1]).not.toBe(seenQueries[0])
+    // The original question is preserved on state for provenance; the rewrite is recorded.
+    expect(state.question).toBe(ORIGINAL)
+    expect(state.reformulatedQuestion).toBe(REWRITE)
+  })
+
+  it('queryReformulation ON but a healthy first pass: NO rewrite (reformulate only rescues thin sets)', async () => {
+    // The rewrite is a rescue, not an always-on rewrite: a non-empty first pass
+    // proceeds straight to rerank, so the seam is never called.
+    const model = scriptedModel()
+    const d = {
+      model,
+      retrieve: retrieveRepair,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, queryReformulation: true },
+    }
+    const state = await runAgentGraph('who repairs the unit?', d)
+    expect(model.calls.reformulate).toBe(0)
+    expect(state.reformulatedQuestion).toBeUndefined()
+    expect(state.reformulations).toBe(0)
+  })
+
   it('queryReformulation ON: a thin result reformulates exactly once then proceeds (BOUNDED)', async () => {
     // Retrieval stays empty so the reformulation rescue condition holds on every
     // pass; the cap MUST stop it at exactly one reformulation — never an open loop.
@@ -416,6 +478,30 @@ describe('agent graph — #16 flagged components', () => {
     // Guard ran exactly once; the run terminated with an envelope (never looped open).
     expect(model.calls.guard).toBe(1)
     expect(state.envelope).toBeDefined()
+  })
+
+  it('queryReformulation ON: a thin pass AFTER the Critic re-retrieval does NOT reformulate (rescues the first pass only) [Codex P2, PR #54]', async () => {
+    // Healthy first pass → no reformulation. The Critic (ungrounded) fires its one
+    // bounded re-retrieval; THAT pass comes back empty. Reformulation must NOT fire
+    // on the critic-recovery pass — it rescues a thin FIRST pass only, never the
+    // Critic path (which would add an extra model rewrite + retrieve cycle and
+    // divert the bounded degrade route). The run still degrades honestly.
+    const ungrounded = { grounded: false, ungroundedClaims: ['x'] }
+    let pass = 0
+    const retrieve: AgentRetrieve = async () => {
+      pass += 1
+      return pass === 1 ? [REPAIR_CANDIDATE] : []
+    }
+    const model = scriptedModel({ critiques: [ungrounded, ungrounded, ungrounded] })
+    const state = await runAgentGraph('who repairs the unit?', {
+      model,
+      retrieve,
+      flags: { ...AGENT_QUERY_FLAGS_OFF, queryReformulation: true },
+    })
+    expect(model.calls.reformulate).toBe(0)
+    expect(state.reformulations).toBe(0)
+    expect(state.reformulatedQuestion).toBeUndefined()
+    expect(state.degraded).toBe(true)
   })
 
   it('the reformulate node is wired as retrieve→reformulate→planner', () => {

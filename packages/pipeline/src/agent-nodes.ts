@@ -19,6 +19,7 @@ import {
 } from './answer-envelope.js'
 import {
   AGENT_LOOP_CAPS,
+  effectiveQuestion,
   guardVerdictToBehavior,
   type AgentEnrichmentAccess,
   type AgentModel,
@@ -86,9 +87,15 @@ export function routeAfterGuard(state: AgentState): 'plan' | 'refused' {
  * Planner node: get a retrieval plan from the model and CLAMP it to the hop cap.
  * Clamping at the Planner is the structural guarantee that no plan can schedule
  * an unbounded fan-out — the hop count is bounded before any retrieval runs.
+ *
+ * Plans for the {@link effectiveQuestion}: the reformulated query once the
+ * reformulate edge has run (#53), else the original. Before any reformulation
+ * this is exactly `state.question` (the #15 behaviour) — so a re-plan after a
+ * thin first pass targets the rewritten query, while every other path is
+ * unchanged.
  */
 export async function plannerNode(state: AgentState, model: AgentModel): Promise<AgentStatePatch> {
-  const raw = await model.plan({ question: state.question })
+  const raw = await model.plan({ question: effectiveQuestion(state) })
   return { plan: clampPlan(raw) }
 }
 
@@ -130,11 +137,16 @@ export async function retrieveNode(
   topK: number = AGENT_TOP_K_DEFAULT,
   extras?: RetrieveNodeExtras,
 ): Promise<AgentStatePatch> {
-  const plan = state.plan ?? { hops: [{ query: state.question }], multiHop: false }
+  // The effective question is the reformulated query once the reformulate edge
+  // has run (#53), else the original — so a degenerate (empty-query) hop on the
+  // SECOND pass falls back to the rewrite, while the first pass and every off
+  // run fall back to `state.question` exactly as in #15.
+  const question = effectiveQuestion(state)
+  const plan = state.plan ?? { hops: [{ query: question }], multiHop: false }
   const perHop = await Promise.all(
     plan.hops.map((hop) =>
       retrieve({
-        question: hop.query || state.question,
+        question: hop.query || question,
         topK,
         authorityLevels: hop.authorityLevels,
       }),
@@ -175,38 +187,60 @@ export function mergeCandidates(lists: readonly HybridCandidate[]): readonly Hyb
   return [...byKey.values()].sort((a, b) => b.score - a.score)
 }
 
-// --- reformulate (bounded edge, #16) ---------------------------------------
+// --- reformulate (bounded edge, #16 + #53) ---------------------------------
 
 /**
- * Reformulate node (#16): count one query reformulation before re-entering
+ * Reformulate node (#16 edge, made real in #53, ADR 0006): REWRITE the query for
+ * a second retrieval pass and count the reformulation before re-entering
  * planning. The cap ({@link AGENT_LOOP_CAPS.maxReformulations}) is enforced by the
- * ROUTER ({@link routeAfterRetrieve}), so this never exceeds it.
+ * ROUTER ({@link routeAfterRetrieve}), so this never exceeds it and the loop
+ * always terminates.
  *
- * LIMITATION (tracked as a follow-up): this bounded edge currently only counts the
- * pass and re-enters planning with the SAME `state.question`, so a deterministic
- * planner reissues the identical retrieval — reformulation-on does not yet differ
- * from reformulation-off for such planners. Actually REWRITING the query (so the
- * second pass differs) needs a reformulation-strategy decision (model-driven
- * rewrite vs. deterministic broadening) and is deferred to that follow-up; the
- * edge, flag, bounding, and routing are in place here. [Codex P2, PR #52]
+ * The rewrite comes from the INJECTED {@link AgentModel.reformulate} seam — no
+ * provider call lives here, so the node is unit-tested offline against a
+ * deterministic fake. The rewrite is derived from the ORIGINAL `state.question`
+ * (preserved for provenance) and stored as `reformulatedQuestion`; from there
+ * {@link effectiveQuestion} makes the planner re-plan and the retrieve node search
+ * the rewritten query — so the second pass differs from the first (closing the
+ * #16 no-op gap, Codex P2 on PR #52). Reformulating from the original (not a prior
+ * rewrite) keeps provenance stable; the ≤1 cap means it only happens once anyway.
+ *
+ * Only reached when `queryReformulation` is on AND the first pass was thin (the
+ * router's contract), so an off run never calls the seam and stays byte-identical
+ * to the #15 baseline.
  */
-export function reformulateNode(state: AgentState): AgentStatePatch {
-  return { reformulations: state.reformulations + 1 }
+export async function reformulateNode(
+  state: AgentState,
+  model: AgentModel,
+): Promise<AgentStatePatch> {
+  const reformulatedQuestion = await model.reformulate({
+    question: state.question,
+    candidates: state.candidates,
+  })
+  return { reformulatedQuestion, reformulations: state.reformulations + 1 }
 }
 
 /**
  * Route after retrieve (#16): the bounded reformulation decision. Reformulate
- * ONLY when the flag is on, the candidate set came back thin (empty), AND the
- * reformulation budget is unspent — otherwise proceed to rerank. With the flag
- * off (the documented fallback) this ALWAYS routes to rerank: a single retrieve
- * pass, never a reformulation, so Guard/Critic still always run and the
- * trajectory stays bounded and comparable (CONTEXT.md, "Planner").
+ * ONLY when the flag is on, this is the FIRST (pre-Critic) retrieve pass, the
+ * candidate set came back thin (empty), AND the reformulation budget is unspent —
+ * otherwise proceed to rerank. With the flag off (the documented fallback) this
+ * ALWAYS routes to rerank: a single retrieve pass, never a reformulation, so
+ * Guard/Critic still always run and the trajectory stays bounded and comparable
+ * (CONTEXT.md, "Planner").
+ *
+ * The first-pass guard (`criticReretrievals === 0`) matters because this same
+ * edge is reused after critic → reretrieve → planner → retrieve: reformulation is
+ * a rescue for a thin FIRST pass, not the Critic recovery path. Letting it fire on
+ * a thin re-retrieval would add an extra model rewrite + retrieve cycle and divert
+ * the bounded degrade route the Critic loop is supposed to reach. [Codex P2, PR #54]
  */
 export function routeAfterRetrieve(
   state: AgentState,
   flags: AgentQueryFlags,
 ): 'rerank' | 'reformulate' {
   if (!flags.queryReformulation) return 'rerank'
+  if (state.criticReretrievals > 0) return 'rerank'
   if (state.candidates.length > 0) return 'rerank'
   if (state.reformulations >= AGENT_LOOP_CAPS.maxReformulations) return 'rerank'
   return 'reformulate'

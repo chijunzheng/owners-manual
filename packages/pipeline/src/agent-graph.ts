@@ -109,7 +109,7 @@ export function buildAgentGraph(deps: AgentGraphDeps) {
     .addNode('retrieve', (state) =>
       retrieveNode(state, deps.retrieve, topK, { flags, enrichment: deps.enrichment }),
     )
-    .addNode('reformulate', (state) => reformulateNode(state))
+    .addNode('reformulate', (state) => reformulateNode(state, deps.model))
     .addNode('rerank', (state) => rerankNode(state, { flags, rerank }))
     .addNode('synthesize', (state) => synthesizeNode(state, deps.model, deps.onToken))
     .addNode('critic', (state) => criticNode(state, deps.model))
@@ -119,9 +119,10 @@ export function buildAgentGraph(deps: AgentGraphDeps) {
     .addEdge(START, 'guard')
     .addConditionalEdges('guard', routeAfterGuard, { plan: 'planner', refused: END })
     .addEdge('planner', 'retrieve')
-    // The one bounded reformulation (#16): retrieve → reformulate → planner (re-plan)
-    // at most maxReformulations times, ONLY behind the flag and only on a thin
-    // result; otherwise straight to rerank. With the flag off this is a no-op edge.
+    // The one bounded reformulation (#16 edge, real rewrite in #53): retrieve →
+    // reformulate → planner (re-plan over the REWRITTEN query) at most
+    // maxReformulations times, ONLY behind the flag and only on a thin result;
+    // otherwise straight to rerank. With the flag off this edge never fires.
     .addConditionalEdges('retrieve', (state) => routeAfterRetrieve(state, flags), {
       rerank: 'rerank',
       reformulate: 'reformulate',

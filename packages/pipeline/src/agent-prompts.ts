@@ -117,6 +117,27 @@ export function buildAgentSynthesisPrompt(
 }
 
 /**
+ * The reformulation prompt (#53, ADR 0006): rewrite the QUESTION into a single
+ * better retrieval query AFTER a first pass came back thin. The signal is the
+ * empty/sparse first result, so the instruction asks for a broadened, jargon-rich
+ * rephrasing (synonyms, the governing Act/term) — not a narrower one — while
+ * keeping the SAME information need and Ontario condo-ownership scope. Returns
+ * bare query text (no JSON): the rewrite is a string the second retrieve embeds,
+ * so the live binding takes the reply verbatim rather than parsing structure.
+ */
+export function buildReformulatePrompt(question: string): string {
+  return `You are the QUERY REFORMULATOR for an Ontario condo-owner assistant. A first retrieval for the QUESTION returned too few results. Rewrite it into ONE better search query.
+
+Rules:
+- Keep the SAME information need and the Ontario condo-ownership scope; do NOT answer it or change the topic.
+- BROADEN recall: add synonyms and the governing statute/term where obvious (e.g. "Residential Tenancies Act", "RTA", "condominium declaration"); avoid narrowing.
+- Output ONLY the rewritten query as a single line of plain text — no quotes, no JSON, no preamble.
+
+QUESTION:
+${question}`
+}
+
+/**
  * The Critic prompt: verify every claim in the drafted answer maps to a
  * retrieved source. It NEVER rewrites the answer — it only reports grounding, so
  * the graph (not the model) decides re-retrieve vs honest degradation.
