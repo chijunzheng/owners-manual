@@ -29,6 +29,8 @@ import {
 } from './agent-types.js'
 import { type DefinitionAttachment } from './graph-expansion.js'
 import { type HybridCandidate } from './hybrid-retrieve.js'
+import { type OwnerProfile } from './owner-profile.js'
+import { type SessionMemory } from './session-memory.js'
 
 /** A last-write-wins reducer: a node update replaces the prior value. */
 function lastWriteWins<T>(left: T, right: T | undefined): T {
@@ -71,6 +73,19 @@ export const AgentAnnotation = Annotation.Root({
     default: () => undefined,
   }),
   rawModelOutput: Annotation<string | undefined>({
+    reducer: lastWriteWins,
+    default: () => undefined,
+  }),
+  // The two #17 memory channels: set on INITIAL state by the API, read by
+  // synthesize, never written by a node — so they carry through unchanged. Kept
+  // as separate channels (not one merged object) because they are distinct
+  // mechanisms (CONTEXT.md): the owner profile is cross-session facts, the
+  // session memory is the bounded conversation summary.
+  ownerProfile: Annotation<OwnerProfile | undefined>({
+    reducer: lastWriteWins,
+    default: () => undefined,
+  }),
+  sessionMemory: Annotation<SessionMemory | undefined>({
     reducer: lastWriteWins,
     default: () => undefined,
   }),

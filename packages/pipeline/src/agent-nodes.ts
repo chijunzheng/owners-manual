@@ -305,10 +305,18 @@ export async function synthesizeNode(
   model: AgentModel,
   onToken?: (token: string) => void,
 ): Promise<AgentStatePatch> {
+  // The two #17 mechanisms travel together as `memory` but stay DISTINCT in the
+  // prompt (separate blocks). Only build the object when at least one is present,
+  // so a no-memory run passes `undefined` and the off-state prompt is unchanged.
+  const memory =
+    state.ownerProfile || state.sessionMemory
+      ? { ownerProfile: state.ownerProfile, sessionMemory: state.sessionMemory }
+      : undefined
   const raw = await model.synthesize({
     question: state.question,
     candidates: state.candidates,
     definitions: state.definitionAttachments,
+    memory,
     onToken,
   })
   const envelope = clampEnvelopeToCandidates(parseRawEnvelope(raw), state.candidates)

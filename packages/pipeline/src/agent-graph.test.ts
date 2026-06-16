@@ -94,6 +94,25 @@ describe('agent graph — answer with pin-cites', () => {
     expect(tokens.join('')).toContain('behaviorClass')
   })
 
+  it('seeds the #17 memory channels into initial state and reaches synthesize and the terminal state', async () => {
+    const model = scriptedModel()
+    const state = await runAgentGraph(
+      'who repairs MY unit?',
+      { model, retrieve: retrieveRepair },
+      undefined,
+      {
+        ownerProfile: { ownerId: 'owner-synthetic-001', facts: { unit: 'Unit 1203' } },
+        sessionMemory: { sessionId: 's', summary: 'asked about insurance', turnCount: 1 },
+      },
+    )
+    // The graph passed both DISTINCT mechanisms to synthesize...
+    expect(model.lastSynthesizeInput?.memory?.ownerProfile?.facts.unit).toBe('Unit 1203')
+    expect(model.lastSynthesizeInput?.memory?.sessionMemory?.summary).toBe('asked about insurance')
+    // ...and carried them through the channels to the terminal state, unchanged.
+    expect(state.ownerProfile?.facts.unit).toBe('Unit 1203')
+    expect(state.sessionMemory?.turnCount).toBe(1)
+  })
+
   it('reranks an Act above a contract before synthesis WHEN the rerank flag is on', async () => {
     // #16 makes rerank ablatable; with the flag ON the authority reranker promotes
     // the Act ahead of the contract. (The OFF fallback — raw RRF order — is pinned

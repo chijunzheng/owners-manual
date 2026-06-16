@@ -83,6 +83,9 @@ export interface ScriptedModelOptions {
   readonly streamChunks?: number
 }
 
+/** The input the scripted model last saw at `synthesize` — recorded for #17 assertions. */
+export type ScriptedSynthesizeInput = Parameters<AgentModel['synthesize']>[0]
+
 /** A call-counting scripted model plus the counters the tests assert on. */
 export interface ScriptedModel extends AgentModel {
   readonly calls: {
@@ -92,6 +95,8 @@ export interface ScriptedModel extends AgentModel {
     critique: number
     reformulate: number
   }
+  /** The most recent `synthesize` input (for asserting #17 memory pass-through). */
+  lastSynthesizeInput?: ScriptedSynthesizeInput
 }
 
 const PASS_GUARD: GuardDecision = {
@@ -152,7 +157,7 @@ export function scriptedModel(options: ScriptedModelOptions = {}): ScriptedModel
   const streamChunks = options.streamChunks ?? 1
   const calls = { guard: 0, plan: 0, synthesize: 0, critique: 0, reformulate: 0 }
 
-  return {
+  const model: ScriptedModel = {
     calls,
     async guard() {
       calls.guard += 1
@@ -163,10 +168,11 @@ export function scriptedModel(options: ScriptedModelOptions = {}): ScriptedModel
       calls.plan += 1
       return out
     },
-    async synthesize({ onToken }) {
+    async synthesize(input) {
+      model.lastSynthesizeInput = input
       const out = at(synthesisOutputs, calls.synthesize)
       calls.synthesize += 1
-      if (onToken) for (const token of chunk(out, streamChunks)) onToken(token)
+      if (input.onToken) for (const token of chunk(out, streamChunks)) input.onToken(token)
       return out
     },
     async critique() {
@@ -179,4 +185,5 @@ export function scriptedModel(options: ScriptedModelOptions = {}): ScriptedModel
       return reformulate(question)
     },
   }
+  return model
 }

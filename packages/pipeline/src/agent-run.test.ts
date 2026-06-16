@@ -206,6 +206,83 @@ describe('runAgent', () => {
     expect(recording.spanOutputs['agent-graph']).toEqual({ answer: result.envelope.answer })
   })
 
+  it('injects the owner profile + session memory into synthesis (#17)', async () => {
+    const model = scriptedModel()
+    await runAgent({
+      question: 'who repairs MY unit?',
+      itemId: 'x',
+      topK: 8,
+      model,
+      retrieve,
+      ownerProfile: { ownerId: 'owner-synthetic-001', facts: { unit: 'Unit 1203' } },
+      sessionMemory: {
+        sessionId: 'sess-1',
+        summary: 'asked about insurance earlier',
+        turnCount: 1,
+      },
+    })
+    expect(model.lastSynthesizeInput?.memory?.ownerProfile?.facts.unit).toBe('Unit 1203')
+    expect(model.lastSynthesizeInput?.memory?.sessionMemory?.summary).toBe(
+      'asked about insurance earlier',
+    )
+  })
+
+  it('records BOTH memory mechanisms as distinct trace spans (AC3 — visible in traces)', async () => {
+    const recording = recordingTracer()
+    await runAgent({
+      question: 'who repairs MY unit?',
+      itemId: 'x',
+      topK: 8,
+      model: scriptedModel(),
+      retrieve,
+      tracer: recording.tracer,
+      ownerProfile: { ownerId: 'owner-synthetic-001', facts: { unit: 'Unit 1203' } },
+      sessionMemory: { sessionId: 'sess-1', summary: 'asked about insurance', turnCount: 1 },
+    })
+    // Each mechanism is its own span so they filter apart in Langfuse.
+    expect(recording.spans).toContain('owner-profile')
+    expect(recording.spans).toContain('session-memory')
+    expect(recording.spanOutputs['owner-profile']).toMatchObject({
+      ownerId: 'owner-synthetic-001',
+      factKeys: ['unit'],
+    })
+    expect(recording.spanOutputs['session-memory']).toMatchObject({
+      sessionId: 'sess-1',
+      turnCount: 1,
+    })
+  })
+
+  it('opens no memory spans when neither mechanism is supplied (off-state)', async () => {
+    const recording = recordingTracer()
+    await runAgent({
+      question: 'q',
+      itemId: 'x',
+      topK: 8,
+      model: scriptedModel(),
+      retrieve,
+      tracer: recording.tracer,
+    })
+    expect(recording.spans).not.toContain('owner-profile')
+    expect(recording.spans).not.toContain('session-memory')
+  })
+
+  it('does NOT put profile facts into the trace span output (only keys, never values)', async () => {
+    const recording = recordingTracer()
+    await runAgent({
+      question: 'q',
+      itemId: 'x',
+      topK: 8,
+      model: scriptedModel(),
+      retrieve,
+      tracer: recording.tracer,
+      ownerProfile: { ownerId: 'o', facts: { unit: 'Unit 1203', policyNumber: 'POL-SYNTH-7788' } },
+    })
+    // The span proves the profile WAS injected (key names + count) without
+    // leaking the values into the trace.
+    expect(JSON.stringify(recording.spanOutputs['owner-profile'])).not.toContain('Unit 1203')
+    expect(JSON.stringify(recording.spanOutputs['owner-profile'])).not.toContain('POL-SYNTH-7788')
+  })
+
   it('refuses out-of-scope without retrieving when Guard blocks (jurisdiction)', async () => {
     const seen: string[] = []
     const spyRetrieve: AgentRetrieve = async (input) => {

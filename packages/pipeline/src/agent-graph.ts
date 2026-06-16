@@ -26,6 +26,8 @@ import {
   type AgentRetrieve,
   type AgentState,
 } from './agent-types.js'
+import { type OwnerProfile } from './owner-profile.js'
+import { type SessionMemory } from './session-memory.js'
 import { AGENT_QUERY_FLAGS_OFF, type AgentQueryFlags } from './agent-query-flags.js'
 import {
   AGENT_TOP_K_DEFAULT,
@@ -148,17 +150,39 @@ export interface AgentGraphResult {
 }
 
 /**
+ * The #17 memory injected into INITIAL graph state: the owner profile
+ * (cross-session facts) and the bounded session summary, kept as DISTINCT
+ * channels. Both optional — absent means the off-state (no memory in the prompt),
+ * so the #15 call shape (`runAgentGraph(question, deps, itemId)`) is unchanged.
+ */
+export interface AgentGraphInitialMemory {
+  readonly ownerProfile?: OwnerProfile
+  readonly sessionMemory?: SessionMemory
+}
+
+/**
  * Run the compiled graph for one question and return the terminal state. The
  * `recursionLimit` is the backstop described above; the routers make the loops
- * bounded, so a real run never approaches it.
+ * bounded, so a real run never approaches it. `memory` seeds the two #17 state
+ * channels (owner profile, session memory) the synthesize node reads — they are
+ * set ONLY here on initial state and carried through, never written by a node.
  */
 export async function runAgentGraph(
   question: string,
   deps: AgentGraphDeps,
   itemId?: string,
+  memory?: AgentGraphInitialMemory,
 ): Promise<AgentState> {
   const graph = buildAgentGraph(deps)
-  const final = await graph.invoke({ question, itemId }, { recursionLimit: AGENT_RECURSION_LIMIT })
+  const final = await graph.invoke(
+    {
+      question,
+      itemId,
+      ownerProfile: memory?.ownerProfile,
+      sessionMemory: memory?.sessionMemory,
+    },
+    { recursionLimit: AGENT_RECURSION_LIMIT },
+  )
   return final
 }
 
