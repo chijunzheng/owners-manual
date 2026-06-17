@@ -49,6 +49,7 @@ import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest, loadFixtureSnapshot } from '.
 import { chunkParsedDocuments, type CorpusChunk } from './chunk-corpus.js'
 import { corpusOfDocument } from './corpus-tag.js'
 import { STUFF_RUNTIME_CONFIG, buildChunksForArm } from './stuff-config.js'
+import { resolveStuffCachedContentName } from './stuff-cache.js'
 import {
   handleStuffRequest,
   parseStuffOracleRequest,
@@ -245,25 +246,55 @@ async function main(): Promise<void> {
   const stuffTracerHandle = tracingOn
     ? createLangfuseTracer(process.env, undefined, ['stuff', 'arm:stuff'])
     : undefined
+  const chunksForArm = buildChunksForArm({
+    documentIds: GOLDEN_V0_DOCUMENTS.map((doc) => doc.id),
+    chunksByDocument,
+    corpusOfDocument: (id) => corpusByDocumentId.get(id) ?? '',
+  })
+
+  // The stuffing-arm context-cache lifecycle (#44). The cache covers the canonical
+  // `stuff` prefix (the whole corpus in fixed canonical order — the superset
+  // `stuff-oracle` routes a subset of, so both arms reference one cache), is keyed
+  // to the corpus build hash (ADR 0004), and recreates on a build/model change or
+  // TTL elapse. The DECISION logic, the canonical-prefix assembly, and this
+  // threading are pure and unit-tested (`stuff-cache.test.ts`) against a fake seam.
+  //
+  // INTERIM (#44 / live-run milestone): the live `CachedContentProvisioner` binding
+  // — the real Vertex cache-create REST/SDK call (`@langchain/google-vertexai`
+  // v0.2.x only *consumes* a provisioned `cachedContent` resource name, it exposes
+  // no cache-manager surface) — is deferred to the live-run milestone alongside live
+  // hybrid-arm ingestion, exactly like #16's persisted-sidecar load. Until it lands
+  // the provisioner is left undefined, so `resolveStuffCachedContentName` returns
+  // undefined and the arms run UNCACHED: the per-question cost stays honest (computed
+  // from real `usage_metadata`, reflecting no cache hit), the promised cache_read
+  // discount (AC3) and the live end-to-end exercise (AC4) arrive with that binding.
+  //
+  // SEND CONTRACT for that binding (Codex PR #59): Vertex prepends a referenced
+  // `cachedContent`, so a cached call must send ONLY the variable suffix (the
+  // question) — `buildSynthesisPrompt(q, …) === buildCachePrefix(chunks) + q` — not
+  // the full prompt, or the SOURCES are sent twice. This one full-corpus cache fits
+  // `stuff` (prompt = prefix + question) but NOT `stuff-oracle` (a routed SUBSET, so
+  // its prompt is not prefix + suffix); oracle then needs its own cache or runs
+  // uncached. Both are part of that deferred live decision (tracked on #44).
+  const stuffCachedContentName = await resolveStuffCachedContentName({
+    provisioner: undefined,
+    chunks: chunksForArm('stuff'),
+    corpusBuildHash: runRecord.corpusBuildHash,
+    model: STUFF_RUNTIME_CONFIG.model,
+    location: live.vertexLocation,
+    nowMs: Date.now(),
+  })
+
   const stuffDeps: StuffServiceDeps = {
-    // INTERIM (#18 follow-up): no `cachedContentName` is provisioned yet, so live
-    // `/stuff` and `/stuff-oracle` currently run UNCACHED. The per-question cost
-    // stays honest — it is computed from the real `usage_metadata` and reflects no
-    // cache hit — but the promised context-cached baseline is not engaged. Creating
-    // the Vertex `CachedContent` over the canonical corpus prefix (keyed to the
-    // corpus build hash, with refresh/TTL) is a live-only lifecycle deferred to the
-    // live-run milestone (alongside live hybrid-arm ingestion); the adapter already
-    // accepts `cachedContentName` for when it lands. Tracked as a follow-up.
     complete: createVertexStuffLlm({
       model: STUFF_RUNTIME_CONFIG.model,
       location: live.vertexLocation,
+      // Threaded from the lifecycle; undefined today (no live provisioner wired),
+      // so the adapter sends no `cachedContent` and the call runs uncached.
+      ...(stuffCachedContentName ? { cachedContentName: stuffCachedContentName } : {}),
     }),
     runRecord,
-    chunksForArm: buildChunksForArm({
-      documentIds: GOLDEN_V0_DOCUMENTS.map((doc) => doc.id),
-      chunksByDocument,
-      corpusOfDocument: (id) => corpusByDocumentId.get(id) ?? '',
-    }),
+    chunksForArm,
     costRates: STUFF_RUNTIME_CONFIG.costRates,
     tracer: stuffTracerHandle?.tracer,
   }
