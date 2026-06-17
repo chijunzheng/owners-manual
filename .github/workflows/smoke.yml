@@ -105,11 +105,13 @@ jobs:
           REPO: ${{ github.repository }}
           BODY_FILE: ${{ runner.temp }}/smoke-comment.md
         run: |
-          marker='<!-- owners-manual-smoke-report -->'
-          # --slurp folds every page into one array, so the jq filter runs once
-          # and emits a single id (or empty) — robust to pagination.
-          existing=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --slurp \
-            --jq "[.[] | select(.body | startswith(\"$marker\"))] | .[0].id // empty")
+          # Find-and-update ONE comment per PR, keyed by the hidden marker the body
+          # carries. `gh api --paginate` MERGES the paginated issue-comments pages
+          # into a single flat array; pipe that to the unit-tested selector
+          # (smoke-find-comment), which prints the existing comment id or nothing.
+          # Do NOT add `--slurp`: it folds each page-array into the outer array, so a
+          # downstream `.body` read indexes an array and errors — PR #57, Codex P1.
+          existing=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate | uv run smoke-find-comment)
           if [ -n "$existing" ]; then
             gh api --method PATCH "repos/$REPO/issues/comments/$existing" \
               -F body=@"$BODY_FILE" >/dev/null
