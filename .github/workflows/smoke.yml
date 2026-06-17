@@ -1,0 +1,121 @@
+name: Smoke eval (report-only)
+
+# The smoke-tier eval gate (CONTEXT.md, "Eval gate"; issue #11). Runs the fixed,
+# versioned `smoke-v1` slice through the agent arm on every PR and posts a
+# DETERMINISTIC score-table comment — no LLM judge. It is REPORT-ONLY: it never
+# blocks merge. The gate earns the right to block later (#24, once per-metric
+# thresholds are calibrated from the jitter this phase observes) by first proving
+# it does not cry wolf. To keep it non-blocking, this workflow is a separate job
+# from `ci.yml`, the runner always exits 0, and the job is deliberately NOT added
+# to branch protection's required checks (a human flips that at #24).
+#
+# Cost: when a corpus-loaded agent service is reachable (SMOKE_SERVICE_URL set —
+# stood up by the App Runner deploy, #24), the slice makes REAL Vertex/Gemini
+# calls against the GCP trial credit at ≈ $1 per run, deterministic metrics only
+# (no judge). Until then `run-smoke` detects no reachable service and posts an
+# honest "did not run" comment WITHOUT spending anything — so this workflow is
+# safe to run per-PR today, and the ≈ $1/run cost begins only when #24 wires the
+# endpoint. The trigger is scoped to pull_request (the comment belongs on the PR)
+# with concurrency cancelling superseded runs on the same PR, so a rapid push
+# sequence does not stack redundant live Vertex runs.
+
+on:
+  pull_request:
+
+# One in-flight smoke run per PR; a fresh push cancels the previous so we never
+# fire redundant (and, post-#24, billable) live Vertex runs for stale commits.
+concurrency:
+  group: smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# id-token: write is REQUIRED for GitHub to mint the OIDC token that
+# google-github-actions/auth@v2 exchanges via Workload Identity Federation —
+# without it the auth step fails (there is NO service-account key file, by
+# project policy). contents: read checks out the repo; pull-requests: write
+# posts/updates the score comment.
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  smoke:
+    name: smoke-v1 slice (report-only score comment)
+    runs-on: ubuntu-latest
+    # Fork PRs cannot mint this repo's OIDC token or write PR comments with the
+    # default token, so scope the live/auth job to same-repo PRs. (Forks still
+    # get the full deterministic unit coverage of the slice + comment formatter
+    # via ci.yml's Python job — the composition and the comment body are pure.)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v6
+
+      # Keyless auth to Google Cloud via Workload Identity Federation (no SA key
+      # file — project policy). These are identifiers, not secrets, so they are
+      # inlined. After this step ADC is present and Vertex calls run as
+      # vertex-runner (which holds roles/aiplatform.user). Skipped automatically
+      # when the live slice can't run, but cheap and harmless to keep ordered
+      # first so the live path is ready the moment SMOKE_SERVICE_URL is set (#24).
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: owners-manual-499217
+          workload_identity_provider: projects/312832879722/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: vertex-runner@owners-manual-499217.iam.gserviceaccount.com
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: evals/uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      # Run the report-only smoke slice. run-smoke ALWAYS exits 0 (report-only):
+      # it writes the score table when SMOKE_SERVICE_URL points at a reachable
+      # agent service, else an honest "did not run" comment. continue-on-error is
+      # belt-and-braces so even an infra hiccup can never turn this gate red.
+      - name: Run smoke-v1 slice (report-only)
+        id: smoke
+        continue-on-error: true
+        env:
+          # Set by #24 once the App Runner agent endpoint exists; unset today, so
+          # the runner posts the honest pending comment and spends nothing.
+          SMOKE_SERVICE_URL: ${{ vars.SMOKE_SERVICE_URL }}
+          GOOGLE_CLOUD_PROJECT: owners-manual-499217
+          GOOGLE_CLOUD_LOCATION: global
+        run: >-
+          uv run run-smoke
+          --output "${{ runner.temp }}/smoke-comment.md"
+          --run-name "smoke-v1"
+          --commit-sha "${{ github.event.pull_request.head.sha }}"
+
+      # Find-and-update a single comment per PR (keyed by the hidden marker the
+      # body carries) so pushes update one comment instead of spamming the thread.
+      # Report-only: a failure to post must not fail the gate.
+      - name: Post or update the score-table comment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          BODY_FILE: ${{ runner.temp }}/smoke-comment.md
+        run: |
+          marker='<!-- owners-manual-smoke-report -->'
+          # --slurp folds every page into one array, so the jq filter runs once
+          # and emits a single id (or empty) — robust to pagination.
+          existing=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --slurp \
+            --jq "[.[] | select(.body | startswith(\"$marker\"))] | .[0].id // empty")
+          if [ -n "$existing" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$existing" \
+              -F body=@"$BODY_FILE" >/dev/null
+            echo "Updated existing smoke comment ($existing)."
+          else
+            gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" \
+              -F body=@"$BODY_FILE" >/dev/null
+            echo "Posted new smoke comment."
+          fi
