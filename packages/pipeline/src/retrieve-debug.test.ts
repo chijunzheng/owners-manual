@@ -132,6 +132,67 @@ describe('handleRetrieveDebugRequest — candidates with provenance tags (AC2)',
   })
 })
 
+describe('handleRetrieveDebugRequest — true pre-filter wiring (#41 AC2)', () => {
+  // The call site resolves authorityLevels -> a documentId allow-list from the
+  // corpus's KNOWN id set (injected by serve-cli from the manifest / fixture
+  // registry) and threads it into the executors as a true pre-filter.
+  const corpusDocumentIds = ['rta-2006', 'reg-516-06', 'fixture-lease', 'fixture-declaration']
+
+  it('resolves the authority levels to documentIds and pushes them into both executors', async () => {
+    let vectorArg: readonly string[] | undefined = ['unset']
+    let textArg: readonly string[] | undefined = ['unset']
+    const captureVector: VectorSearchExecutor = async ({ documentIds }) => {
+      vectorArg = documentIds
+      return []
+    }
+    const captureText: TextSearchExecutor = async ({ documentIds }) => {
+      textArg = documentIds
+      return []
+    }
+    await handleRetrieveDebugRequest(
+      { question: 'q', authorityLevels: ['act'] },
+      {
+        provider,
+        vectorSearch: captureVector,
+        textSearch: captureText,
+        topK: 8,
+        corpusDocumentIds,
+      },
+    )
+    // 'act' resolves to rta-2006 only, out of the known corpus id set.
+    expect(vectorArg).toEqual(['rta-2006'])
+    expect(textArg).toEqual(['rta-2006'])
+  })
+
+  it('threads no pre-filter when the request omits authorityLevels', async () => {
+    let vectorArg: readonly string[] | undefined = ['unset']
+    const captureVector: VectorSearchExecutor = async ({ documentIds }) => {
+      vectorArg = documentIds
+      return []
+    }
+    await handleRetrieveDebugRequest(
+      { question: 'q' },
+      { provider, vectorSearch: captureVector, textSearch, topK: 8, corpusDocumentIds },
+    )
+    expect(vectorArg).toBeUndefined()
+  })
+
+  it('threads no pre-filter when no corpus id set is injected (still post-filters)', async () => {
+    // Without a known id set the inverse cannot be computed, so the pre-filter is
+    // skipped and only the post-fusion authority guard runs — never a hardcoded list.
+    let vectorArg: readonly string[] | undefined = ['unset']
+    const captureVector: VectorSearchExecutor = async ({ documentIds }) => {
+      vectorArg = documentIds
+      return []
+    }
+    await handleRetrieveDebugRequest(
+      { question: 'q', authorityLevels: ['act'] },
+      { provider, vectorSearch: captureVector, textSearch, topK: 8 },
+    )
+    expect(vectorArg).toBeUndefined()
+  })
+})
+
 describe('handleRetrieveDebugRequest — vector-only mode (isolates the BM25+RRF lift)', () => {
   it('defaults to hybrid mode', async () => {
     const response = await handleRetrieveDebugRequest({ question: 'q' }, deps)

@@ -59,6 +59,51 @@ export function authorityLevelOf(documentId: string): AuthorityLevel {
   throw new Error(`unknown document id "${documentId}" — cannot assign an authority level`)
 }
 
+/**
+ * The inverse of {@link authorityLevelOf} (#41): the document ids, drawn from the
+ * corpus's KNOWN id set, whose authority level is one of `levels` — the allow-list
+ * the pre-filter pushes into `$vectorSearch.filter` / the `$search` compound
+ * (ADR 0002: metadata pre-filtering on corpus AND authority level in one query
+ * path).
+ *
+ * The known-id set is supplied by the caller (the corpus manifest / fixture
+ * registry at the serve call site), NOT enumerated here: `authorityLevelOf`
+ * classifies one id but the open `ltb-guideline-*` family has no closed list to
+ * invert. Each known id is classified by the same by-id rule, so a mis-wired id
+ * throws rather than silently dropping out of the allow-list. The result is
+ * deduplicated and keeps first-seen order over the known set, so the emitted
+ * filter is deterministic.
+ */
+export function documentIdsForAuthorityLevels(
+  levels: readonly AuthorityLevel[],
+  knownDocumentIds: readonly string[],
+): readonly string[] {
+  const wanted = new Set<AuthorityLevel>(levels)
+  const allow: string[] = []
+  const seen = new Set<string>()
+  for (const id of knownDocumentIds) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    if (wanted.has(authorityLevelOf(id))) allow.push(id)
+  }
+  return allow
+}
+
+/**
+ * The optional pre-filter resolver the live call sites share (#41): the documentId
+ * allow-list for an OPTIONAL set of requested authority levels over an OPTIONAL
+ * known-id set. Returns undefined — no pre-filter, fall back to the post-fusion
+ * guard — when either input is absent (no levels requested, or no corpus id set to
+ * invert against), so the pre-filter is never built from a hardcoded id list.
+ */
+export function resolveDocumentFilter(
+  authorityLevels: readonly AuthorityLevel[] | undefined,
+  corpusDocumentIds: readonly string[] | undefined,
+): readonly string[] | undefined {
+  if (!authorityLevels || !corpusDocumentIds) return undefined
+  return documentIdsForAuthorityLevels(authorityLevels, corpusDocumentIds)
+}
+
 /** The rank of an authority level: lower is higher authority (act === 0). */
 export function authorityRank(level: AuthorityLevel): number {
   const rank = RANK.get(level)

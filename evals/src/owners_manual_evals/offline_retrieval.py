@@ -25,7 +25,7 @@ hit-rate delta measures. The numbers come out however they come out.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from .bm25 import Bm25Document, bm25_rank, tokenize
@@ -33,6 +33,74 @@ from .rrf import RankedList, fuse_by_rrf
 
 #: Per-stage over-fetch before fusion (mirrors the TS hybrid default).
 _PER_STAGE_FACTOR = 3
+
+#: Explicit document-id -> authority level, mirroring the TS ``authority.ts``
+#: ``EXPLICIT_LEVELS`` map (#41). The offline stand-in keeps its own copy because
+#: it cannot import the TypeScript module; the live executors are the source of
+#: truth and the cross-language conformance is asserted by parity tests. Open
+#: ``ltb-guideline-*`` ids are classified by prefix below, exactly as in TS.
+_EXPLICIT_LEVELS: dict[str, str] = {
+    "rta-2006": "act",
+    "condo-act-1998": "act",
+    "reg-516-06": "regulation",
+    "reg-48-01": "regulation",
+    "fixture-declaration": "declaration",
+    "fixture-rules": "rule",
+    "fixture-management-policies": "rule",
+    "fixture-lease": "contract",
+    "fixture-master-policy": "contract",
+    "fixture-unit-policy": "contract",
+}
+
+
+def _authority_level_of(document_id: str) -> str:
+    """The authority level of a document id (mirror of TS ``authorityLevelOf``).
+
+    LTB interpretation guidelines match their ``ltb-guideline-*`` family prefix;
+    every other source is mapped explicitly. Raises for an unknown id rather than
+    guessing — a silently mis-ranked source is a correctness bug, not a shrug.
+    """
+    explicit = _EXPLICIT_LEVELS.get(document_id)
+    if explicit is not None:
+        return explicit
+    if document_id.startswith("ltb-guideline-"):
+        return "guideline"
+    raise ValueError(f'unknown document id "{document_id}" — cannot assign an authority level')
+
+
+def document_ids_for_authority_levels(
+    authority_levels: Iterable[str], known_document_ids: Iterable[str]
+) -> tuple[str, ...]:
+    """Inverse of :func:`_authority_level_of` (#41), mirroring the TS
+    ``documentIdsForAuthorityLevels``: the known ids whose level is one of
+    ``authority_levels``, deduplicated and in first-seen order. The known-id set
+    is supplied by the caller because the open ``ltb-guideline-*`` family has no
+    closed list to invert; a known id that cannot be classified raises."""
+    wanted = set(authority_levels)
+    allow: list[str] = []
+    seen: set[str] = set()
+    for document_id in known_document_ids:
+        if document_id in seen:
+            continue
+        seen.add(document_id)
+        if _authority_level_of(document_id) in wanted:
+            allow.append(document_id)
+    return tuple(allow)
+
+
+def _pre_filtered_corpus(
+    corpus: Sequence[RetrievalDoc], authority_levels: Sequence[str] | None
+) -> Sequence[RetrievalDoc]:
+    """Apply the #41 authority PRE-filter: restrict the corpus to documents at the
+    requested levels BEFORE ranking, the offline parity of pushing the filter into
+    ``$vectorSearch.filter`` / the ``$search`` compound. ``None`` (no filter) and an
+    empty list (a no-op, never a drop-everything) both leave the corpus untouched —
+    mirroring the live builders, where an empty allow-list emits no filter."""
+    if not authority_levels:
+        return corpus
+    known = tuple(doc.document_id for doc in corpus)
+    allow = set(document_ids_for_authority_levels(authority_levels, known))
+    return tuple(doc for doc in corpus if doc.document_id in allow)
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,10 +164,23 @@ def _bm25_ranking(query: str, corpus: Sequence[RetrievalDoc], top_k: int) -> lis
 
 
 def retrieve_vector_only(
-    *, query: str, corpus: Sequence[RetrievalDoc], top_k: int
+    *,
+    query: str,
+    corpus: Sequence[RetrievalDoc],
+    top_k: int,
+    authority_levels: Sequence[str] | None = None,
 ) -> tuple[OfflineCandidate, ...]:
-    """Rank by the dense proxy alone; every candidate is tagged ``vector``."""
+    """Rank by the dense proxy alone; every candidate is tagged ``vector``.
+
+    When ``authority_levels`` is given, the corpus is PRE-filtered to documents at
+    those levels before ranking (#41) — the offline parity of the live
+    ``$vectorSearch.filter`` pre-filter, so a higher-authority chunk is never
+    crowded out of the top-k by disallowed documents.
+    """
     if not query.strip() or not corpus:
+        return ()
+    corpus = _pre_filtered_corpus(corpus, authority_levels)
+    if not corpus:
         return ()
     by_key = {doc.citable_path_key: doc for doc in corpus}
     ranking = _dense_ranking(query, corpus, top_k)
@@ -117,10 +198,23 @@ def retrieve_vector_only(
 
 
 def retrieve_hybrid(
-    *, query: str, corpus: Sequence[RetrievalDoc], top_k: int
+    *,
+    query: str,
+    corpus: Sequence[RetrievalDoc],
+    top_k: int,
+    authority_levels: Sequence[str] | None = None,
 ) -> tuple[OfflineCandidate, ...]:
-    """Fuse the dense proxy and BM25 by RRF; tag candidates with stage-provenance."""
+    """Fuse the dense proxy and BM25 by RRF; tag candidates with stage-provenance.
+
+    When ``authority_levels`` is given, the corpus is PRE-filtered to documents at
+    those levels before BOTH stages rank (#41) — the offline parity of pushing the
+    filter into ``$vectorSearch.filter`` and the ``$search`` compound, so each
+    stage's over-fetch window already holds only allowed documents.
+    """
     if not query.strip() or not corpus:
+        return ()
+    corpus = _pre_filtered_corpus(corpus, authority_levels)
+    if not corpus:
         return ()
     by_key = {doc.citable_path_key: doc for doc in corpus}
     per_stage_k = max(top_k * _PER_STAGE_FACTOR, top_k)
@@ -156,6 +250,7 @@ def retrieve_hybrid(
 __all__ = [
     "RetrievalDoc",
     "OfflineCandidate",
+    "document_ids_for_authority_levels",
     "retrieve_vector_only",
     "retrieve_hybrid",
 ]

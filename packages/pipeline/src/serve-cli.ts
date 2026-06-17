@@ -155,12 +155,17 @@ async function main(): Promise<void> {
   }
 
   // The retrieval-debug endpoint reuses the same embedding provider and Atlas
-  // collection, adding the BM25 text-search executor for the hybrid path.
+  // collection, adding the BM25 text-search executor for the hybrid path. The
+  // corpus's known document-id set is wired from the SAME registry the run record
+  // and ingest use (GOLDEN_V0_DOCUMENTS) so the handler can invert authority levels
+  // to a documentId allow-list and push it into the stages as a true pre-filter
+  // (#41 / ADR 0002) — resolved at the call site, never hardcoded in authority.ts.
   const debugDeps = {
     provider,
     vectorSearch: store.search,
     textSearch: store.textSearch,
     topK: config.retrieval.topK,
+    corpusDocumentIds: GOLDEN_V0_DOCUMENTS.map((d) => d.id),
   }
 
   // The agent (#15) binds Gemini-on-Vertex behind the four node seams and closes
@@ -197,6 +202,9 @@ async function main(): Promise<void> {
       provider,
       vectorSearch: store.search,
       textSearch: store.textSearch,
+      // Same corpus registry as the debug endpoint, so a planner hop's authority
+      // levels become a true pre-filter pushed into the stages (#41 / ADR 0002).
+      corpusDocumentIds: GOLDEN_V0_DOCUMENTS.map((d) => d.id),
     }),
     rerank: agentRerank,
     flags: agentFlags,

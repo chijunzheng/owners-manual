@@ -17,8 +17,11 @@ Pinned contract:
 
 from __future__ import annotations
 
+import pytest
+
 from owners_manual_evals.offline_retrieval import (
     RetrievalDoc,
+    document_ids_for_authority_levels,
     retrieve_hybrid,
     retrieve_vector_only,
 )
@@ -99,3 +102,83 @@ def test_deterministic() -> None:
     a = retrieve_hybrid(query="pet void", corpus=_CORPUS, top_k=3)
     b = retrieve_hybrid(query="pet void", corpus=_CORPUS, top_k=3)
     assert a == b
+
+
+# --- #41: the same authority pre-filter as the live executors, for parity -----------
+
+
+def test_document_ids_for_authority_levels_inverts_the_classifier() -> None:
+    # Mirrors the TS authority.documentIdsForAuthorityLevels: given the requested
+    # levels and the corpus's known id set, the allow-list of ids at those levels.
+    known = ("rta-2006", "reg-516-06", "fixture-lease", "ltb-guideline-05")
+    assert document_ids_for_authority_levels(("act",), known) == ("rta-2006",)
+    assert document_ids_for_authority_levels(("act", "regulation"), known) == (
+        "rta-2006",
+        "reg-516-06",
+    )
+    assert document_ids_for_authority_levels(("guideline",), known) == ("ltb-guideline-05",)
+    assert document_ids_for_authority_levels(("contract",), known) == ("fixture-lease",)
+
+
+def test_document_ids_for_authority_levels_raises_on_unknown_id() -> None:
+    with pytest.raises(ValueError, match="unknown"):
+        document_ids_for_authority_levels(("act",), ("totally-unknown",))
+
+
+def test_authority_filter_keeps_only_allowed_levels_both_arms() -> None:
+    # The lease clauses are contract-level; s.14 is act-level. Filtering to act must
+    # drop the lease clauses from BOTH arms.
+    vector = retrieve_vector_only(
+        query="pets void", corpus=_CORPUS, top_k=3, authority_levels=("act",)
+    )
+    hybrid = retrieve_hybrid(query="pets void", corpus=_CORPUS, top_k=3, authority_levels=("act",))
+    assert all(c.document_id == "rta-2006" for c in vector)
+    assert all(c.document_id == "rta-2006" for c in hybrid)
+    assert {c.document_id for c in hybrid} == {"rta-2006"}
+
+
+def test_no_authority_filter_keeps_every_document() -> None:
+    # Parity with the TS default: no authority_levels means no pre-filter at all.
+    hybrid = retrieve_hybrid(query="pets void", corpus=_CORPUS, top_k=3)
+    assert {c.document_id for c in hybrid} == {"fixture-lease", "rta-2006"}
+
+
+def test_pre_filter_rescues_a_high_authority_chunk_crowded_out_offline() -> None:
+    # The offline parity of the TS AC3 regression: many contract-level chunks rank
+    # above the lone act-level chunk by the dense proxy, pushing it past the
+    # per-stage over-fetch window. The pre-filter restricts the corpus to act-level
+    # docs FIRST, so the act chunk is ranked and returned instead of being crowded
+    # out before any post-filter could see it.
+    act_key = "rta-2006|part:II|section:14"
+    crowding_corpus = tuple(
+        RetrievalDoc(
+            document_id="fixture-lease",
+            citable_path_key=f"fixture-lease|section:s{n}|clause:p-1",
+            text="The tenant agrees to the lease clause about the rental unit terms.",
+        )
+        for n in range(1, 7)
+    ) + (
+        RetrievalDoc(
+            document_id="rta-2006",
+            citable_path_key=act_key,
+            text="A provision prohibiting animals in a tenancy agreement is void.",
+        ),
+    )
+    query = "lease clause about the rental unit terms"
+    # Without the filter, top_k=2 over a dense ranking dominated by the lease
+    # clauses does not surface the act chunk.
+    unfiltered = retrieve_hybrid(query=query, corpus=crowding_corpus, top_k=2)
+    assert act_key not in {c.citable_path_key for c in unfiltered}
+    # With the act-only pre-filter, the act chunk is the only candidate and surfaces.
+    filtered = retrieve_hybrid(
+        query=query, corpus=crowding_corpus, top_k=2, authority_levels=("act",)
+    )
+    assert act_key in {c.citable_path_key for c in filtered}
+    assert all(c.document_id == "rta-2006" for c in filtered)
+
+
+def test_empty_authority_filter_is_a_no_op_not_a_drop_everything() -> None:
+    # An empty allow-list mirrors the TS no-op: it must not filter the corpus down
+    # to nothing (that would be a $in:[] bug), it leaves every document in play.
+    hybrid = retrieve_hybrid(query="pets void", corpus=_CORPUS, top_k=3, authority_levels=())
+    assert {c.document_id for c in hybrid} == {"fixture-lease", "rta-2006"}
