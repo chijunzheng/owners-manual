@@ -15,7 +15,11 @@
  * `CachedContent` over the canonical corpus, then reference it per call) is wired
  * here against the live SDK and reported through `usage_metadata.cache_read`. The
  * exact cache-handle plumbing depends on the deployed `@langchain/google-vertexai`
- * surface and is verified at build time, not in the offline suite.
+ * surface and is verified at build time, not in the offline suite. When that
+ * binding lands it must send ONLY the variable suffix (the question) on a cached
+ * call — Vertex prepends the referenced cache, so sending the full prompt would
+ * duplicate the SOURCES (Codex PR #59; see `buildCachePrefix`). Today no
+ * `cachedContentName` is wired, so the call runs uncached with the full prompt.
  */
 
 import { ChatVertexAI } from '@langchain/google-vertexai'

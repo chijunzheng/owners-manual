@@ -268,6 +268,14 @@ async function main(): Promise<void> {
   // undefined and the arms run UNCACHED: the per-question cost stays honest (computed
   // from real `usage_metadata`, reflecting no cache hit), the promised cache_read
   // discount (AC3) and the live end-to-end exercise (AC4) arrive with that binding.
+  //
+  // SEND CONTRACT for that binding (Codex PR #59): Vertex prepends a referenced
+  // `cachedContent`, so a cached call must send ONLY the variable suffix (the
+  // question) — `buildSynthesisPrompt(q, …) === buildCachePrefix(chunks) + q` — not
+  // the full prompt, or the SOURCES are sent twice. This one full-corpus cache fits
+  // `stuff` (prompt = prefix + question) but NOT `stuff-oracle` (a routed SUBSET, so
+  // its prompt is not prefix + suffix); oracle then needs its own cache or runs
+  // uncached. Both are part of that deferred live decision (tracked on #44).
   const stuffCachedContentName = await resolveStuffCachedContentName({
     provisioner: undefined,
     chunks: chunksForArm('stuff'),

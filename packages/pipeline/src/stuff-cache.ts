@@ -52,6 +52,13 @@ export interface StuffCacheRecord {
   readonly corpusBuildHash: string
   /** The product model the cache was created for (a model swap invalidates it). */
   readonly model: string
+  /**
+   * The Vertex location the cache was created in. Context caches are REGION-scoped
+   * and the resource name is location-scoped, so a location change must recreate —
+   * reusing a name from another region points at a cache that isn't there (Codex
+   * PR #59). Undefined when no location was pinned (ADC-resolved).
+   */
+  readonly location?: string
   /** Wall-clock expiry (ms since epoch) — the TTL applied at create time. */
   readonly expiresAtMs: number
 }
@@ -91,6 +98,17 @@ export type CacheAction = 'reuse' | 'recreate'
  * uses with an empty question), so the cached prefix and the per-question prompt
  * prefix are identical — the precondition for a `cache_read` hit. Deterministic by
  * construction: the same chunks in the same order always yield the same string.
+ *
+ * LIVE SEND CONTRACT (deferred to AC3/AC4, Codex PR #59): Vertex prepends a
+ * referenced `cachedContent` to the request, so a cached call must send ONLY the
+ * variable suffix — the question — NOT the full {@link buildSynthesisPrompt}, or
+ * the instructions+SOURCES are sent twice. The decomposition is exact and pinned
+ * in the unit suite: `buildSynthesisPrompt(q, …) === buildCachePrefix(chunks) + q`.
+ * This single full-corpus cache cleanly fits the `stuff` arm (its prompt IS this
+ * prefix + the question); it does NOT fit `stuff-oracle`, which routes a SUBSET of
+ * the corpus, so its prompt is not this prefix + a suffix — oracle needs its own
+ * cache or must run uncached. Wiring the live send (and the per-arm cache strategy)
+ * is the live-run-milestone decision tracked on #44; today no cache is referenced.
  */
 export function buildCachePrefix(chunks: readonly CorpusChunk[]): string {
   if (chunks.length === 0) {
@@ -116,6 +134,8 @@ export interface DecideCacheActionOptions {
   readonly corpusBuildHash: string
   /** The live product model. */
   readonly model: string
+  /** The live Vertex location to key against (region-scoped caches). */
+  readonly location?: string
   /** Current wall-clock time (ms since epoch). */
   readonly nowMs: number
 }
@@ -123,14 +143,17 @@ export interface DecideCacheActionOptions {
 /**
  * Decide reuse vs recreate. Recreate when there is no cache, when the corpus build
  * hash changed (the prefix the cache covers is stale — ADR 0004), when the model
- * changed (a cache is model-bound), or when the TTL has elapsed (expiry is
- * inclusive — at the exact expiry instant the cache is treated as expired). Pure.
+ * changed (a cache is model-bound), when the Vertex location changed (context
+ * caches are region-scoped, so a name from another region is unreachable — Codex
+ * PR #59), or when the TTL has elapsed (expiry is inclusive — at the exact expiry
+ * instant the cache is treated as expired). Pure.
  */
 export function decideCacheAction(options: DecideCacheActionOptions): CacheAction {
-  const { existing, corpusBuildHash, model, nowMs } = options
+  const { existing, corpusBuildHash, model, location, nowMs } = options
   if (existing === undefined) return 'recreate'
   if (existing.corpusBuildHash !== corpusBuildHash) return 'recreate'
   if (existing.model !== model) return 'recreate'
+  if (existing.location !== location) return 'recreate'
   if (existing.expiresAtMs <= nowMs) return 'recreate'
   return 'reuse'
 }
@@ -171,7 +194,13 @@ export async function provisionStuffCache(
 ): Promise<ProvisionStuffCacheResult> {
   const { provisioner, chunks, corpusBuildHash, model, location, nowMs, existing } = options
 
-  const action = decideCacheAction({ existing, corpusBuildHash, model, nowMs })
+  const action = decideCacheAction({
+    existing,
+    corpusBuildHash,
+    model,
+    ...(location !== undefined ? { location } : {}),
+    nowMs,
+  })
   if (action === 'reuse' && existing !== undefined) {
     return { cachedContentName: existing.name, record: existing }
   }
@@ -188,6 +217,9 @@ export async function provisionStuffCache(
     name,
     corpusBuildHash,
     model,
+    // Persist the location so a later region change recreates rather than reusing
+    // a name from another region (Codex PR #59).
+    ...(location !== undefined ? { location } : {}),
     expiresAtMs: nowMs + STUFF_CACHE_TTL_SECONDS * 1000,
   }
   return { cachedContentName: name, record }

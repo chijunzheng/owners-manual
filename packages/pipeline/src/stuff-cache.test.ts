@@ -11,6 +11,8 @@ import {
   type CachedContentProvisioner,
   type StuffCacheRecord,
 } from './stuff-cache.js'
+import { buildStuffedCandidates } from './stuff-synthesis.js'
+import { buildSynthesisPrompt } from './synthesize.js'
 
 // The stuffing-arm context-cache lifecycle (#44). The DECISION logic (reuse vs
 // recreate, keyed to the corpus build hash + model + TTL), the canonical-prefix
@@ -158,6 +160,45 @@ describe('decideCacheAction — reuse vs recreate keyed to build hash + model + 
       }),
     ).toBe('recreate')
   })
+
+  // Codex PR #59: context caches are region-scoped and their resource name is
+  // location-scoped, so a location change must recreate — else a client in the new
+  // region references a cache that lives in another region.
+  it('recreates when the Vertex location changed', () => {
+    expect(
+      decideCacheAction({
+        existing: recordFor({ location: 'us-central1' }),
+        corpusBuildHash: HASH_A,
+        model: MODEL,
+        location: 'us-east1',
+        nowMs: NOW,
+      }),
+    ).toBe('recreate')
+  })
+
+  it('reuses when the Vertex location is unchanged', () => {
+    expect(
+      decideCacheAction({
+        existing: recordFor({ location: 'us-central1' }),
+        corpusBuildHash: HASH_A,
+        model: MODEL,
+        location: 'us-central1',
+        nowMs: NOW,
+      }),
+    ).toBe('reuse')
+  })
+
+  it('recreates when a location is now pinned but the cached record had none', () => {
+    expect(
+      decideCacheAction({
+        existing: recordFor(), // no location persisted
+        corpusBuildHash: HASH_A,
+        model: MODEL,
+        location: 'us-central1',
+        nowMs: NOW,
+      }),
+    ).toBe('recreate')
+  })
 })
 
 describe('provisionStuffCache — orchestrates decide → create/reuse over the seam', () => {
@@ -252,6 +293,20 @@ describe('provisionStuffCache — orchestrates decide → create/reuse over the 
     expect(stale.corpusBuildHash).toBe(HASH_A)
     expect(result.record).not.toBe(frozen)
   })
+
+  it('persists the Vertex location in the new record so a later region change recreates', async () => {
+    const { provisioner } = fakeProvisioner('projects/p/locations/us-central1/cachedContents/x')
+    const result = await provisionStuffCache({
+      provisioner,
+      chunks: corpus,
+      corpusBuildHash: HASH_A,
+      model: MODEL,
+      location: 'us-central1',
+      nowMs: NOW,
+      existing: undefined,
+    })
+    expect(result.record.location).toBe('us-central1')
+  })
 })
 
 describe('resolveStuffCachedContentName — the construction-site threading', () => {
@@ -325,5 +380,17 @@ describe('resolveStuffCachedContentName — the construction-site threading', ()
     expect(create).not.toHaveBeenCalled()
     expect(name).toBe(existing.name)
     expect(saved).toEqual([])
+  })
+})
+
+describe('the cached prefix is a true prefix of the per-question prompt (Codex PR #59)', () => {
+  // Locks the contract the deferred live send (AC3/AC4) depends on: Vertex prepends
+  // a referenced cache, so a cached call must send ONLY the question suffix, never
+  // the full prompt. The decomposition is exact for the `stuff` arm.
+  it('reconstructs the full stuff prompt as buildCachePrefix(chunks) + question', () => {
+    const question = 'Who is responsible for repairs?'
+    const full = buildSynthesisPrompt(question, buildStuffedCandidates(corpus))
+    expect(full).toBe(buildCachePrefix(corpus) + question)
+    expect(full.startsWith(buildCachePrefix(corpus))).toBe(true)
   })
 })
