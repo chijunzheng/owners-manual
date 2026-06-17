@@ -351,11 +351,15 @@ def _enqueue_agent_failures(  # pragma: no cover
     run_name: str,
 ) -> None:
     """Push the agent arm's strict-pass misses onto the annotation queue."""
+    from .agent_live_runner import agent_trace_ids  # noqa: PLC0415
     from .annotation_queue import enqueue_run_failures  # noqa: PLC0415
     from .live_annotation_queue import build_queue_sink, resolve_queue_id  # noqa: PLC0415
 
     queue_id = resolve_queue_id()
-    trace_ids = {item.id: langfuse.create_trace_id(seed=f"{run_name}:{item.id}") for item in items}
+    # Key by the AGENT arm's trace id (these are agent-arm failures), NOT the
+    # naive-rag seed — so annotators disposition the agent trace and the
+    # pre-flight/digest read the agent scores (issue #21; Codex P1 on PR #56).
+    trace_ids = agent_trace_ids(langfuse, run_name=run_name, items=items)
     enqueued = enqueue_run_failures(
         scores=result.scores_by_arm.get("agent", ()),
         items={item.id: item for item in items},
