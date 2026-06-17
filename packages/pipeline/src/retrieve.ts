@@ -47,6 +47,13 @@ export interface VectorSearchHit {
 export type VectorSearchExecutor = (args: {
   readonly queryVector: readonly number[]
   readonly topK: number
+  /**
+   * The document-id allow-list to PRE-filter the ANN by (#41 / ADR 0002). When
+   * present and non-empty, the live binding pushes it into `$vectorSearch.filter`
+   * so the over-fetch window holds only allowed documents — a higher-authority
+   * chunk is never crowded out by disallowed ones before fusion sees it.
+   */
+  readonly documentIds?: readonly string[]
 }) => Promise<readonly VectorSearchHit[]>
 
 /** One retrieved candidate, ready for synthesis and deterministic grading. */

@@ -159,7 +159,15 @@ export type AgentRerank = (input: {
 export type AgentRetrieveDeps = Pick<
   RetrieveHybridOptions,
   'provider' | 'vectorSearch' | 'textSearch'
->
+> & {
+  /**
+   * The corpus's KNOWN document-id set (#41) the live binding inverts a hop's
+   * `authorityLevels` against to push a true pre-filter into the stages (ADR
+   * 0002). Wired from the manifest / fixture registry at the serve call site;
+   * omitted, a hop's authority levels apply only as the post-fusion guard.
+   */
+  readonly corpusDocumentIds?: readonly string[]
+}
 
 /**
  * The injected access to #13's tree-level sidecars at QUERY time (#16) — the seam

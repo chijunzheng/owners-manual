@@ -19,7 +19,7 @@
 
 import { z } from 'zod'
 
-import { AUTHORITY_LEVELS, type AuthorityLevel } from './authority.js'
+import { AUTHORITY_LEVELS, resolveDocumentFilter, type AuthorityLevel } from './authority.js'
 import { type EmbeddingProvider } from './embedding.js'
 import { retrieveHybrid, type TextSearchExecutor } from './hybrid-retrieve.js'
 import { type RetrievalStage, type VectorSearchExecutor } from './retrieve.js'
@@ -60,6 +60,15 @@ export interface RetrieveDebugDeps {
   readonly textSearch: TextSearchExecutor
   /** The default top-k when the request omits one. */
   readonly topK: number
+  /**
+   * The corpus's KNOWN document-id set (#41) — supplied by the serve call site
+   * from the manifest / fixture registry. The handler inverts the by-id authority
+   * classifier over this set to turn `request.authorityLevels` into the documentId
+   * allow-list it pushes into the stages as a true pre-filter (ADR 0002). Omitted
+   * (e.g. an offline unit harness with no corpus), the pre-filter is skipped and
+   * only the post-fusion authority guard runs — never a hardcoded id list.
+   */
+  readonly corpusDocumentIds?: readonly string[]
 }
 
 /** One candidate in the debug response, flat and JSON-serializable. */
@@ -103,6 +112,11 @@ export async function handleRetrieveDebugRequest(
   deps: RetrieveDebugDeps,
 ): Promise<RetrieveDebugResponse> {
   const mode: RetrieveDebugMode = request.mode ?? 'hybrid'
+  // Resolve the requested authority levels to a documentId allow-list over the
+  // corpus's known id set (#41 / ADR 0002), threaded as a true pre-filter. Skipped
+  // when the request omits levels or no corpus id set is injected — the post-fusion
+  // guard inside retrieveHybrid still enforces the levels.
+  const documentFilter = resolveDocumentFilter(request.authorityLevels, deps.corpusDocumentIds)
   // Vector-only mode runs the SAME path with an empty BM25 stage, so the only
   // difference from hybrid is the fusion — isolating the BM25+RRF lift (AC4).
   const result = await retrieveHybrid({
@@ -112,6 +126,7 @@ export async function handleRetrieveDebugRequest(
     vectorSearch: deps.vectorSearch,
     textSearch: mode === 'vector' ? NO_TEXT_SEARCH : deps.textSearch,
     authorityLevels: request.authorityLevels,
+    documentFilter,
   })
 
   const candidates = result.candidates.map(

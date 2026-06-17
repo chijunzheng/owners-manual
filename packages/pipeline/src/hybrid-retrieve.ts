@@ -38,6 +38,13 @@ import { fuseByRrf, RRF_K_DEFAULT, type RankedList } from './rrf.js'
 export type TextSearchExecutor = (args: {
   readonly query: string
   readonly topK: number
+  /**
+   * The document-id allow-list to PRE-filter the BM25 query by (#41 / ADR 0002).
+   * When present and non-empty, the live binding moves the query into a `$search`
+   * `compound.must` and adds the allow-list as a `compound.filter` over the
+   * indexed `documentId` token — the lexical analog of `$vectorSearch.filter`.
+   */
+  readonly documentIds?: readonly string[]
 }) => Promise<readonly VectorSearchHit[]>
 
 /** One hybrid candidate: a retrieved candidate plus full fusion provenance. */
@@ -75,6 +82,17 @@ export interface RetrieveHybridOptions {
   readonly textSearch: TextSearchExecutor
   /** When set, keep only candidates at these authority levels (ADR 0002 filter). */
   readonly authorityLevels?: readonly AuthorityLevel[]
+  /**
+   * The document-id allow-list the authority levels resolve to (#41) — pushed into
+   * the stages as a true PRE-filter (`$vectorSearch.filter` / `$search`
+   * `compound.filter`) so a higher-authority chunk is never crowded out of a
+   * stage's over-fetch window by disallowed documents. Resolved at the call site
+   * from the corpus's known id set (serve-cli), because the inverse of the by-id
+   * authority classifier needs that set. When omitted, the stages are unfiltered
+   * and only the post-fusion {@link authorityLevels} guard applies (the interim
+   * behaviour, retained as belt-and-suspenders).
+   */
+  readonly documentFilter?: readonly string[]
   /** RRF damping constant; defaults to {@link RRF_K_DEFAULT}. */
   readonly rrfK?: number
   /**
@@ -103,10 +121,17 @@ export async function retrieveHybrid(
   const perStageFactor = options.perStageFactor ?? PER_STAGE_FACTOR_DEFAULT
   const perStageK = Math.max(topK * perStageFactor, topK)
 
+  // The TRUE pre-filter (#41 / ADR 0002): an empty allow-list is a no-op, never a
+  // filter that drops everything, so it collapses to undefined here and the stages
+  // run unfiltered. A non-empty list rides into BOTH stages so each over-fetch
+  // window already holds only allowed documents.
+  const documentFilter =
+    options.documentFilter && options.documentFilter.length > 0 ? options.documentFilter : undefined
+
   const queryVector = await provider.embedQuery(question)
   const [vectorHits, textHits] = await Promise.all([
-    vectorSearch({ queryVector, topK: perStageK }),
-    textSearch({ query: question, topK: perStageK }),
+    vectorSearch({ queryVector, topK: perStageK, documentIds: documentFilter }),
+    textSearch({ query: question, topK: perStageK, documentIds: documentFilter }),
   ])
 
   // Index hits by path key so the fused id maps back to the stored row text.
@@ -121,16 +146,15 @@ export async function retrieveHybrid(
   ]
   const fused = fuseByRrf(lists, { k: options.rrfK ?? RRF_K_DEFAULT })
 
-  // Authority filter — INTERIM: applied here, AFTER fusion, over stages each
-  // already truncated to `perStageK`. ADR 0002 calls for a true metadata
-  // PRE-filter pushed into `$vectorSearch.filter` / `$search` (the indexes already
-  // declare `documentId` filterable, see atlas-index.ts). Without it, if more than
-  // `perStageK` higher-ranked chunks are all at disallowed authority levels, a
-  // matching higher-authority chunk ranked just below that window is dropped before
-  // this filter sees it. The faithful pre-filter lands with the live hybrid-arm
-  // ingestion (deferred from #14, where it is not reachable end-to-end yet) and is
-  // tracked as a follow-up. This post-filter still GUARANTEES no candidate at a
-  // disallowed authority level is ever returned.
+  // Authority filter — BELT-AND-SUSPENDERS (#41 AC4). The true metadata PRE-filter
+  // now rides inside the stages via `documentFilter` (`$vectorSearch.filter` /
+  // `$search` compound.filter; the indexes declare `documentId` filterable, see
+  // atlas-index.ts), so the `perStageK` over-fetch window already holds only allowed
+  // documents and a higher-authority chunk is no longer crowded out before fusion.
+  // This post-fusion allow-list is retained as a second line of defence: it GUARANTEES
+  // no candidate at a disallowed authority level is ever returned even if the
+  // pre-filter is bypassed (a stale `documentFilter`, an executor that ignores it,
+  // or `authorityLevels` supplied without a resolved `documentFilter`).
   const allow = options.authorityLevels ? new Set(options.authorityLevels) : undefined
 
   const candidates: HybridCandidate[] = []

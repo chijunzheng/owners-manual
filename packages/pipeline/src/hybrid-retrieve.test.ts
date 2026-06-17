@@ -161,6 +161,136 @@ describe('retrieveHybrid — authority-level metadata filter', () => {
   })
 })
 
+describe('retrieveHybrid — true PRE-filter pushed into the stages (#41)', () => {
+  it('threads the resolved documentIds allow-list into BOTH executors (AC2)', async () => {
+    let vectorArg: readonly string[] | undefined = ['unset']
+    let textArg: readonly string[] | undefined = ['unset']
+    const captureVector: VectorSearchExecutor = async ({ documentIds }) => {
+      vectorArg = documentIds
+      return []
+    }
+    const captureText: TextSearchExecutor = async ({ documentIds }) => {
+      textArg = documentIds
+      return []
+    }
+    await retrieveHybrid({
+      ...base,
+      vectorSearch: captureVector,
+      textSearch: captureText,
+      authorityLevels: ['act'],
+      // The resolved allow-list (the call site does authorityLevels -> ids).
+      documentFilter: ['rta-2006'],
+    })
+    expect(vectorArg).toEqual(['rta-2006'])
+    expect(textArg).toEqual(['rta-2006'])
+  })
+
+  it('passes no documentIds to the executors when no documentFilter is supplied', async () => {
+    let vectorArg: readonly string[] | undefined = ['unset']
+    const captureVector: VectorSearchExecutor = async ({ documentIds }) => {
+      vectorArg = documentIds
+      return []
+    }
+    await retrieveHybrid({ ...base, vectorSearch: captureVector })
+    expect(vectorArg).toBeUndefined()
+  })
+})
+
+describe('retrieveHybrid — AC3 regression: high-authority chunk no longer crowded out', () => {
+  // The core bug (#41). The vector stage ranks MORE THAN perStageK lower-authority
+  // (contract) chunks above the one high-authority (act) chunk the caller wants.
+  // perStageK = topK(2) * factor(2) = 4, so with five contract chunks ranked first
+  // the lone act chunk sits at rank 6 — outside the over-fetch window. Under the
+  // OLD post-fusion filter the act chunk is never fetched, so an authorityLevels:
+  // ['act'] request returns NOTHING. The true pre-filter restricts the stage to
+  // allowed documents, so the act chunk is fetched and returned.
+  const CONTRACT_KEYS = [1, 2, 3, 4, 5].map((n) => `fixture-lease|section:s${n}|clause:p-1`)
+  const ACT_KEY = 'rta-2006|part:II|section:14'
+
+  /** A vector executor that honours the documentIds pre-filter, as Atlas would. */
+  const crowdingVector: VectorSearchExecutor = async ({ topK, documentIds }) => {
+    const allow = documentIds ? new Set(documentIds) : undefined
+    const rows = [
+      ...CONTRACT_KEYS.map((key) => ({
+        documentId: 'fixture-lease',
+        citablePathKey: key,
+        text: 'A lease clause about the unit.',
+        score: 0.9,
+      })),
+      {
+        documentId: 'rta-2006',
+        citablePathKey: ACT_KEY,
+        text: 'A provision prohibiting animals in a tenancy agreement is void.',
+        score: 0.5,
+      },
+    ]
+    const filtered = allow ? rows.filter((r) => allow.has(r.documentId)) : rows
+    return filtered.slice(0, topK)
+  }
+
+  const crowdingBase = {
+    question: 'is my no-pet clause void?',
+    topK: 2,
+    perStageFactor: 2,
+    provider,
+    vectorSearch: crowdingVector,
+    textSearch: (async () => []) as TextSearchExecutor,
+  }
+
+  it('drops the high-authority chunk WITHOUT the pre-filter (the bug being fixed)', async () => {
+    // No documentFilter: the executor over-fetches perStageK=4 contract chunks, the
+    // act chunk at rank 6 is never returned, and the post-fusion authority filter
+    // has nothing to keep.
+    const result = await retrieveHybrid({ ...crowdingBase, authorityLevels: ['act'] })
+    expect(result.candidates.map((c) => c.citablePathKey)).not.toContain(ACT_KEY)
+    expect(result.candidates).toHaveLength(0)
+  })
+
+  it('returns the high-authority chunk WITH the pre-filter threaded (AC3 fix)', async () => {
+    const result = await retrieveHybrid({
+      ...crowdingBase,
+      authorityLevels: ['act'],
+      documentFilter: ['rta-2006'],
+    })
+    expect(result.candidates.map((c) => c.citablePathKey)).toContain(ACT_KEY)
+    expect(result.candidates.every((c) => c.authorityLevel === 'act')).toBe(true)
+  })
+})
+
+describe('retrieveHybrid — AC4 belt-and-suspenders post-fusion guard retained', () => {
+  // Even if the pre-filter is bypassed (a stale documentFilter, an executor that
+  // ignores it, or none threaded), no candidate at a disallowed authority level
+  // may escape. Here the executors return a regulation chunk the documentFilter
+  // did NOT permit; the post-fusion allow-list must still drop it.
+  const leakyVector: VectorSearchExecutor = async () => [
+    {
+      documentId: 'rta-2006',
+      citablePathKey: 'rta-2006|part:II|section:14',
+      text: 'A provision prohibiting animals is void.',
+      score: 0.9,
+    },
+    {
+      documentId: 'reg-516-06',
+      citablePathKey: 'reg-516-06|section:17',
+      text: 'Prescribed exemptions for prohibited charges.',
+      score: 0.8,
+    },
+  ]
+
+  it('still drops a disallowed-level candidate the pre-filter let slip through', async () => {
+    const result = await retrieveHybrid({
+      ...base,
+      vectorSearch: leakyVector,
+      textSearch: async () => [],
+      authorityLevels: ['act'],
+      // documentFilter only permits the act doc, but the leaky executor ignored it.
+      documentFilter: ['rta-2006'],
+    })
+    expect(result.candidates.map((c) => c.documentId)).not.toContain('reg-516-06')
+    expect(result.candidates.every((c) => c.authorityLevel === 'act')).toBe(true)
+  })
+})
+
 describe('retrieveHybrid — degenerate inputs', () => {
   it('returns vector-only candidates when BM25 finds nothing', async () => {
     const result = await retrieveHybrid({ ...base, textSearch: async () => [] })

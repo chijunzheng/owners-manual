@@ -66,21 +66,27 @@ export async function connectMongoStore(options: MongoStoreOptions): Promise<Mon
     score: Number(row.score),
   })
 
-  const search: VectorSearchExecutor = async ({ queryVector, topK }) => {
+  const search: VectorSearchExecutor = async ({ queryVector, topK, documentIds }) => {
     const pipeline = buildVectorSearchPipeline({
       indexName: options.indexName,
       queryVector: [...queryVector],
       topK,
+      // The #41 true pre-filter: when present, the builder emits
+      // `$vectorSearch.filter` over the filterable `documentId` field.
+      documentIds,
     })
     const rows = await collection.aggregate(pipeline as object[]).toArray()
     return rows.map(toHit)
   }
 
-  const textSearch: TextSearchExecutor = async ({ query, topK }) => {
+  const textSearch: TextSearchExecutor = async ({ query, topK, documentIds }) => {
     const pipeline = buildTextSearchPipeline({
       indexName: buildTextSearchIndexDefinition().name,
       query,
       topK,
+      // The #41 true pre-filter: when present, the builder wraps the query in a
+      // `$search` compound with a `documentId` token filter.
+      documentIds,
     })
     const rows = await collection.aggregate(pipeline as object[]).toArray()
     return rows.map(toHit)

@@ -4,7 +4,9 @@ import {
   AUTHORITY_LEVELS,
   authorityLevelOf,
   authorityRank,
+  documentIdsForAuthorityLevels,
   isHigherAuthority,
+  resolveDocumentFilter,
   type AuthorityLevel,
 } from './authority.js'
 
@@ -88,5 +90,71 @@ describe('authorityRank / isHigherAuthority', () => {
   it('every declared level has a distinct rank', () => {
     const ranks = AUTHORITY_LEVELS.map((level: AuthorityLevel) => authorityRank(level))
     expect(new Set(ranks).size).toBe(AUTHORITY_LEVELS.length)
+  })
+})
+
+describe('documentIdsForAuthorityLevels (#41 — inverse of authorityLevelOf)', () => {
+  // The pre-filter needs the INVERSE of the by-id classifier: given the requested
+  // authority levels and the corpus's known document-id set, the allow-list of ids
+  // at those levels. The known-id set is supplied by the caller (corpus manifest /
+  // fixture registry), because the open `ltb-guideline-*` family cannot be
+  // enumerated from the closed map in authority.ts alone.
+  const knownIds = [
+    'rta-2006',
+    'reg-516-06',
+    'fixture-lease',
+    'fixture-declaration',
+    'ltb-guideline-05',
+  ] as const
+
+  it('resolves a single requested level to the matching known ids', () => {
+    expect(documentIdsForAuthorityLevels(['act'], knownIds)).toEqual(['rta-2006'])
+  })
+
+  it('resolves several requested levels to the union of matching ids, in input order', () => {
+    expect(documentIdsForAuthorityLevels(['act', 'regulation'], knownIds)).toEqual([
+      'rta-2006',
+      'reg-516-06',
+    ])
+  })
+
+  it('includes open-family ltb-guideline ids when guideline is requested', () => {
+    expect(documentIdsForAuthorityLevels(['guideline'], knownIds)).toEqual(['ltb-guideline-05'])
+  })
+
+  it('returns an empty allow-list when no known id sits at a requested level', () => {
+    expect(documentIdsForAuthorityLevels(['bylaw'], knownIds)).toEqual([])
+  })
+
+  it('deduplicates and preserves first-seen order across the known id set', () => {
+    const result = documentIdsForAuthorityLevels(
+      ['act', 'contract'],
+      ['rta-2006', 'fixture-lease', 'rta-2006'],
+    )
+    expect(result).toEqual(['rta-2006', 'fixture-lease'])
+  })
+
+  it('throws if a known id cannot be classified (a mis-wired corpus is a bug)', () => {
+    expect(() => documentIdsForAuthorityLevels(['act'], ['totally-unknown'])).toThrow(/unknown/i)
+  })
+})
+
+describe('resolveDocumentFilter (#41 — the optional pre-filter resolver call sites share)', () => {
+  const knownIds = ['rta-2006', 'reg-516-06', 'fixture-lease'] as const
+
+  it('resolves to the allow-list when both levels and a known id set are present', () => {
+    expect(resolveDocumentFilter(['act'], knownIds)).toEqual(['rta-2006'])
+  })
+
+  it('is undefined when no authority levels are requested', () => {
+    expect(resolveDocumentFilter(undefined, knownIds)).toBeUndefined()
+  })
+
+  it('is undefined when no corpus id set is available (never a hardcoded list)', () => {
+    expect(resolveDocumentFilter(['act'], undefined)).toBeUndefined()
+  })
+
+  it('returns an empty allow-list (a no-op downstream) when nothing matches', () => {
+    expect(resolveDocumentFilter(['bylaw'], knownIds)).toEqual([])
   })
 })

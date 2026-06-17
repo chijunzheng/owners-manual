@@ -10,6 +10,7 @@
  * merge/rerank logic is unit-tested upstream against a fake retrieve seam.
  */
 
+import { resolveDocumentFilter } from '../authority.js'
 import { type AgentRetrieve, type AgentRetrieveDeps } from '../agent-types.js'
 import { retrieveHybrid } from '../hybrid-retrieve.js'
 
@@ -23,6 +24,9 @@ export function createAgentRetrieve(deps: AgentRetrieveDeps): AgentRetrieve {
       vectorSearch: deps.vectorSearch,
       textSearch: deps.textSearch,
       authorityLevels,
+      // Push the resolved allow-list into the stages as a true pre-filter (#41);
+      // the post-fusion `authorityLevels` guard remains as belt-and-suspenders.
+      documentFilter: resolveDocumentFilter(authorityLevels, deps.corpusDocumentIds),
     })
     return result.candidates
   }
