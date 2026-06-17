@@ -15,6 +15,7 @@ the dashboard, and the SSE client are all unit-tested against fakes).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from .agent_client import AgentChatClient
@@ -25,6 +26,27 @@ from .run_naive_rag import AnswerFn, ItemOutcome
 #: A seed suffix so the agent arm's trace id differs from naive-rag's for the
 #: same item — the two arm runs of one item are distinct, correlatable traces.
 _AGENT_SEED_SUFFIX = "agent"
+
+
+def _agent_seed(run_name: str, item_id: str) -> str:
+    """The agent arm's trace-id seed for one item — the SINGLE source of the
+    ``:agent:`` scheme. naive-rag seeds ``run:item``; the agent arm seeds
+    ``run:agent:item`` so the same item's two arm runs stay distinct traces, and so
+    the disposition ritual (issue #21) enqueues agent failures under the SAME id the
+    arm created rather than the naive-rag trace."""
+    return f"{run_name}:{_AGENT_SEED_SUFFIX}:{item_id}"
+
+
+def agent_trace_id(langfuse: Any, *, run_name: str, item_id: str) -> str:
+    """The agent arm's deterministic Langfuse trace id for one item."""
+    return langfuse.create_trace_id(seed=_agent_seed(run_name, item_id))
+
+
+def agent_trace_ids(langfuse: Any, *, run_name: str, items: Iterable[GoldenItem]) -> dict[str, str]:
+    """Per-item agent trace ids keyed by item id — what the disposition ritual
+    (issue #21) enqueues agent-arm failures under, so annotators and the
+    pre-flight/digest read the agent trace rather than naive-rag's."""
+    return {item.id: agent_trace_id(langfuse, run_name=run_name, item_id=item.id) for item in items}
 
 
 def build_agent_answer(
@@ -54,16 +76,14 @@ def build_agent_answer(
         import hashlib  # noqa: PLC0415
 
         def answer_offline(item: GoldenItem) -> ItemOutcome:
-            trace_id = hashlib.sha256(
-                f"{run_name}:{_AGENT_SEED_SUFFIX}:{item.id}".encode()
-            ).hexdigest()[:32]
+            trace_id = hashlib.sha256(_agent_seed(run_name, item.id).encode()).hexdigest()[:32]
             result = client.chat(question=item.question, item_id=item.id, trace_id=trace_id)
             return _outcome(item, result, trace_id)
 
         return answer_offline
 
     def answer_live(item: GoldenItem) -> ItemOutcome:
-        trace_id = langfuse.create_trace_id(seed=f"{run_name}:{_AGENT_SEED_SUFFIX}:{item.id}")
+        trace_id = agent_trace_id(langfuse, run_name=run_name, item_id=item.id)
         with langfuse.start_as_current_observation(
             trace_context={"trace_id": trace_id},
             name="owners-manual.harness.item",
@@ -109,4 +129,4 @@ def _outcome(item: GoldenItem, result: Any, trace_id: str) -> ItemOutcome:
     )
 
 
-__all__ = ["build_agent_answer"]
+__all__ = ["agent_trace_id", "agent_trace_ids", "build_agent_answer"]

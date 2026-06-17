@@ -196,6 +196,16 @@ def test_runs_without_a_context_evaluator_when_ragas_is_disabled() -> None:
     assert result.dashboard is not None
 
 
+def test_exposes_per_arm_scores_for_the_disposition_ritual() -> None:
+    # The disposition ritual (issue #21) enqueues a chosen arm's failures; the
+    # four-arm result must expose the per-arm deterministic scores so the ritual
+    # can read them without re-running or reaching into the aggregated dashboard.
+    result = _run()
+    assert set(result.scores_by_arm) == {"stuff", "stuff-oracle", "naive-rag", "agent"}
+    agent_scores = result.scores_by_arm["agent"]
+    assert {s.item_id for s in agent_scores} == {"a1", "a2"}
+
+
 def test_rejects_an_arm_with_a_missing_answer_function() -> None:
     items = (_item("a1"),)
     try:

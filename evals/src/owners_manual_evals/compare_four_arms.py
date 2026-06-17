@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .document_tree import DocumentTree
 from .four_arm_dashboard import (
@@ -42,10 +42,16 @@ _DETERMINISTIC_SCORES = ("strict_pass", "behavior_match", "cite_precision", "cit
 
 @dataclass(frozen=True, slots=True)
 class FourArmComparisonResult:
-    """The four-arm dashboard plus the golden items it was measured over."""
+    """The four-arm dashboard plus the golden items it was measured over.
+
+    ``scores_by_arm`` exposes the per-arm deterministic :class:`ItemScore`s the
+    runner already computed, so the disposition ritual (#21) can read a chosen
+    arm's failures without re-running or reaching into the aggregated dashboard.
+    """
 
     dashboard: FourArmDashboard
     items: tuple[GoldenItem, ...]
+    scores_by_arm: Mapping[str, tuple[ItemScore, ...]] = field(default_factory=dict)
 
 
 def _write_deterministic(score: ItemScore, trace_id: str | None, sink: ScoreSink) -> None:
@@ -151,7 +157,10 @@ def run_four_arm_comparison(
         for arm in ARM_ORDER
     }
     dashboard = build_four_arm_dashboard(columns)
-    return FourArmComparisonResult(dashboard=dashboard, items=tuple(items))
+    scores_by_arm = {arm: column.scores for arm, column in columns.items()}
+    return FourArmComparisonResult(
+        dashboard=dashboard, items=tuple(items), scores_by_arm=scores_by_arm
+    )
 
 
 # --- live CLI wiring -------------------------------------------------------
@@ -183,6 +192,13 @@ def _parse_args(argv: Sequence[str]):  # noqa: ANN202 — argparse.Namespace
         action="store_true",
         help="Enable live RAGAS context metrics for the RAG arms (needs `ragas` installed). "
         "Off by default; without it the RAG columns render without RAGAS values.",
+    )
+    parser.add_argument(
+        "--override-disposition-gate",
+        action="store_true",
+        help="Launch even if the previous run's annotation queue still holds "
+        "undispositioned items. Loudly logged — the disposition ritual is bypassed "
+        "(CONTEXT.md, Disposition). Use only with a deliberate reason.",
     )
     return parser.parse_args(argv)
 
@@ -248,6 +264,15 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
         )
         score_sink = build_score_sink(langfuse)
 
+    # Disposition pre-flight (#21 AC2/AC3): a full-tier experiment refuses to
+    # launch while the previous run's annotation queue still holds undispositioned
+    # items, unless --override-disposition-gate waves it through (loudly logged).
+    # Gated on a live Langfuse (the queue lives there); skipped with --no-langfuse.
+    if langfuse is not None and _run_disposition_preflight(
+        langfuse, override=args.override_disposition_gate
+    ):
+        return 3
+
     stuff_client = StuffClient(base_url=args.service_url)
     answers = {
         "stuff": build_stuff_answer(client=stuff_client, run_name=args.run_name),
@@ -269,6 +294,11 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
             context_evaluator=context_evaluator,
             score_sink=score_sink,
         )
+        # Auto-enqueue this run's AGENT failures into the annotation queue (#21
+        # AC1): the agent is the shipped system the disposition ritual gates on.
+        # The trace ids are the same deterministic seed build_live_answer uses.
+        if langfuse is not None:
+            _enqueue_agent_failures(langfuse, result=result, items=items, run_name=args.run_name)
     finally:
         finalize_langfuse(langfuse)
 
@@ -276,6 +306,70 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
 
     print(render_four_arm_dashboard(result.dashboard, run_name=f"{args.run_name} ({split_label})"))
     return 0
+
+
+def _run_disposition_preflight(langfuse: object, *, override: bool) -> bool:  # pragma: no cover
+    """Run the pre-flight against the live annotation queue; return ``True`` if the
+    experiment must NOT launch (the gate raised and was not overridden).
+
+    A missing queue id is a hard stop (the ritual is mandatory at full tier); a
+    raised :class:`UndispositionedQueueError` prints the open items and blocks.
+    """
+    from .disposition_preflight import (  # noqa: PLC0415
+        UndispositionedQueueError,
+        preflight_dispositions,
+    )
+    from .live_annotation_queue import (  # noqa: PLC0415
+        build_disposition_reader,
+        read_queue_items,
+        resolve_queue_id,
+    )
+
+    try:
+        queue_id = resolve_queue_id()
+    except RuntimeError as error:
+        print(f"Disposition pre-flight cannot run: {error}", file=sys.stderr)
+        return True
+
+    try:
+        preflight_dispositions(
+            queue_items=read_queue_items(langfuse, queue_id=queue_id),
+            disposition_of=build_disposition_reader(langfuse),
+            override=override,
+        )
+    except UndispositionedQueueError as error:
+        print(f"\nExperiment blocked by the disposition gate:\n{error}", file=sys.stderr)
+        return True
+    return False
+
+
+def _enqueue_agent_failures(  # pragma: no cover
+    langfuse: object,
+    *,
+    result: FourArmComparisonResult,
+    items: Sequence[GoldenItem],
+    run_name: str,
+) -> None:
+    """Push the agent arm's strict-pass misses onto the annotation queue."""
+    from .agent_live_runner import agent_trace_ids  # noqa: PLC0415
+    from .annotation_queue import enqueue_run_failures  # noqa: PLC0415
+    from .live_annotation_queue import build_queue_sink, resolve_queue_id  # noqa: PLC0415
+
+    queue_id = resolve_queue_id()
+    # Key by the AGENT arm's trace id (these are agent-arm failures), NOT the
+    # naive-rag seed — so annotators disposition the agent trace and the
+    # pre-flight/digest read the agent scores (issue #21; Codex P1 on PR #56).
+    trace_ids = agent_trace_ids(langfuse, run_name=run_name, items=items)
+    enqueued = enqueue_run_failures(
+        scores=result.scores_by_arm.get("agent", ()),
+        items={item.id: item for item in items},
+        trace_ids=trace_ids,
+        queue_sink=build_queue_sink(langfuse, queue_id=queue_id),
+    )
+    print(
+        f"Enqueued {enqueued} agent failure(s) into the disposition annotation queue.",
+        file=sys.stderr,
+    )
 
 
 def _resolve_judge(*, no_judge: bool):  # pragma: no cover - live wiring

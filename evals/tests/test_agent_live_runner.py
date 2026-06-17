@@ -16,7 +16,11 @@ from __future__ import annotations
 from typing import Any
 
 from owners_manual_evals.agent_client import ChatResult
-from owners_manual_evals.agent_live_runner import build_agent_answer
+from owners_manual_evals.agent_live_runner import (
+    agent_trace_id,
+    agent_trace_ids,
+    build_agent_answer,
+)
 from owners_manual_evals.answer_claim import AnswerClaim
 from owners_manual_evals.citable_path import CitablePath, CitablePathSegment
 from owners_manual_evals.golden_item import AnswerPoint, GoldenItem, Provenance
@@ -111,6 +115,32 @@ class _FakeChatClient:
     def chat(self, **kwargs: Any) -> ChatResult:
         self.calls.append(dict(kwargs))
         return self._result
+
+
+class _SeedEchoLangfuse:
+    """A fake Langfuse whose trace id ECHOES the seed, so a test can assert which
+    seed scheme a call site used (the real client hashes the seed)."""
+
+    def create_trace_id(self, *, seed: str) -> str:
+        return seed
+
+
+def test_agent_trace_ids_use_the_agent_seed_so_disposition_enqueues_the_agent_trace() -> None:
+    """Issue #21 / Codex P1 on PR #56: the disposition ritual enqueues AGENT-arm
+    failures, so their trace ids must use the agent seed (``run:agent:item``) — the
+    SAME id build_agent_answer creates — not the naive-rag seed (``run:item``).
+    Otherwise annotators disposition the naive-rag trace and the pre-flight/digest
+    read the wrong scores and metadata."""
+    fake = _SeedEchoLangfuse()
+    items = (_item("q1"), _item("q2"))
+
+    mapping = agent_trace_ids(fake, run_name="run", items=items)
+
+    assert mapping == {"q1": "run:agent:q1", "q2": "run:agent:q2"}
+    # one source of truth: the dict matches the per-item helper the live arm uses
+    assert mapping["q1"] == agent_trace_id(fake, run_name="run", item_id="q1")
+    # and crucially NOT the naive-rag seed the bug enqueued under
+    assert mapping["q1"] != "run:q1"
 
 
 def test_harness_root_records_the_full_envelope_with_degraded() -> None:
