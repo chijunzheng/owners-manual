@@ -33,7 +33,6 @@ from owners_manual_evals.golden_item import BEHAVIOR_CLASSES, parse_golden_item
 from owners_manual_evals.golden_loader import GoldenSet
 from owners_manual_evals.golden_split import assign_split
 from owners_manual_evals.golden_v0 import load_golden_v0_set
-from owners_manual_evals.oracle import corpus_of_document_id
 from owners_manual_evals.smoke_slice import (
     SMOKE_SLICE_VERSION,
     SMOKE_V2_ITEM_IDS,
@@ -85,24 +84,17 @@ def test_slice_is_verified_only() -> None:
 def test_slice_covers_every_corpus_available_on_the_dev_side() -> None:
     golden = load_golden_v0_set()
     sides = assign_split(golden.items)
-    # The corpora reachable from dev-side items' required cites.
-    dev_corpora = {
-        corpus_of_document_id(cite.document_id)
-        for item in golden.items
-        if sides[item.id] == "dev"
-        for cite in item.required_cites
-    }
+    # Coverage is by the authoritative item.corpus (the dashboard slice), matching
+    # compose_smoke_slice — not by the corpora an item's cites happen to touch.
+    dev_corpora = {item.corpus for item in golden.items if sides[item.id] == "dev"}
     slice_ = compose_smoke_slice(golden)
-    slice_corpora = {
-        corpus_of_document_id(cite.document_id)
-        for item in slice_.items
-        for cite in item.required_cites
-    }
-    # The slice covers every corpus the dev side makes available. After the #22
-    # re-split, the cross-corpus flag-void-no-pets family is dev-side, so the dev
-    # side now makes tenancy AND governing available — and smoke-v2 covers both.
+    slice_corpora = {item.corpus for item in slice_.items}
+    # After the #22 re-split, the cross-corpus flag-void-no-pets family is dev-side,
+    # so the dev side makes the tenancy AND cross-corpus slices available — and
+    # smoke-v2 covers both. (That cross-corpus item also exercises governing-doc
+    # retrieval; the standalone governing slice enters with governing items.)
     assert slice_corpora == dev_corpora
-    assert {"tenancy", "governing"} <= slice_corpora
+    assert {"tenancy", "cross-corpus"} <= slice_corpora
 
 
 def test_compose_rejects_an_unknown_item_id() -> None:

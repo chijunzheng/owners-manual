@@ -31,13 +31,15 @@ are enforced here rather than left to a caller:
   item is stable by construction, and the slice changing requires a code edit.
 
 Coverage (smoke-v2, the #22 re-split): generalizing the dev/holdout split to
-(corpus × behavior class) moved the cross-corpus ``flag-void-no-pets`` family
-(tenancy × governing) onto the DEV side. So smoke-v2 now covers the tenancy AND
-governing corpora and includes a cross-corpus item — the coverage smoke-v1 had to
-defer while that family sat on holdout (its "known coverage gap"), exactly the
-"a re-split puts such an item on the dev side" milestone smoke-v1 anticipated.
-Insurance coverage enters when the v1 insurance slice lands a stable dev-side
-item — a later smoke composition change, by design.
+(corpus × behavior class) moved the ``flag-void-no-pets`` family — the
+``cross-corpus`` slice (its cites span tenancy and the governing declaration) —
+onto the DEV side. So smoke-v2 covers the tenancy AND cross-corpus slices (and
+that cross-corpus item exercises governing-document retrieval), the coverage
+smoke-v1 had to defer while the family sat on holdout (its "known coverage gap"),
+exactly the "a re-split puts such an item on the dev side" milestone smoke-v1
+anticipated. The standalone governing and insurance slices enter when the v1
+governing/insurance authoring lands stable dev-side items — later composition
+changes, by design.
 """
 
 from __future__ import annotations
@@ -59,8 +61,9 @@ SMOKE_SLICE_VERSION = "smoke-v2"
 #: * answer (4): the core in-scope answers, including the enforceable-terms
 #:   over-flagging control;
 #: * flag-void-clause (2): the void-clause analyses — including ``flag-void-no-pets``,
-#:   the cross-corpus (tenancy × governing) item the #22 re-split put on the dev
-#:   side, so smoke-v2 covers governing and cross-corpus for the first time;
+#:   the ``cross-corpus`` item (its cites span tenancy and the governing
+#:   declaration) the #22 re-split put on the dev side, so smoke-v2 covers the
+#:   cross-corpus slice for the first time;
 #: * refuse-advice-escalate (2), refuse-jurisdiction (1), refuse-out-of-scope (1):
 #:   the refusal classes, each first-class.
 #:
@@ -165,27 +168,16 @@ def _require_every_dev_corpus(
     sides: dict[str, str],
     items: tuple[GoldenItem, ...],
 ) -> None:
-    """Assert the slice covers every corpus the DEV side makes available.
+    """Assert the slice covers every corpus SLICE the dev side makes available.
 
-    "Every available corpus" (CONTEXT.md) is bounded by the holdout seal: a corpus
-    that lives only on holdout is not "available" to a dev-only per-merge slice. So
-    the bar is every corpus reachable from a dev-side item's required cites —
-    tenancy and governing today, after the #22 re-split put the cross-corpus
-    ``flag-void-no-pets`` family (which cites the governing declaration) on dev.
-    Imported here to avoid a module-level dependency cycle through the oracle's
-    corpus map.
+    Coverage is measured by the authoritative ``item.corpus`` (the dashboard
+    slice), not by the corpora an item's cites happen to touch — so a cite-less
+    refusal or adversarial item still counts toward its corpus (Codex PR #60).
+    "Available" is bounded by the holdout seal: a corpus present only on holdout
+    is not available to a dev-only per-merge slice.
     """
-    from .oracle import corpus_of_document_id  # noqa: PLC0415
-
-    dev_corpora = {
-        corpus_of_document_id(cite.document_id)
-        for item in golden.items
-        if sides.get(item.id) == "dev"
-        for cite in item.required_cites
-    }
-    slice_corpora = {
-        corpus_of_document_id(cite.document_id) for item in items for cite in item.required_cites
-    }
+    dev_corpora = {item.corpus for item in golden.items if sides.get(item.id) == "dev"}
+    slice_corpora = {item.corpus for item in items}
     missing = sorted(dev_corpora - slice_corpora)
     if missing:
         raise ValueError(

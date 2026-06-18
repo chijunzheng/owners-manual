@@ -379,3 +379,107 @@ def test_eval_run_drops_a_verified_paraphrase_whose_parent_is_unverified() -> No
     result = load_golden_items_from_text(text, documents=_DOCUMENTS)
     assert {item.id for item in result.items} == {"parent", "child"}
     assert eval_run_items(result) == ()
+
+
+# --- corpus must agree with the cite corpora (#22; Codex PR #60 P2) ---------
+
+# Trees keyed by mapped document ids (oracle.corpus_of_document_id): rta-2006 ->
+# tenancy, fixture-declaration -> governing. The corpus-vs-cites check only fires
+# for cites whose document id is in that map.
+_CORPUS_TREES = (
+    parse_document_tree(
+        {
+            "kind": "document",
+            "documentId": "rta-2006",
+            "label": "RTA",
+            "children": [{"kind": "section", "label": "14", "children": []}],
+        }
+    ),
+    parse_document_tree(
+        {
+            "kind": "document",
+            "documentId": "fixture-declaration",
+            "label": "Declaration",
+            "children": [{"kind": "section", "label": "pets", "children": []}],
+        }
+    ),
+)
+
+
+def _cited_item_yaml(*, item_id: str, corpus: str, cites: list[tuple[str, str]]) -> str:
+    cite_lines = "".join(
+        f"      - documentId: {document_id}\n"
+        f"        segments:\n"
+        f'          - {{ kind: section, label: "{label}" }}\n'
+        for document_id, label in cites
+    )
+    return (
+        f"  - id: {item_id}\n"
+        f"    behavior_class: flag-void-clause\n"
+        f"    corpus: {corpus}\n"
+        f"    verified: true\n"
+        f"    question: Q for {item_id}?\n"
+        f"    answer_points:\n      - id: p1\n        text: A point.\n"
+        f"    required_cites:\n{cite_lines}"
+        f"    provenance:\n      source: designed-fixture\n      reference: fixture {item_id}\n"
+    )
+
+
+def test_rejects_corpus_that_contradicts_single_corpus_cites() -> None:
+    text = _set_yaml(
+        [_cited_item_yaml(item_id="x", corpus="insurance", cites=[("rta-2006", "14")])]
+    )
+    with pytest.raises(ValueError, match="corpus"):
+        load_golden_items_from_text(text, documents=_CORPUS_TREES)
+
+
+def test_rejects_single_corpus_item_mislabeled_cross_corpus() -> None:
+    text = _set_yaml(
+        [_cited_item_yaml(item_id="x", corpus="cross-corpus", cites=[("rta-2006", "14")])]
+    )
+    with pytest.raises(ValueError, match="corpus"):
+        load_golden_items_from_text(text, documents=_CORPUS_TREES)
+
+
+def test_requires_cross_corpus_when_cites_span_corpora() -> None:
+    text = _set_yaml(
+        [
+            _cited_item_yaml(
+                item_id="x",
+                corpus="tenancy",
+                cites=[("rta-2006", "14"), ("fixture-declaration", "pets")],
+            )
+        ]
+    )
+    with pytest.raises(ValueError, match="corpus"):
+        load_golden_items_from_text(text, documents=_CORPUS_TREES)
+
+
+def test_accepts_cross_corpus_when_cites_span_corpora() -> None:
+    text = _set_yaml(
+        [
+            _cited_item_yaml(
+                item_id="x",
+                corpus="cross-corpus",
+                cites=[("rta-2006", "14"), ("fixture-declaration", "pets")],
+            )
+        ]
+    )
+    result = load_golden_items_from_text(text, documents=_CORPUS_TREES)
+    assert result.items[0].corpus == "cross-corpus"
+
+
+def test_accepts_corpus_matching_single_corpus_cites() -> None:
+    text = _set_yaml([_cited_item_yaml(item_id="x", corpus="tenancy", cites=[("rta-2006", "14")])])
+    result = load_golden_items_from_text(text, documents=_CORPUS_TREES)
+    assert result.items[0].corpus == "tenancy"
+
+
+def test_corpus_check_is_skipped_for_a_citeless_refusal() -> None:
+    # A refusal carries no cites, so its corpus cannot be derived — any declared
+    # corpus is taken on trust (the documented exemption).
+    text = _set_yaml(
+        [_item_yaml(item_id="r", behavior_class="refuse-out-of-scope", corpus="insurance")]
+    )
+    result = load_golden_items_from_text(text, documents=_DOCUMENTS)
+    assert result.items[0].corpus == "insurance"
