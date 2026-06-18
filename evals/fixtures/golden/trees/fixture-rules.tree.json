@@ -1,0 +1,97 @@
+{
+  "kind": "document",
+  "label": "Rules of Toronto Standard Condominium Corporation No. 9000 (Harbourview Terrace)",
+  "documentId": "fixture-rules",
+  "children": [
+    {
+      "kind": "section",
+      "label": "preamble",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "rule-1-pets",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "rule-2-parking-and-visitor-parking",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "rule-3-leasing-and-occupancy",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "rule-4-use-of-the-common-elements",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    }
+  ]
+}
