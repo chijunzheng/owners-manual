@@ -17,6 +17,7 @@ from owners_manual_evals.cite_matcher import resolves_to_node
 from owners_manual_evals.document_tree import parse_document_tree
 from owners_manual_evals.golden_item import (
     BEHAVIOR_CLASSES,
+    CORPORA,
     GoldenItem,
     parse_golden_item,
 )
@@ -48,6 +49,7 @@ def _answer_item() -> dict:
     return {
         "id": "item-answer",
         "behavior_class": "answer",
+        "corpus": "tenancy",
         "verified": False,
         "question": "How much notice?",
         "answer_points": [
@@ -67,6 +69,7 @@ def _refusal_item() -> dict:
     return {
         "id": "item-refuse",
         "behavior_class": "refuse-jurisdiction",
+        "corpus": "tenancy",
         "verified": False,
         "question": "BC rent increase?",
         "answer_points": [{"id": "p1", "text": "Ontario only."}],
@@ -123,6 +126,40 @@ def test_an_item_is_immutable() -> None:
     item = parse_golden_item(_answer_item(), documents=_DOCUMENTS)
     with pytest.raises(FrozenInstanceError):
         item.behavior_class = "refuse-jurisdiction"  # type: ignore[misc]
+
+
+# --- corpus: the dashboard slice and split stratum key (#22) ---------------
+
+
+def test_all_five_corpora_are_representable() -> None:
+    assert set(CORPORA) == {
+        "tenancy",
+        "insurance",
+        "governing",
+        "selling",
+        "cross-corpus",
+    }
+
+
+def test_corpus_is_recorded_on_the_item() -> None:
+    raw = _answer_item()
+    raw["corpus"] = "insurance"
+    item = parse_golden_item(raw, documents=_DOCUMENTS)
+    assert item.corpus == "insurance"
+
+
+def test_rejects_a_missing_corpus() -> None:
+    raw = _answer_item()
+    del raw["corpus"]
+    with pytest.raises(ValueError, match="corpus"):
+        parse_golden_item(raw, documents=_DOCUMENTS)
+
+
+def test_rejects_an_unknown_corpus() -> None:
+    raw = _answer_item()
+    raw["corpus"] = "parking"
+    with pytest.raises(ValueError, match="corpus"):
+        parse_golden_item(raw, documents=_DOCUMENTS)
 
 
 # --- AC 1: required cites must resolve against the provided tree -----------

@@ -41,6 +41,7 @@ def _item_yaml(
     *,
     item_id: str,
     behavior_class: str = "answer",
+    corpus: str = "tenancy",
     verified: bool = True,
     paraphrase_of: str | None = None,
 ) -> str:
@@ -56,6 +57,7 @@ def _item_yaml(
     return (
         f"  - id: {item_id}\n"
         f"    behavior_class: {behavior_class}\n"
+        f"    corpus: {corpus}\n"
         f"    verified: {str(verified).lower()}\n"
         f"{parent}"
         f"    question: Q for {item_id}?\n"
@@ -243,6 +245,24 @@ def test_split_is_stratified_seventy_thirty_per_behavior_class() -> None:
         # 10 items at ~70/30 -> 7 dev, 3 holdout in each stratum.
         assert dev == 7, f"{behavior_class}: expected 7 dev, got {dev}"
         assert holdout == 3, f"{behavior_class}: expected 3 holdout, got {holdout}"
+
+
+def test_split_is_stratified_per_corpus_and_behavior_class() -> None:
+    # The v1 generalization (#22): each (corpus, behavior class) cell splits
+    # ~70/30 INDEPENDENTLY, so holdout carries every class within every corpus.
+    # The same class across two corpora must split 7/3 per corpus, not pooled.
+    bodies: list[str] = []
+    for corpus in ("tenancy", "insurance"):
+        for i in range(10):
+            bodies.append(
+                _item_yaml(item_id=f"{corpus}-answer-{i}", behavior_class="answer", corpus=corpus)
+            )
+    result = load_golden_items_from_text(_set_yaml(bodies), documents=_DOCUMENTS)
+    split = assign_split(result.items)
+    for corpus in ("tenancy", "insurance"):
+        sides = [split[f"{corpus}-answer-{i}"] for i in range(10)]
+        assert sides.count("dev") == 7, f"{corpus}: expected 7 dev, got {sides.count('dev')}"
+        assert sides.count("holdout") == 3, f"{corpus}: expected 3 holdout"
 
 
 def test_only_two_sides_are_assigned() -> None:

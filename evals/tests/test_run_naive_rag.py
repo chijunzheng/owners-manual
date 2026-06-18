@@ -54,6 +54,7 @@ def _answer_item(item_id: str, *, verified: bool = True) -> object:
         {
             "id": item_id,
             "behavior_class": "answer",
+            "corpus": "tenancy",
             "verified": verified,
             "question": f"Q {item_id}",
             "answer_points": [{"id": "p1", "text": "t"}],
@@ -78,6 +79,7 @@ def _refuse_item(item_id: str) -> object:
         {
             "id": item_id,
             "behavior_class": "refuse-jurisdiction",
+            "corpus": "tenancy",
             "verified": True,
             "question": f"Q {item_id}",
             "answer_points": [{"id": "p1", "text": "t"}],

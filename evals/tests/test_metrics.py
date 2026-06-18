@@ -65,6 +65,7 @@ def _answer_item() -> object:
         {
             "id": "answer-repair",
             "behavior_class": "answer",
+            "corpus": "tenancy",
             "verified": True,
             "question": "who repairs the unit?",
             "answer_points": [{"id": "p1", "text": "landlord duty"}],
@@ -89,6 +90,7 @@ def _refusal_item() -> object:
         {
             "id": "refuse-bc",
             "behavior_class": "refuse-jurisdiction",
+            "corpus": "tenancy",
             "verified": True,
             "question": "BC rent?",
             "answer_points": [{"id": "p1", "text": "ontario only"}],
