@@ -1,0 +1,238 @@
+# Golden set v1 — governing-documents slice (issue #22). One file of the
+# per-corpus golden directory evals/fixtures/golden/items/; the loader
+# concatenates every *.yaml there into one validated set.
+#
+# Scope (the #60 corpus<->cites guardrail): these items cite ONLY governing
+# documents — the declaration, the rules, the management policy sheet, and the
+# Condominium Act — so each is corpus: governing. The authority hierarchy under
+# test is Declaration > By-laws > Rules > management policy, with the Condo Act
+# as the ceiling above all of them. The discriminating behavior is applying that
+# precedence: a lower instrument cannot override a permission the declaration
+# grants, and the source of a restriction must be identified correctly.
+#
+# This batch is the Declaration-supremacy + provenance trio: GOV-01 (a pet rule
+# stricter than the declaration), GOV-02 (a policy sheet banning a barbecue the
+# declaration permits), and GOV-05 (a real restriction the policy sheet
+# misattributes to the declaration). The "no invented powers" conflicts
+# (GOV-03 fine, GOV-04 unauthorized fee, GOV-06 tenant gatekeeping) are a later
+# batch.
+#
+# Hand-verification protocol (unchanged from #9): every item lands verified:
+# false and flips true ONLY on the owner's per-item sign-off against a local
+# verification packet that quotes the resolved text of every required cite. Git
+# history is the audit record; the eval runner's verified-only filter excludes
+# unsigned items from real runs. Like the insurance and cross-corpus slices,
+# these items cite the Condo Act, which the live index does not hold, so they
+# are not live-serviceable and stay gated out of live/smoke runs.
+#
+# No Crown-copyright statute text appears here: cites are addressing-only citable
+# paths into the committed trees (evals/fixtures/golden/trees/), and answer-point
+# text is claim-level paraphrase.
+
+version: 2
+items:
+  # GOV-01: a Rule stricter than the declaration. The declaration permits up to
+  # two household pets (cat/dog <= 20 kg); Rule 1 purports to ban dogs over 10 kg
+  # and bar dogs from the elevators. A rule must be reasonable and consistent
+  # with the declaration (s.58(2)), so the weight ban is unenforceable to the
+  # extent it is stricter. Flag-void-clause: the discriminating behavior is
+  # identifying the inconsistent rule, not accepting it at face value.
+  - id: flag-invalid-pet-rule
+    behavior_class: flag-void-clause
+    corpus: governing
+    verified: true
+    question: >-
+      My condo's new rules say no dogs over 10 kg and no dogs in the passenger
+      elevator, but the declaration allows pets up to 20 kg. My dog is 15 kg —
+      is she actually allowed, and do I really have to carry her down the
+      stairs?
+    answer_points:
+      - id: declaration-permits-the-dog
+        text: The declaration permits an owner to keep up to two household pets,
+          where a pet is a cat or dog weighing no more than 20 kg, so a single
+          15 kg dog is within what the declaration allows.
+      - id: rules-must-be-consistent-with-the-declaration
+        text: A rule made by the board must be reasonable and consistent with
+          the Act, the declaration, and the by-laws; it cannot impose a
+          restriction that contradicts a permission the declaration grants.
+      - id: weight-ban-unenforceable-to-that-extent
+        text: Rule 1's prohibition on dogs over 10 kg is inconsistent with the
+          declaration's 20 kg limit, so it is unenforceable to the extent it is
+          stricter than the declaration, and the 15 kg dog remains permitted.
+      - id: reasonable-regulation-vs-overreach
+        text: A rule may still reasonably regulate how a pet uses the common
+          elements, such as requiring it to be leashed or carried and cleaned up
+          after, and the board keeps its declaration power to require removal of
+          a pet that genuinely becomes a nuisance; but it cannot ban outright a
+          dog the declaration permits, and an elevator restriction cannot be used
+          as a back-door exclusion of a permitted dog.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-3 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-01 — rule inconsistent with the
+        declaration (pets): the Declaration > Rules layer of the hierarchy
+        (Condo Act s.58(2))'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: GOV-01
+
+  # GOV-02: a management policy sheet contradicting a declaration permission. The
+  # declaration permits an electric barbecue on an exclusive-use balcony (and
+  # bars fuelled ones); the policy sheet bans barbecues of every kind. A policy
+  # sheet sits below even rules, so it cannot extinguish a declaration grant.
+  # The precision control is that the policy's ban on FUELLED barbecues survives
+  # (the declaration bars those too) — do not over-flag the whole policy.
+  - id: flag-policy-cannot-ban-permitted-bbq
+    behavior_class: flag-void-clause
+    corpus: governing
+    verified: true
+    question: >-
+      The management office's resident policies say no barbecues of any kind on
+      balconies, but the declaration says I can have an electric barbecue on my
+      balcony. Which one wins, and can I actually use my electric BBQ?
+    answer_points:
+      - id: declaration-permits-electric-bbq
+        text: The declaration expressly permits an owner who has exclusive use of
+          a balcony to keep and operate an electric barbecue on that balcony,
+          while prohibiting charcoal, propane, natural-gas, and other open-flame
+          or fuelled barbecues there.
+      - id: policy-is-subordinate-to-the-declaration
+        text: A management office policy sheet is an administrative document, not
+          a by-law or a rule made under the Act. Even a rule must be reasonable
+          and consistent with the declaration, so a policy sheet, which sits
+          below rules, cannot remove a use the declaration grants.
+      - id: electric-ban-unenforceable
+        text: The resident policy's ban on barbecues of every kind, including
+          electric, cannot override the declaration, so it is unenforceable to
+          the extent it purports to prohibit the electric barbecue the
+          declaration allows.
+      - id: fuelled-ban-still-stands
+        text: The policy's prohibition on propane, charcoal, and natural-gas
+          barbecues is consistent with the declaration, which itself bars fuelled
+          barbecues, so that part holds; the owner may use an electric barbecue
+          but not a fuelled one.
+    required_cites:
+      - documentId: fixture-management-policies
+        segments:
+          - { kind: section, label: barbecues-and-balconies }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iv-use-of-the-common-elements }
+          - { kind: subsection, label: barbecues-on-exclusive-use-balconies }
+          - { kind: clause, label: p-1 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-02 — policy contradicts a declaration
+        permission (BBQ): a management policy is the weakest instrument and
+        cannot override a declaration grant (Condo Act s.58(2))'
+    tags:
+      difficulty: medium
+      persona: owner
+      fixture: GOV-02
+
+  # GOV-05: a real restriction misattributed to the wrong instrument. The
+  # six-month minimum lease is a valid Rule (Rule 3); the policy sheet claims it
+  # comes from the declaration, which is silent on short-term rentals. The
+  # restriction binds, but the cited source is wrong. Answer class: the
+  # discriminating behavior is verifying which instrument actually carries the
+  # restriction rather than accepting a confident-but-wrong citation.
+  - id: answer-str-restriction-provenance
+    behavior_class: answer
+    corpus: governing
+    verified: true
+    question: >-
+      Can I rent my unit on Airbnb for three months while I'm abroad? The
+      management office says short-term rentals are banned by the declaration,
+      but I read the declaration and didn't see it — where does the rule
+      actually come from?
+    answer_points:
+      - id: short-term-rental-not-permitted
+        text: A three-month Airbnb rental is not permitted, because the
+          corporation's Rules require that no unit be leased or occupied for a
+          term of less than six months, and that restriction applies to every
+          lease, sublease, licence, or other occupancy arrangement.
+      - id: restriction-lives-in-the-rules
+        text: The six-month minimum comes from the Rules of the corporation, made
+          under the Act's rule-making power respecting the use of units, not from
+          the declaration. Such a rule binds residents so long as it is
+          reasonable and consistent with the Act, the declaration, and the
+          by-laws; on its face this minimum-lease restriction is a rule of that
+          kind and applies unless and until it is successfully challenged.
+      - id: policy-sheet-misattributes-the-source
+        text: The management office's statement that the declaration prohibits
+          short-term rentals is wrong as to source. The declaration's leasing
+          article addresses only the owner's duty to notify the corporation of a
+          lease and is silent on short-term rentals; the restriction is real but
+          is carried by the Rules, not the declaration.
+      - id: why-the-source-matters
+        text: Identifying the correct instrument matters, because the declaration
+          and the rules are made, amended, and challenged through different
+          processes, so an owner checking whether or how the restriction might
+          change should look to the Rules rather than the declaration.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-management-policies
+        segments:
+          - { kind: section, label: short-term-and-transient-rentals }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-1 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-05 — short-term-rental ban misattributed:
+        the six-month minimum is a valid Rule, not a declaration provision;
+        verify which instrument carries a restriction'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: GOV-05
