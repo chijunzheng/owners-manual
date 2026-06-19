@@ -1,6 +1,6 @@
 """The report-only smoke runner orchestration (issue #11).
 
-Ties the pure pieces together: the committed smoke-v3 slice runs through the
+Ties the pure pieces together: the committed smoke-v2 slice runs through the
 agent arm (the shipped pipeline the gate covers — README "Tiered"), is scored
 with the SAME deterministic metric the dashboards use, and is rendered into the
 report-only PR comment. The live agent answer function and the Langfuse score

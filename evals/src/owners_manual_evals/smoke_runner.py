@@ -1,4 +1,4 @@
-"""The report-only smoke runner (issue #11): run smoke-v3, render the PR comment.
+"""The report-only smoke runner (issue #11): run smoke-v2, render the PR comment.
 
 The smoke gate runs the AGENT arm — the shipped pipeline the gate covers
 (README, "Tiered": "a fixed 12-item agent slice"; CONTEXT.md, "Eval gate":
@@ -95,7 +95,7 @@ def _parse_args(argv: Sequence[str]):  # pragma: no cover - live wiring  # noqa:
 
     parser = argparse.ArgumentParser(
         prog="run-smoke",
-        description="Run the report-only smoke-v3 slice through the agent arm and write the "
+        description="Run the report-only smoke-v2 slice through the agent arm and write the "
         "PR score-table comment body. Report-only: always exits 0, never blocks merge.",
     )
     parser.add_argument(
@@ -105,7 +105,7 @@ def _parse_args(argv: Sequence[str]):  # pragma: no cover - live wiring  # noqa:
     )
     parser.add_argument(
         "--run-name",
-        default="smoke-v3",
+        default="smoke-v2",
         help="Run name recorded on the Langfuse experiment / shown in the comment.",
     )
     parser.add_argument(
@@ -117,7 +117,7 @@ def _parse_args(argv: Sequence[str]):  # pragma: no cover - live wiring  # noqa:
 
 
 def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live wiring
-    """Live entry point: compose smoke-v3, run it (or write the pending comment).
+    """Live entry point: compose smoke-v2, run it (or write the pending comment).
 
     FAIL-SOFT by contract — the smoke gate is report-only, so this always returns
     0: a scoring shortfall informs via the comment, it never fails the job. When
