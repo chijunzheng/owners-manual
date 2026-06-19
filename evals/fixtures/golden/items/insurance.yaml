@@ -36,7 +36,7 @@ items:
   - id: answer-sewer-backup-gap
     behavior_class: answer
     corpus: insurance
-    verified: false
+    verified: true
     question: >-
       Heavy rain backed up the building's drains and sewage flooded my unit,
       ruining my furniture and belongings. Between my own condo insurance and
@@ -97,7 +97,7 @@ items:
   - id: answer-gradual-leak-not-covered
     behavior_class: answer
     corpus: insurance
-    verified: false
+    verified: true
     question: >-
       A pipe under my kitchen sink had been leaking slowly for months and rotted
       the cabinet and subfloor before I noticed. Will my unit insurance cover the
@@ -138,7 +138,7 @@ items:
   - id: answer-sudden-burst-covered
     behavior_class: answer
     corpus: insurance
-    verified: false
+    verified: true
     question: >-
       A supply line under my bathroom sink suddenly burst and soaked my rug and
       dresser. Is that the kind of water damage my unit policy actually covers?

@@ -1,9 +1,9 @@
-"""The fixed, versioned smoke-v2 slice composition (issues #11, #22).
+"""The fixed, versioned smoke-v3 slice composition (issues #11, #22).
 
 CONTEXT.md ("Smoke slice"): the fixed ~12-item subset run on every merge — all
 five behavior classes, every available corpus, ≥1 cross-corpus item, drawn from
 stable-at-baseline items so a failure is signal, not flake. Scored with
-deterministic metrics only. Composition is versioned (smoke-v2) and changes only
+deterministic metrics only. Composition is versioned (smoke-v3) and changes only
 at milestones.
 
 Two invariants from the wider system constrain WHICH items the slice may draw:
@@ -14,7 +14,7 @@ Two invariants from the wider system constrain WHICH items the slice may draw:
   tier", and :mod:`eval_tier` refuses to unseal the holdout below the release
   tier. A per-merge slice drawing a holdout item would leak the overfit detector.
 * "Stable-at-baseline" — the slice is built from a committed, curated id
-  allowlist (``SMOKE_V2_ITEM_IDS``); because golden-v0's answers over the
+  allowlist (``SMOKE_V3_ITEM_IDS``); because golden-v0's answers over the
   designed fixtures are ground truth by construction, the curated set is the
   stability record until a measured baseline-stability signal exists (post-#24
   threshold calibration). The composition refuses to drift: changing it is a
@@ -29,35 +29,43 @@ from __future__ import annotations
 
 import pytest
 
-from owners_manual_evals.golden_item import BEHAVIOR_CLASSES, parse_golden_item
+from owners_manual_evals.golden_item import (
+    BEHAVIOR_CLASSES,
+    AnswerPoint,
+    GoldenItem,
+    Provenance,
+    parse_golden_item,
+)
 from owners_manual_evals.golden_loader import GoldenSet
 from owners_manual_evals.golden_split import assign_split
 from owners_manual_evals.golden_v0 import load_golden_v0_set
 from owners_manual_evals.smoke_slice import (
     SMOKE_SLICE_VERSION,
-    SMOKE_V2_ITEM_IDS,
+    SMOKE_V3_ITEM_IDS,
     SmokeSlice,
+    _require_every_dev_corpus,
     compose_smoke_slice,
     load_smoke_slice,
 )
 
 
-def test_smoke_slice_version_is_smoke_v2() -> None:
-    assert SMOKE_SLICE_VERSION == "smoke-v2"
+def test_smoke_slice_version_is_smoke_v3() -> None:
+    assert SMOKE_SLICE_VERSION == "smoke-v3"
 
 
-def test_smoke_v2_is_ten_items() -> None:
-    # CONTEXT.md fixes the slice at ~12 items; smoke-v2 is the 10 dev-side parents.
-    assert len(SMOKE_V2_ITEM_IDS) == 10
+def test_smoke_v3_is_eleven_items() -> None:
+    # CONTEXT.md fixes the slice at ~12 items; smoke-v3 is the 11 dev-side items
+    # (the 10 tenancy/cross-corpus parents + the INS-03 insurance gap item).
+    assert len(SMOKE_V3_ITEM_IDS) == 11
     # The committed list has no duplicates.
-    assert len(set(SMOKE_V2_ITEM_IDS)) == 10
+    assert len(set(SMOKE_V3_ITEM_IDS)) == 11
 
 
 def test_compose_returns_items_in_committed_order() -> None:
     slice_ = load_smoke_slice()
     assert isinstance(slice_, SmokeSlice)
-    assert slice_.version == "smoke-v2"
-    assert tuple(item.id for item in slice_.items) == SMOKE_V2_ITEM_IDS
+    assert slice_.version == "smoke-v3"
+    assert tuple(item.id for item in slice_.items) == SMOKE_V3_ITEM_IDS
 
 
 def test_every_behavior_class_is_represented() -> None:
@@ -93,26 +101,44 @@ def test_slice_covers_every_verified_corpus_on_the_dev_side() -> None:
     }
     slice_ = compose_smoke_slice(golden)
     slice_corpora = {item.corpus for item in slice_.items}
-    # smoke-v2 covers exactly the verified dev corpora: tenancy AND cross-corpus
-    # (the flag-void-no-pets family the #22 re-split moved dev-side). If a future
-    # batch verifies a new corpus on dev without adding it here, this trips —
-    # exactly the milestone signal to bump the slice.
+    # smoke-v3 covers exactly the verified dev corpora: tenancy, cross-corpus, AND
+    # insurance (the INS-03 family signed off in #22). If a future batch verifies a
+    # new corpus on dev without adding it here, this trips — exactly the milestone
+    # signal to bump the slice.
     assert slice_corpora == verified_dev_corpora
-    assert {"tenancy", "cross-corpus"} <= slice_corpora
+    assert {"tenancy", "cross-corpus", "insurance"} <= slice_corpora
 
 
-def test_an_unverified_only_corpus_on_dev_does_not_force_coverage() -> None:
-    # The #22 insurance batch lands verified: false on the dev side before sign-off.
-    # The verified-only smoke slice must still compose (insurance is not yet
-    # runnable) and must not be required to carry an insurance item.
-    golden = load_golden_v0_set()
-    sides = assign_split(golden.items)
-    unverified_dev_corpora = {
-        item.corpus for item in golden.items if sides[item.id] == "dev" and not item.verified
-    }
-    slice_ = compose_smoke_slice(golden)  # must not raise
-    slice_corpora = {item.corpus for item in slice_.items}
-    assert unverified_dev_corpora.isdisjoint(slice_corpora)
+def test_coverage_counts_only_verified_dev_corpora() -> None:
+    # The verified filter in isolation: a corpus present on dev only through an
+    # UNVERIFIED item is not yet runnable and must not force coverage; the same
+    # item verified MUST force it. Constructed so the test is robust regardless of
+    # the live set's current verified state (post-#22 the live set is all-verified).
+    def _item(item_id: str, corpus: str, *, verified: bool) -> GoldenItem:
+        return GoldenItem(
+            id=item_id,
+            behavior_class="answer",
+            verified=verified,
+            question="q",
+            answer_points=(AnswerPoint(id="p", text="t"),),
+            required_cites=(),
+            provenance=Provenance(source="s", reference="r"),
+            corpus=corpus,
+        )
+
+    covered = _item("covered", "tenancy", verified=True)
+    sides = {"covered": "dev", "wip": "dev"}
+
+    # 'selling' present on dev only via an UNVERIFIED item -> not required, no raise.
+    golden_unverified = GoldenSet(
+        version=2, items=(covered, _item("wip", "selling", verified=False))
+    )
+    _require_every_dev_corpus(golden=golden_unverified, sides=sides, items=(covered,))
+
+    # Verify that same item and the slice must now cover 'selling' -> missing -> raise.
+    golden_verified = GoldenSet(version=2, items=(covered, _item("wip", "selling", verified=True)))
+    with pytest.raises(ValueError, match="selling"):
+        _require_every_dev_corpus(golden=golden_verified, sides=sides, items=(covered,))
 
 
 def test_compose_rejects_an_unknown_item_id() -> None:
@@ -120,7 +146,7 @@ def test_compose_rejects_an_unknown_item_id() -> None:
     # silent skip — the slice must fail loudly so it can never drift.
     golden = load_golden_v0_set()
     with pytest.raises(ValueError, match="absent from the golden set"):
-        compose_smoke_slice(golden, item_ids=(*SMOKE_V2_ITEM_IDS, "no-such-item"))
+        compose_smoke_slice(golden, item_ids=(*SMOKE_V3_ITEM_IDS, "no-such-item"))
 
 
 def test_compose_rejects_a_holdout_item_in_the_allowlist() -> None:
@@ -133,7 +159,7 @@ def test_compose_rejects_a_holdout_item_in_the_allowlist() -> None:
     holdout_ids = [i.id for i in golden.items if sides[i.id] == "holdout" and i.verified]
     assert holdout_ids, "fixture sanity: golden-v0 has a verified holdout side"
     with pytest.raises(ValueError, match="holdout|dev"):
-        compose_smoke_slice(golden, item_ids=(*SMOKE_V2_ITEM_IDS[:-1], holdout_ids[0]))
+        compose_smoke_slice(golden, item_ids=(*SMOKE_V3_ITEM_IDS[:-1], holdout_ids[0]))
 
 
 def test_compose_rejects_a_missing_behavior_class() -> None:
@@ -144,10 +170,10 @@ def test_compose_rejects_a_missing_behavior_class() -> None:
     by_id = {i.id: i for i in golden.items}
     kept = tuple(
         item_id
-        for item_id in SMOKE_V2_ITEM_IDS
+        for item_id in SMOKE_V3_ITEM_IDS
         if by_id[item_id].behavior_class != "refuse-out-of-scope"
     )
-    assert len(kept) < len(SMOKE_V2_ITEM_IDS)
+    assert len(kept) < len(SMOKE_V3_ITEM_IDS)
     with pytest.raises(ValueError, match="behavior class"):
         compose_smoke_slice(golden, item_ids=kept)
 
@@ -156,7 +182,7 @@ def test_compose_rejects_an_unverified_item() -> None:
     # An unverified item can never enter a scored run (CONTEXT.md). Build a set
     # where a curated id is unverified and assert the composition refuses it.
     golden = load_golden_v0_set()
-    target = SMOKE_V2_ITEM_IDS[0]
+    target = SMOKE_V3_ITEM_IDS[0]
 
     def _unverify(item_id: str) -> object:
         original = next(i for i in golden.items if i.id == item_id)
