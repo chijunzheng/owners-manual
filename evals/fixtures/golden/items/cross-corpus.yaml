@@ -17,7 +17,11 @@
 # the Act provide (INS-02). The fan-out item routes from the insurance question
 # into the governing instruments that actually resolve it. The third family,
 # LEASE-01 (the void no-pets clause), is the original cross-corpus item from v0,
-# moved here from tenancy.yaml so every cross-corpus item lives in one file.
+# moved here from tenancy.yaml so every cross-corpus item lives in one file. A
+# fourth family, GOV-06, bridges the governing documents and the tenancy
+# statute: a Rule that deems a late-filed tenant a trespasser and gates her
+# possession is measured against the owner's narrow ten-day leasing-notice duty
+# (Condo Act s.83 and the declaration) and the tenant's RTA possession rights.
 #
 # Hand-verification protocol (unchanged from #9): every item lands verified:
 # false and flips true ONLY on the owner's per-item sign-off against a local
@@ -221,6 +225,137 @@ items:
       difficulty: hard
       persona: owner
       fixture: INS-02
+
+  # GOV-06 (governing <-> tenancy bridge): tenant-gatekeeping overreach. Rule 3
+  # deems a lessee a "trespasser" and bars her from booking the moving elevator
+  # or taking possession if the owner has not filed the lease and the lessee's
+  # government ID within thirty days. That collides with three instruments at
+  # once: the owner's leasing duty is narrow (Condo Act s.83(1) and the
+  # declaration's Article VI require only a ten-day notice with the lessee's
+  # name, the owner's address, and a copy or summary of the lease — no lessee
+  # ID, no possession gate); a rule must be reasonable and consistent with the
+  # Act and the declaration (s.58(2)); and the tenant's possession is protected
+  # by the RTA, under which a tenancy ends only in accordance with that Act and
+  # possession is recovered only on vacancy or a Board eviction order (s.37(1),
+  # s.39) — so a condominium corporation, which is not the landlord, cannot turn
+  # a lawful tenant into a trespasser. Precision control: the corporation MAY
+  # still reasonably regulate move logistics (Rule 4 booking), and the remedy for
+  # an owner's notice default is a compliance order against the OWNER (s.134(1)),
+  # not self-help against the tenant. Cross-corpus (governing rules + declaration
+  # + Condo Act, and the tenancy statute).
+  - id: flag-tenant-not-a-trespasser
+    behavior_class: flag-void-clause
+    corpus: cross-corpus
+    verified: true
+    question: >-
+      My tenant moves in this Saturday, but the management office says that
+      because I have not filed her paperwork yet she is a trespasser, and they
+      will not let her book the moving elevator or take possession of the unit
+      until I hand in her government ID. Can the condo really block my tenant
+      like that?
+    answer_points:
+      - id: leasing-notice-duty-is-narrow
+        text: The only leasing obligation the Act and the declaration place on an
+          owner who leases is to notify the corporation within ten days of the
+          lease or its renewal, to provide the lessee's name, the owner's
+          address, and a copy or summary of the lease, and to give the lessee a
+          copy of the declaration, by-laws, and rules. The declaration's own
+          leasing article states this ten-day baseline and adds that it does not
+          derogate from the owner's obligations under section 83 of the Act.
+          Neither the Act nor the declaration requires the lessee to produce
+          government-issued identification, and neither makes the lessee's
+          possession of the unit depend on the owner having filed anything.
+      - id: rule-adds-requirements-the-instruments-do-not
+        text: Rule 3 demands filing within thirty days and government-issued
+          identification for every lessee, a deadline and an identification
+          requirement that neither the Act nor the declaration imposes on the
+          owner or the lessee. A rule made by the board must be reasonable and
+          consistent with the Act, the declaration, and the by-laws, so to the
+          extent the Rule adds obligations and consequences the governing
+          instruments do not contain, it is unenforceable.
+      - id: corporation-cannot-deem-a-tenant-a-trespasser
+        text: The lessee's right to occupy the unit flows from her tenancy, not
+          from the corporation's leasing file. Under the Residential Tenancies
+          Act, a tenancy may be terminated only in accordance with that Act, and
+          possession of a rental unit may be recovered only after the tenant
+          vacates or abandons it or the Landlord and Tenant Board orders
+          eviction, and then only by the landlord. The condominium corporation is
+          neither the landlord nor a party to the tenancy, so it cannot by rule
+          convert a lawful tenant into a trespasser or bar her from taking
+          possession of the unit because of the owner's paperwork.
+      - id: reasonable-move-logistics-are-a-separate-matter
+        text: The corporation may still reasonably regulate how and when
+          residents use the common elements for a move, such as requiring the
+          moving elevator, loading dock, and service corridor to be reserved in
+          advance and used only during designated hours. What it cannot do is
+          turn that logistical power into a means of denying a lawful tenant
+          possession of her own unit, which is the effect the Rule's trespasser
+          provision purports to have.
+      - id: remedy-for-an-owners-default-runs-against-the-owner
+        text: If an owner fails to give the leasing notice the Act requires, the
+          corporation's recourse is to enforce that obligation against the owner,
+          including by an application for a compliance order if necessary, and
+          not by self-help against the tenant. The tenant is not the party in
+          default, and the consequences of an owner's non-compliance cannot
+          lawfully be visited on her.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-3 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-4-use-of-the-common-elements }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-3 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '83' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '37' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '39' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-06 — tenant-gatekeeping overreach
+        (cross-corpus: a Rule that deems a late-filed tenant a trespasser and
+        gates possession overreaches the narrow ten-day leasing-notice duty in
+        Condo Act s.83(1) and the declaration, the limit on rule-making in
+        s.58(2), and the tenant possession rights protected by RTA s.37 and
+        s.39; the remedy for a leasing-notice default is a compliance order
+        against the owner under s.134)'
+    tags:
+      difficulty: hard
+      persona: landlord
+      fixture: GOV-06
 
   # LEASE-01: the lease's blanket no-pets clause is void (RTA s.14), but the
   # naive "you're fine" answer is incomplete — the condominium declaration is

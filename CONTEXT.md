@@ -80,8 +80,8 @@ The published shape of every eval result, per arm × slice: strict pass rate (he
 _Avoid_: overall score, composite metric
 
 **Dev/holdout split**:
-Stratified ~70/30 assignment of golden items (by corpus × behavior class), made at authoring time; paraphrase variants inherit their parent's side. Iteration and failure reading touch dev only; holdout runs at release tier. The published dev-vs-holdout divergence is the overfit detector — its job is detection, not precision.
-_Avoid_: train/test split (nothing is trained — the leak is prompt iteration)
+Stratified ~70/30 assignment of golden items (by corpus × behavior class), made at authoring time; paraphrase variants inherit their parent's side. Iteration and failure reading touch dev only; holdout runs at release tier. The published dev-vs-holdout divergence is the overfit detector — its job is detection, not precision. The assignment is **frozen** in a committed manifest and append-stable ([ADR 0007](docs/adr/0007-frozen-append-stable-dev-holdout-split.md)): a parent keeps its recorded side as the set grows, and a new parent appends into its stratum's remaining dev quota (defaulting to holdout) and is recorded in the manifest in the same change — a guard asserts the manifest lists every parent — so adding an item never migrates an already-assigned item across the seal.
+_Avoid_: train/test split (nothing is trained — the leak is prompt iteration); regenerating the manifest to resolve a diff (that unseals the holdout)
 
 **Retrieval hit rate**:
 The deterministic pre-synthesis triage metric: the fraction of an item's required cites whose citable paths reached the candidate set, matched hierarchically with the same matcher as cite grading. Splits failures into retrieval's fault vs synthesis's fault. Each candidate carries stage-provenance tags (vector / BM25 / graph expansion / rerank survivor), so component value shows up as mechanism, not just outcome.
