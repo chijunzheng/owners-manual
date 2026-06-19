@@ -114,13 +114,17 @@ items:
   # INS-02 (cross-corpus facet): the no-fault deductible chargeback. The
   # insurance-only facet (answer-policy-defers-deductible) establishes that the
   # master policy does not itself impose the deductible — it defers to the
-  # declaration. This fan-out answers whether the corporation can actually charge
-  # the owner, no-fault: the Condo Act s.105 machinery (the deductible gap is a
-  # common expense; a fault-based charge is automatic; a by-law may extend it to
-  # no-fault) plus this corporation's declaration, which imposes a chargeback
-  # regardless of fault but capped at the policy deductible and collectible by
-  # lien. The discriminating behavior is reading the cap and the no-fault basis
-  # correctly from the governing documents, not from the policy alone.
+  # declaration and the Act. This fan-out answers whether the corporation can
+  # charge the owner on a NO-FAULT basis, and the discriminating behavior is the
+  # distinction Condo Act s.105 draws: a fault-based charge (s.105(2)) is
+  # automatic, but the no-fault extension (s.105(3)) must be made by a by-law.
+  # The fixture corpus deliberately omits by-laws, so the right answer does NOT
+  # equate the declaration's regardless-of-fault clause with the required by-law;
+  # it flags that a no-fault charge turns on a by-law the owner has not seen and
+  # should obtain by a records request (cf. INS-01), while the deductible cap and
+  # the Coverage C backstop hold regardless. (Narrowed after Codex #64 P1: the
+  # earlier wording treated the declaration AS the s.105(3) by-law, which would
+  # mark a correct cautious answer wrong.)
   - id: answer-deductible-chargeback-no-fault
     behavior_class: answer
     corpus: cross-corpus
@@ -136,30 +140,33 @@ items:
           whether and on what terms an owner is charged the deductible is set out
           in the corporation's declaration, not in the policy. The answer
           therefore turns on the declaration and the Condominium Act.
-      - id: act-makes-the-deductible-a-common-expense
+      - id: act-charges-fault-based-damage-automatically
         text: Under the Act the part of a loss left uncovered by the policy's
-          deductible is itself a common expense, and where an owner, the owner's
-          tenant, or someone living in the unit causes damage to that unit
-          through an act or omission, the lesser of the repair cost and the
-          deductible is added automatically to that owner's common expenses.
-      - id: act-allows-a-no-fault-extension
-        text: The Act further lets the corporation pass a by-law extending that
-          charge beyond the owner's own act or omission — a no-fault chargeback —
-          so long as the loss was not caused by the corporation itself.
-      - id: this-declaration-imposes-a-capped-no-fault-chargeback
-        text: This corporation's declaration contains exactly such a chargeback.
-          Where the corporation's policy responds to a loss originating in a
-          unit, the owner of that unit must reimburse the deductible regardless
-          of fault,
-          but only up to the deductible amount stated in the policy, and any
-          unpaid amount is added to the owner's common expenses and recoverable
-          by a lien against the unit.
-      - id: bottom-line-capped-and-coverage-c-is-the-backstop
-        text: So on these documents the corporation can require the owner to pay
-          the deductible on a no-fault basis under its declaration, capped at the
-          policy's deductible and collected like any common expense; the owner's
-          own unit-policy loss-assessment coverage (Coverage C) is the backstop
-          for that amount, up to its limit.
+          deductible is a common expense, and where an owner, the owner's tenant,
+          or someone living in the unit causes damage to that unit through an act
+          or omission, the lesser of the repair cost and the deductible is added
+          automatically to that owner's common expenses. That automatic charge
+          depends on an act or omission.
+      - id: no-fault-charge-requires-a-by-law
+        text: A no-fault charge is different. The Act lets the corporation extend
+          the deductible charge to damage not caused by the owner's act or
+          omission only by passing a by-law to that effect; without such a
+          by-law the Act's automatic charge reaches only fault-based damage.
+      - id: declaration-purports-no-fault-but-the-by-law-is-absent
+        text: This corporation's declaration does contain a chargeback worded to
+          apply regardless of fault, capped at the deductible amount stated in
+          the policy and collectible as a common expense by a lien. But the
+          corporation's by-laws are not among the available documents, and the
+          Act locates the no-fault extension in a by-law — so whether a no-fault
+          charge is actually authorized turns on a by-law the owner has not seen
+          and that these sources do not contain.
+      - id: bottom-line-confirm-the-by-law-capped-and-coverage-c
+        text: So a fault-based deductible charge is clearly authorized, but a
+          no-fault charge depends on a by-law the owner should obtain through a
+          records request before treating it as settled; either way any such
+          charge is capped at the policy's deductible, and the owner's own
+          unit-policy loss-assessment coverage (Coverage C) is the backstop for
+          that amount, up to its limit.
     required_cites:
       - documentId: fixture-master-policy
         segments:
@@ -190,6 +197,16 @@ items:
           - { kind: section, label: article-v-insurance }
           - { kind: subsection, label: deductible-chargeback }
           - { kind: clause, label: p-2 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '3' }
       - documentId: fixture-unit-policy
         segments:
           - { kind: section, label: coverage-c-loss-assessment-and-deductible }
@@ -197,9 +214,9 @@ items:
     provenance:
       source: designed-fixture
       reference: 'FIXTURE-DESIGN.md INS-02 — deductible chargeback (cross-corpus
-        fan-out: the declaration imposes a no-fault chargeback capped at the
-        policy deductible on the Act''s s.105 machinery; Coverage C is the
-        backstop)'
+        fan-out: a no-fault charge requires a s.105(3) by-law absent from the
+        corpus, so the answer routes to a records request rather than equating
+        the declaration with the by-law; the cap and Coverage C backstop hold)'
     tags:
       difficulty: hard
       persona: owner
