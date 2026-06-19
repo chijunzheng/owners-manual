@@ -8,6 +8,7 @@ by default from an eval run).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -23,6 +24,7 @@ from owners_manual_evals.golden_loader import (
     load_golden_items,
     load_golden_items_from_text,
 )
+from owners_manual_evals.golden_split import load_frozen_sides
 
 _RTA_TREE = {
     "kind": "document",
@@ -335,6 +337,84 @@ def test_paraphrase_children_do_not_change_their_parents_stratum_counts() -> Non
     augmented_split = assign_split(augmented.items)
     for i in range(10):
         assert base_split[f"answer-{i}"] == augmented_split[f"answer-{i}"]
+
+
+# --- ADR 0007: frozen, append-stable split ---------------------------------
+
+
+def _answers(ids: list[str], *, corpus: str = "tenancy") -> tuple:
+    """A set of ``answer`` parents in one (corpus, behavior class) stratum."""
+    bodies = [_item_yaml(item_id=i, behavior_class="answer", corpus=corpus) for i in ids]
+    return load_golden_items_from_text(_set_yaml(bodies), documents=_DOCUMENTS).items
+
+
+def _digest_order(ids: list[str]) -> list[str]:
+    """The ids in the same SHA-256 order the split uses within a stratum."""
+    return sorted(ids, key=lambda i: hashlib.sha256(i.encode("utf-8")).hexdigest())
+
+
+def test_empty_freeze_reduces_to_the_pure_stratified_split() -> None:
+    # The freeze and the algorithm are testable apart: an empty manifest is the
+    # plain ~70/30 stratified split (first round(0.7 * n) by digest -> dev).
+    items = _answers([f"a-{i}" for i in range(10)])
+    split = assign_split(items, frozen={})
+    assert sum(1 for s in split.values() if s == "dev") == 7
+    assert sum(1 for s in split.values() if s == "holdout") == 3
+
+
+def test_frozen_parents_keep_their_side_as_the_set_grows() -> None:
+    # Append-stability — the property a sealed holdout needs: snapshot the
+    # baseline as the freeze, then adding parents never moves a frozen one.
+    base_ids = [f"p-{i}" for i in range(7)]
+    frozen = assign_split(_answers(base_ids), frozen={})
+
+    augmented = _answers(base_ids + [f"new-{i}" for i in range(5)])
+    grown = assign_split(augmented, frozen=frozen)
+    for item_id in base_ids:
+        assert grown[item_id] == frozen[item_id], f"{item_id} migrated across the seal"
+
+
+def test_freeze_prevents_a_growing_stratum_from_evicting_the_dev_anchor() -> None:
+    # The exact GOV-06 case: a one-item cell's parent is dev; adding a sibling
+    # re-splits the cell 1-dev/1-holdout, and in the PURE split a sibling that
+    # hashes ahead evicts the anchor to holdout. The freeze pins the anchor.
+    anchor = "cell-anchor"
+    assert assign_split(_answers([anchor]), frozen={})[anchor] == "dev"  # n=1 -> dev
+
+    # A sibling whose digest sorts BEFORE the anchor, so the pure split evicts it.
+    sibling = next(
+        s for s in (f"sibling-{i}" for i in range(1000)) if _digest_order([anchor, s])[0] == s
+    )
+    augmented = _answers([anchor, sibling])
+
+    pure = assign_split(augmented, frozen={})
+    assert pure[anchor] == "holdout" and pure[sibling] == "dev"  # the migration we forbid
+
+    frozen = assign_split(augmented, frozen={anchor: "dev"})
+    assert frozen[anchor] == "dev"  # anchor pinned, never evicted
+    assert frozen[sibling] == "holdout"  # the newcomer takes the holdout slot
+
+
+def test_new_parents_fill_the_remaining_dev_quota_in_digest_order() -> None:
+    # A cell of 4 parents: dev_quota = round(0.7 * 4) = 3. Freeze two as dev, so
+    # one dev slot remains; the two new parents fill it in digest order, the
+    # rest to holdout.
+    ids = ["w", "x", "y", "z"]
+    split = assign_split(_answers(ids), frozen={"w": "dev", "x": "dev"})
+    assert split["w"] == "dev" and split["x"] == "dev"  # pinned
+
+    new_in_digest_order = [i for i in _digest_order(ids) if i in ("y", "z")]
+    assert split[new_in_digest_order[0]] == "dev"  # fills the one remaining slot
+    assert split[new_in_digest_order[1]] == "holdout"  # quota full -> holdout
+
+
+def test_load_frozen_sides_reads_the_committed_manifest() -> None:
+    # The committed manifest is the authoritative freeze: the cross-corpus smoke
+    # anchor is pinned dev, and a parent authored after the freeze is absent, so
+    # it appends rather than displacing a frozen item.
+    frozen = load_frozen_sides()
+    assert frozen["flag-void-no-pets"] == "dev"
+    assert "flag-tenant-not-a-trespasser" not in frozen
 
 
 # --- AC 5: verified-only filtering for an eval run -------------------------

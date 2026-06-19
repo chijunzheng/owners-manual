@@ -1,0 +1,41 @@
+# Frozen dev/holdout assignment for golden PARENT items (ADR 0007).
+#
+# Generated once from the corpus x behavior-class stratified ~70/30 split and
+# thereafter AUTHORITATIVE: a parent listed here keeps its recorded side, so
+# growing the golden set never migrates an already-assigned item across the
+# holdout seal (golden_split.assign_split honors this map before it assigns).
+# New parents (absent here) append into each stratum's remaining dev quota in
+# SHA-256(id) order, defaulting to holdout once that quota is full -- so an
+# addition can never evict a frozen item. Paraphrases inherit their parent and
+# are intentionally absent. Regenerate ONLY at a deliberate milestone, never to
+# paper over a diff (that would unseal the holdout).
+version: 1
+sides:
+  answer-arrears-n4: dev
+  answer-deductible-chargeback-no-fault: dev
+  answer-deposits: holdout
+  answer-enforceable-lease-terms: dev
+  answer-gradual-leak-not-covered: dev
+  answer-improvements-not-covered: dev
+  answer-policy-defers-deductible: dev
+  answer-purchaser-own-use: dev
+  answer-rent-increase-rules: dev
+  answer-repair-duty-condo: holdout
+  answer-sewer-backup-gap: dev
+  answer-standard-unit-records-request: holdout
+  answer-str-restriction-provenance: dev
+  answer-sudden-burst-covered: holdout
+  flag-invalid-parking-fine: dev
+  flag-invalid-pet-rule: dev
+  flag-policy-cannot-ban-permitted-bbq: dev
+  flag-unauthorized-move-in-fee: holdout
+  flag-void-no-pets: dev
+  flag-void-prepaid-rent: holdout
+  flag-void-renewal-showings: dev
+  refuse-advice-best-option: dev
+  refuse-advice-n4-or-negotiate: holdout
+  refuse-advice-will-i-win: dev
+  refuse-jurisdiction-bc: holdout
+  refuse-jurisdiction-commercial: dev
+  refuse-scope-tax-deduction: holdout
+  refuse-scope-weather: dev
