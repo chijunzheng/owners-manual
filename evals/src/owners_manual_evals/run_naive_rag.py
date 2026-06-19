@@ -24,6 +24,7 @@ from .dashboard import Dashboard, build_dashboard, render_dashboard
 from .document_tree import DocumentTree
 from .golden_item import GoldenItem
 from .golden_loader import GoldenSet, assign_split, eval_run_items
+from .live_corpus import is_live_serviceable
 from .metrics import ItemScore, score_item
 
 #: Signature of the Langfuse score sink — kwargs-only so the live impl can add
@@ -64,10 +65,13 @@ class RunResult:
 
 
 def select_run_items(golden: GoldenSet, *, include_holdout: bool) -> tuple[GoldenItem, ...]:
-    """The verified items to run: dev split by default, the whole set when
-    ``include_holdout``. Verified-only filtering is delegated to
-    ``eval_run_items`` so an unverified item can never enter a run."""
-    runnable = eval_run_items(golden)
+    """The verified, live-serviceable items to run: dev split by default, the
+    whole set when ``include_holdout``. Verified-only filtering is delegated to
+    ``eval_run_items``; ``live_corpus.is_live_serviceable`` then gates out items
+    the deployed service cannot retrieve — a corpus authored offline but not yet
+    indexed (insurance before the corpus expansion) would otherwise report false
+    failures against a service that holds no chunks for it."""
+    runnable = tuple(item for item in eval_run_items(golden) if is_live_serviceable(item))
     if include_holdout:
         return runnable
     sides = assign_split(golden.items)

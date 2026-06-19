@@ -1,8 +1,8 @@
 """Golden-v0 loader tests (issue #10).
 
-The runner loads the committed golden v0 (``tenancy-v0.yaml``) against the
-committed trees. These pin that the set loads, validates, and yields a non-empty
-verified eval run — the same bytes the live command runs.
+The runner loads the committed golden set (the per-corpus ``items/`` directory)
+against the committed trees. These pin that the set loads, validates, and yields
+a non-empty verified eval run — the same bytes the live command runs.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def test_loads_the_golden_v0_documents() -> None:
 
 def test_loads_and_validates_the_golden_v0_set() -> None:
     golden = load_golden_v0_set()
-    assert golden.version == 1
+    assert golden.version == 2
     assert len(golden.items) > 0
 
 

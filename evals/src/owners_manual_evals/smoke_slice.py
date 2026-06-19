@@ -11,12 +11,12 @@ compare like with like.
 The composition is an explicit, committed id allowlist (:data:`SMOKE_V2_ITEM_IDS`)
 resolved against the loaded golden set. It is a PURE function: the same golden
 set always yields the same slice, and any drift — a curated id that vanished, an
-item that moved to holdout, a missing behavior class, an unverified item — is a
-loud :class:`ValueError`, never a silent skip. Changing the slice is therefore a
-deliberate edit to this list at a milestone, exactly as CONTEXT.md requires.
+item that moved to holdout, a missing behavior class, an unverified item, an item
+the live index cannot serve — is a loud :class:`ValueError`, never a silent skip.
+Changing the slice is therefore a deliberate edit to this list at a milestone.
 
-Two system invariants constrain WHICH golden items the slice may draw, and both
-are enforced here rather than left to a caller:
+Three system invariants constrain WHICH golden items the slice may draw, all
+enforced here rather than left to a caller:
 
 * **Dev-only.** The smoke gate runs per merge, which is the iteration cadence, so
   it is iteration-facing and must see the DEV split only (CONTEXT.md, "Dev/holdout
@@ -24,22 +24,26 @@ are enforced here rather than left to a caller:
   tier"; :mod:`eval_tier` refuses to unseal the holdout below the release tier).
   A per-merge slice that drew a holdout item would leak the overfit detector.
 * **Stable-at-baseline.** No measured baseline-stability signal exists yet — the
-  per-metric thresholds are calibrated only at #24, from the jitter observed
-  during this report-only phase. Until then the curated allowlist IS the
-  stability record: golden-v0's answers over the designed fixtures are ground
-  truth by construction (CONTEXT.md, "Designed fixture"), so a curated synthetic
-  item is stable by construction, and the slice changing requires a code edit.
+  per-metric thresholds are calibrated only at #24. Until then the curated
+  allowlist IS the stability record: a golden item's answers over the designed
+  fixtures are ground truth by construction (CONTEXT.md, "Designed fixture"), so
+  a curated synthetic item is stable by construction.
+* **Live-serviceable.** The smoke gate runs against the deployed service, so it
+  may only draw items whose required cites the LIVE index actually holds
+  (:mod:`live_corpus`). The offline trees are corpus-complete, but the live index
+  is the tenancy-v0 subset; an item citing a not-yet-indexed document would
+  report a false failure.
 
-Coverage (smoke-v2, the #22 re-split): generalizing the dev/holdout split to
-(corpus × behavior class) moved the ``flag-void-no-pets`` family — the
-``cross-corpus`` slice (its cites span tenancy and the governing declaration) —
-onto the DEV side. So smoke-v2 covers the tenancy AND cross-corpus slices (and
-that cross-corpus item exercises governing-document retrieval), the coverage
-smoke-v1 had to defer while the family sat on holdout (its "known coverage gap"),
-exactly the "a re-split puts such an item on the dev side" milestone smoke-v1
-anticipated. The standalone governing and insurance slices enter when the v1
-governing/insurance authoring lands stable dev-side items — later composition
-changes, by design.
+Coverage (smoke-v2): the slice covers every corpus the VERIFIED, dev-side,
+LIVE-SERVICEABLE items make available — currently tenancy and cross-corpus (the
+``flag-void-no-pets`` family the #22 re-split moved dev-side; its cites — lease,
+RTA, declaration — are all live-indexed). The #22 insurance slice (INS-03) is
+authored and verified but cites the insurance policy fixtures, which the live
+index does NOT yet hold, so it is gated out of this live gate. When the live
+corpus expands to insurance (add the policies to GOLDEN_V0_DOCUMENTS + re-ingest),
+insurance becomes live-serviceable and verified-dev, and the coverage invariant
+will require the slice to add an insurance item — the milestone smoke-v3 bump,
+surfaced loudly rather than slipped in.
 """
 
 from __future__ import annotations
@@ -49,21 +53,21 @@ from dataclasses import dataclass
 from .golden_item import BEHAVIOR_CLASSES, GoldenItem
 from .golden_loader import GoldenSet
 from .golden_split import assign_split
+from .live_corpus import is_live_serviceable
 
 #: The versioned composition tag (CONTEXT.md): trend lines compare like with like.
 SMOKE_SLICE_VERSION = "smoke-v2"
 
-#: The committed smoke-v2 item ids, in run order. All ten are dev-side, verified
-#: golden-v0 parents spanning all five behavior classes and the tenancy,
-#: governing, and cross-corpus slices. Changing this list is a milestone
-#: composition change (smoke-v3), never incidental. Grouped by behavior class:
+#: The committed smoke-v2 item ids, in run order. All ten are dev-side, verified,
+#: live-serviceable golden parents spanning all five behavior classes and the
+#: tenancy and cross-corpus slices. Changing this list is a milestone composition
+#: change (smoke-v3), never incidental. Grouped by behavior class:
 #:
 #: * answer (4): the core in-scope answers, including the enforceable-terms
 #:   over-flagging control;
 #: * flag-void-clause (2): the void-clause analyses — including ``flag-void-no-pets``,
 #:   the ``cross-corpus`` item (its cites span tenancy and the governing
-#:   declaration) the #22 re-split put on the dev side, so smoke-v2 covers the
-#:   cross-corpus slice for the first time;
+#:   declaration, both live-indexed) the #22 re-split put on the dev side;
 #: * refuse-advice-escalate (2), refuse-jurisdiction (1), refuse-out-of-scope (1):
 #:   the refusal classes, each first-class.
 #:
@@ -93,8 +97,9 @@ class SmokeSlice:
     """The resolved smoke slice: its version tag and the ordered golden items.
 
     ``items`` is in :data:`SMOKE_V2_ITEM_IDS` order — the run order — and has
-    passed every composition invariant (present, verified, dev-side, all five
-    behavior classes, every dev-available corpus).
+    passed every composition invariant (present, verified, dev-side,
+    live-serviceable, all five behavior classes, every verified-dev-available
+    corpus).
     """
 
     version: str
@@ -115,8 +120,10 @@ def compose_smoke_slice(
     * every resolved item is ``verified`` (an unverified item can never score);
     * every resolved item is on the DEV split (the smoke tier never unseals the
       holdout — that would leak the overfit detector);
+    * every resolved item is live-serviceable (the live index holds its cites);
     * all five behavior classes are represented;
-    * the slice covers every corpus the dev side makes available.
+    * the slice covers every corpus the verified, dev, live-serviceable items make
+      available.
 
     ``item_ids`` is injectable purely so the invariants can be tested against a
     deliberately-broken list; production always uses :data:`SMOKE_V2_ITEM_IDS`.
@@ -149,6 +156,15 @@ def compose_smoke_slice(
             "holdout item would leak the overfit detector (CONTEXT.md, Dev/holdout split)."
         )
 
+    unserviceable = [item.id for item in items if not is_live_serviceable(item)]
+    if unserviceable:
+        raise ValueError(
+            f"smoke-v2 slice names item id(s) the live index cannot serve: {unserviceable}. "
+            "The smoke gate runs against the deployed service, so every item's required cites "
+            "must be live-indexed (live_corpus.LIVE_INDEXED_DOCUMENT_IDS); a corpus authored "
+            "offline enters the gate only once it is indexed and re-ingested."
+        )
+
     present_classes = {item.behavior_class for item in items}
     missing_classes = [cls for cls in BEHAVIOR_CLASSES if cls not in present_classes]
     if missing_classes:
@@ -168,29 +184,41 @@ def _require_every_dev_corpus(
     sides: dict[str, str],
     items: tuple[GoldenItem, ...],
 ) -> None:
-    """Assert the slice covers every corpus SLICE the dev side makes available.
+    """Assert the slice covers every corpus the verified, dev, live-serviceable
+    items make available.
 
     Coverage is measured by the authoritative ``item.corpus`` (the dashboard
     slice), not by the corpora an item's cites happen to touch — so a cite-less
     refusal or adversarial item still counts toward its corpus (Codex PR #60).
-    "Available" is bounded by the holdout seal: a corpus present only on holdout
-    is not available to a dev-only per-merge slice.
+    Three bounds on "available": the holdout seal (a corpus present only on
+    holdout is not available to a dev-only per-merge slice), verification (the
+    slice is verified-only), and live-serviceability — a corpus present on dev
+    only through items the live index cannot serve (insurance before the corpus
+    expansion) is not yet runnable against the service, so it does not force
+    coverage. Once those items are indexed and re-ingested the corpus becomes
+    live-serviceable and verified-dev, and the slice must add one: a milestone
+    smoke bump, never an accident of the loader.
     """
-    dev_corpora = {item.corpus for item in golden.items if sides.get(item.id) == "dev"}
+    dev_corpora = {
+        item.corpus
+        for item in golden.items
+        if sides.get(item.id) == "dev" and item.verified and is_live_serviceable(item)
+    }
     slice_corpora = {item.corpus for item in items}
     missing = sorted(dev_corpora - slice_corpora)
     if missing:
         raise ValueError(
-            f"smoke-v2 slice does not cover dev-available corpus/corpora: {missing}. "
-            "The slice must span every corpus the dev side makes available (CONTEXT.md)."
+            f"smoke-v2 slice does not cover live-serviceable verified dev corpus/corpora: "
+            f"{missing}. The slice must span every corpus the verified, dev, live-serviceable "
+            "items make available (CONTEXT.md)."
         )
 
 
 def load_smoke_slice() -> SmokeSlice:
-    """Load golden-v0 and compose the committed smoke-v2 slice from it.
+    """Load the golden set and compose the committed smoke-v2 slice from it.
 
     The convenience entry point the live runner and the workflow use; the heavy
-    golden-v0 loader is imported lazily so importing this module stays cheap and
+    golden loader is imported lazily so importing this module stays cheap and
     needs no fixture trees on disk.
     """
     from .golden_v0 import load_golden_v0_set  # noqa: PLC0415

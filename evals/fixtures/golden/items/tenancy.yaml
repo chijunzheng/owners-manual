@@ -1,4 +1,6 @@
-# Golden set v0 — tenancy items (issue #9).
+# Golden set v1 — tenancy slice (issues #9, #22). One file of the per-corpus
+# golden directory evals/fixtures/golden/items/; the loader concatenates every
+# *.yaml there into one validated set.
 #
 # Hand-verification protocol: every item lands as `verified: false` and flips
 # true ONLY on the owner's per-item sign-off against a verification packet that
@@ -16,7 +18,7 @@
 # citable paths into the committed trees (evals/fixtures/golden/trees/), and
 # answer-point text is claim-level paraphrase.
 
-version: 1
+version: 2
 items:
   # --- batch 1: answer class -------------------------------------------------
 

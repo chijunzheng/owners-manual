@@ -28,6 +28,7 @@ from .document_tree import DocumentTree
 from .golden_fixtures import resolve_fixtures_dir
 from .golden_item import GoldenItem
 from .golden_loader import GoldenSet, eval_run_items
+from .live_corpus import is_live_serviceable
 from .metrics import score_item
 from .offline_retrieval import RetrievalDoc, retrieve_hybrid, retrieve_vector_only
 
@@ -157,8 +158,13 @@ def run_live_comparison(
     vector-only and hybrid run over the SAME hierarchy chunks and the delta
     isolates the BM25+RRF mechanism. Items with required cites are measured (a
     refusal contributes a vacuous 1.0 to both arms and never moves the delta).
+    Only LIVE-SERVICEABLE items are measured — an item whose cites the live index
+    does not hold (insurance before the corpus expansion) is skipped rather than
+    scored as a false miss against a service with no chunks for it.
     """
-    items = tuple(item for item in eval_run_items(golden) if item.required_cites)
+    items = tuple(
+        item for item in eval_run_items(golden) if item.required_cites and is_live_serviceable(item)
+    )
 
     vector_scores = []
     hybrid_scores = []
