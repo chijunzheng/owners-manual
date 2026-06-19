@@ -12,15 +12,15 @@ Concretely, authoring the GOV-06 cross-corpus item: the `(cross-corpus, flag-voi
 
 Freeze the assignment in a committed manifest, and make growth append-only.
 
-- **A committed manifest is authoritative.** `evals/fixtures/golden/split-manifest.yaml` records every parent's side at the freeze point. `assign_split` reads it by default (the safe default — every caller sees the sealed partition) and pins each listed parent to its recorded side.
-- **New parents append, they never displace.** A parent absent from the manifest is *new*: it fills its stratum's remaining dev quota (`round(0.7 · n)` minus the frozen-dev already there) in `SHA-256(id)` order, and defaults to holdout once that quota is full. A frozen parent is never moved, so an addition can never evict one across the seal.
+- **A committed manifest is authoritative.** `evals/fixtures/golden/split-manifest.yaml` records the side of *every committed parent*. `assign_split` reads it by default (the safe default — every caller sees the sealed partition) and pins each listed parent to its recorded side.
+- **New parents are computed by fill, then recorded.** A parent absent from the manifest is *new*: `assign_split` fills its stratum's remaining dev quota (`round(0.7 · n)` minus the frozen-dev already there) in `SHA-256(id)` order, defaulting to holdout once full. Authoring **records** that decided side in the manifest in the *same* change, so the committed manifest always lists every parent — a guard test asserts `manifest == parent set`. An unrecorded parent is not actually frozen: it is recomputed each load, and a later sibling could move it across the seal (Codex PR #67), so recording is mandatory, not optional.
 - **The algorithm and the freeze are testable apart.** With an empty manifest the rule reduces *exactly* to the pure ~70/30 stratified split, so the existing split tests still pin the algorithm (they assign synthetic ids absent from the manifest) and a separate suite pins the freeze (append-stability, the eviction-prevention case, quota fill order).
 - **Paraphrases are unchanged.** Only parents participate; variants inherit their parent's side and are intentionally absent from the manifest.
 
 ## Consequences
 
-- `flag-void-no-pets` stays dev (frozen); GOV-06 lands holdout. GOV-06 cites the Condo Act, which the live index does not hold, so it is not live-serviceable and was never smoke-eligible — holdout is its correct home.
-- New items default to holdout-fill: the **holdout grows freely while dev stays a curated set**. Putting a new item on dev is now a deliberate manifest edit at a milestone, not an accident of how many siblings happen to share its stratum.
+- `flag-void-no-pets` stays dev (frozen); GOV-06 lands holdout and is recorded there. GOV-06 cites the Condo Act, which the live index does not hold, so it is not live-serviceable and was never smoke-eligible — holdout is its correct home.
+- A new parent is computed by the holdout-leaning fill and then **frozen by recording it**, so the **holdout grows freely while dev stays a curated set** and, once recorded, a parent never moves. Putting a new item on dev is a deliberate manifest entry, not an accident of how many siblings happen to share its stratum.
 - Regenerating the manifest is a milestone act, gated by review. Regenerating it to "make a diff go away" would re-partition the seal and unseal the holdout — the manifest's header says so, and the freeze tests would not catch a wholesale regen, so this is a discipline the reviewer enforces.
 - `assign_split` now performs a small disk read by default (the manifest); callers wanting the raw algorithm pass `frozen={}`. The fixtures locator is imported lazily, so importing the module stays free of the fixture machinery.
 

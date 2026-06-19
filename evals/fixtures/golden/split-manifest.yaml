@@ -1,14 +1,15 @@
-# Frozen dev/holdout assignment for golden PARENT items (ADR 0007).
+# Frozen dev/holdout side of EVERY committed golden PARENT (ADR 0007).
 #
-# Generated once from the corpus x behavior-class stratified ~70/30 split and
-# thereafter AUTHORITATIVE: a parent listed here keeps its recorded side, so
-# growing the golden set never migrates an already-assigned item across the
-# holdout seal (golden_split.assign_split honors this map before it assigns).
-# New parents (absent here) append into each stratum's remaining dev quota in
-# SHA-256(id) order, defaulting to holdout once that quota is full -- so an
-# addition can never evict a frozen item. Paraphrases inherit their parent and
-# are intentionally absent. Regenerate ONLY at a deliberate milestone, never to
-# paper over a diff (that would unseal the holdout).
+# AUTHORITATIVE: a parent listed here keeps its recorded side, so growing the
+# golden set never migrates an already-assigned item across the holdout seal
+# (golden_split.assign_split honors this map before it assigns). Authoring a new
+# parent computes its side via the stratified fill (assign_split fills the
+# stratum's remaining dev quota in SHA-256(id) order, else holdout) and RECORDS
+# the result here in the SAME change -- an unrecorded parent is not actually
+# frozen (it is recomputed each load, and a later sibling could move it across
+# the seal), so a guard test asserts this manifest lists exactly the parent set.
+# Paraphrases inherit their parent and are intentionally absent. Regenerate ONLY
+# at a deliberate milestone, never to paper over a diff (that unseals the holdout).
 version: 1
 sides:
   answer-arrears-n4: dev
@@ -28,6 +29,7 @@ sides:
   flag-invalid-parking-fine: dev
   flag-invalid-pet-rule: dev
   flag-policy-cannot-ban-permitted-bbq: dev
+  flag-tenant-not-a-trespasser: holdout
   flag-unauthorized-move-in-fee: holdout
   flag-void-no-pets: dev
   flag-void-prepaid-rent: holdout

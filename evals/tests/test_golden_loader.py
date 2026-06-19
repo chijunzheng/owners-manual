@@ -25,6 +25,7 @@ from owners_manual_evals.golden_loader import (
     load_golden_items_from_text,
 )
 from owners_manual_evals.golden_split import load_frozen_sides
+from owners_manual_evals.golden_v0 import load_golden_v0_set
 
 _RTA_TREE = {
     "kind": "document",
@@ -410,11 +411,24 @@ def test_new_parents_fill_the_remaining_dev_quota_in_digest_order() -> None:
 
 def test_load_frozen_sides_reads_the_committed_manifest() -> None:
     # The committed manifest is the authoritative freeze: the cross-corpus smoke
-    # anchor is pinned dev, and a parent authored after the freeze is absent, so
-    # it appends rather than displacing a frozen item.
+    # anchor is pinned dev, and GOV-06 -- the parent that motivated the freeze --
+    # is recorded on holdout, so a later sibling can never move it to dev.
     frozen = load_frozen_sides()
     assert frozen["flag-void-no-pets"] == "dev"
-    assert "flag-tenant-not-a-trespasser" not in frozen
+    assert frozen["flag-tenant-not-a-trespasser"] == "holdout"
+
+
+def test_committed_manifest_freezes_every_golden_parent() -> None:
+    # The seal is airtight only if EVERY committed parent is recorded: an
+    # unrecorded parent is recomputed each load and can migrate across the seal
+    # when a sibling is added (Codex PR #67). Authoring a new parent must record
+    # its decided side in the manifest in the same change; this guard enforces it.
+    parents = {item.id for item in load_golden_v0_set().items if item.paraphrase_of is None}
+    manifest = set(load_frozen_sides())
+    assert manifest == parents, (
+        f"split manifest out of sync with golden parents: "
+        f"missing {sorted(parents - manifest)}, stale {sorted(manifest - parents)}"
+    )
 
 
 # --- AC 5: verified-only filtering for an eval run -------------------------
