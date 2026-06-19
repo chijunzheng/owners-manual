@@ -66,7 +66,7 @@ def _item_yaml(
         f"        text: A point.\n"
         f"{cite}"
         f"    provenance:\n"
-        f"      source: designed-fixture\n"
+        f"      source: statute\n"
         f"      reference: fixture {item_id}\n"
     )
 
@@ -421,7 +421,7 @@ def _cited_item_yaml(*, item_id: str, corpus: str, cites: list[tuple[str, str]])
         f"    question: Q for {item_id}?\n"
         f"    answer_points:\n      - id: p1\n        text: A point.\n"
         f"    required_cites:\n{cite_lines}"
-        f"    provenance:\n      source: designed-fixture\n      reference: fixture {item_id}\n"
+        f"    provenance:\n      source: statute\n      reference: fixture {item_id}\n"
     )
 
 

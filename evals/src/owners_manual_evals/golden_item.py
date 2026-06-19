@@ -23,6 +23,7 @@ from typing import Literal, get_args
 from .citable_path import CitablePath, parse_citable_path
 from .cite_matcher import resolves_to_node
 from .document_tree import DocumentTree
+from .fixture_design import FIXTURE_DESIGN_ID_SET
 
 #: The five behavior classes a golden item can assert (CONTEXT.md, "Golden set").
 BehaviorClass = Literal[
@@ -66,6 +67,10 @@ _ANSWER_POINT_KEYS = frozenset({"id", "text"})
 
 #: The keys a provenance mapping may carry.
 _PROVENANCE_KEYS = frozenset({"source", "reference"})
+
+#: The provenance source that marks an item as mined from a designed fixture;
+#: such an item must name the planted conflict it instantiates via tags.fixture.
+_DESIGNED_FIXTURE_SOURCE = "designed-fixture"
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,6 +134,7 @@ def parse_golden_item(value: object, *, documents: Sequence[DocumentTree]) -> Go
     provenance = _parse_provenance(value, item_id)
     paraphrase_of = _parse_paraphrase_of(value, item_id)
     tags = _parse_tags(value, item_id)
+    _validate_fixture_tag(provenance=provenance, tags=tags, item_id=item_id)
 
     return GoldenItem(
         id=item_id,
@@ -249,6 +255,37 @@ def _parse_tags(value: dict, item_id: str) -> tuple[tuple[str, str], ...]:
             raise ValueError(f"golden item {item_id!r} tag {key!r} must be a non-empty string")
         tags.append((key, tag_value))
     return tuple(sorted(tags))
+
+
+def _validate_fixture_tag(
+    *, provenance: Provenance, tags: tuple[tuple[str, str], ...], item_id: str
+) -> None:
+    """Tie a designed-fixture item to the planted conflict it instantiates (#22).
+
+    Two rules:
+
+    * a ``fixture`` tag, when present, must name a real planted-conflict id
+      (``FIXTURE_DESIGN_IDS``) — a typo can never silently detach an item from
+      its conflict;
+    * an item whose provenance ``source`` is ``designed-fixture`` MUST carry a
+      ``fixture`` tag — a fixture-mined item that names no conflict is exactly
+      the untraceable case the "reference conflicts by ID" AC forbids.
+
+    A ``fixture`` tag is permitted (and value-checked) on any source, so an item
+    grounded primarily in a statute may still point at the conflict it exercises.
+    """
+    fixture_id = dict(tags).get("fixture")
+    if fixture_id is not None and fixture_id not in FIXTURE_DESIGN_ID_SET:
+        raise ValueError(
+            f"golden item {item_id!r} has fixture tag {fixture_id!r}, which is not a known "
+            f"planted-conflict id; expected one of {sorted(FIXTURE_DESIGN_ID_SET)}"
+        )
+    if provenance.source == _DESIGNED_FIXTURE_SOURCE and fixture_id is None:
+        raise ValueError(
+            f"golden item {item_id!r} has provenance source {_DESIGNED_FIXTURE_SOURCE!r} but no "
+            f"fixture tag; a designed-fixture item must name the planted conflict it "
+            f"instantiates via tags.fixture (issue #22)"
+        )
 
 
 def _require_nonempty_str(mapping: dict, key: str, what: str) -> str:

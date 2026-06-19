@@ -310,6 +310,7 @@ items:
       difficulty: hard
       persona: tenant
       design: over-flagging-control
+      fixture: LEASE-08
 
   # --- batch 2: flag-void-clause class ---------------------------------------
 
@@ -361,6 +362,7 @@ items:
     tags:
       difficulty: hard
       persona: tenant
+      fixture: LEASE-01
 
   # LEASE-03: surface compliance — the adverb "voluntarily" inside an
   # obligating lease term does no legal work. The only money a landlord may
@@ -411,6 +413,7 @@ items:
       difficulty: hard
       persona: tenant
       design: adversarial
+      fixture: LEASE-03
 
   # LEASE-06: composite misconception — the clause assumes silence at term end
   # means the tenancy is ending. By statute the fixed term rolls into a
@@ -461,6 +464,7 @@ items:
     tags:
       difficulty: hard
       persona: tenant
+      fixture: LEASE-06
 
   # --- batch 3: refusal classes ----------------------------------------------
   # Refusal items carry no required cites: the asserted behavior is the
@@ -985,6 +989,7 @@ items:
     tags:
       difficulty: hard
       persona: landlord
+      fixture: LEASE-01
 
   # flag-void-no-pets: colloquial tenant register.
   - id: flag-void-no-pets-paraphrase-2
@@ -1030,6 +1035,7 @@ items:
     tags:
       difficulty: hard
       persona: tenant
+      fixture: LEASE-01
 
   # flag-void-prepaid-rent: formal tenant register.
   - id: flag-void-prepaid-rent-paraphrase-1
@@ -1077,6 +1083,7 @@ items:
       difficulty: hard
       persona: tenant
       design: adversarial
+      fixture: LEASE-03
 
   # flag-void-prepaid-rent: landlord-perspective flip (the lawfulness of the
   # term is the same question from either side).
@@ -1125,3 +1132,4 @@ items:
       difficulty: hard
       persona: landlord
       design: adversarial
+      fixture: LEASE-03

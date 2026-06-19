@@ -101,6 +101,7 @@ items:
     tags:
       difficulty: hard
       persona: landlord
+      fixture: LEASE-02
 
   # --- refuse-jurisdiction: a BC question; no cites (nothing to cite) ---
   - id: sample-refuse-jurisdiction-bc
