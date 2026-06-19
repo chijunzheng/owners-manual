@@ -1,0 +1,350 @@
+# Golden set v1 — cross-corpus slice (issue #22). One file of the per-corpus
+# golden directory evals/fixtures/golden/items/; the loader concatenates every
+# *.yaml there into one validated set.
+#
+# Scope (the #60 corpus<->cites guardrail): an item's corpus follows its cites —
+# a single corpus when every cite lands in one, "cross-corpus" when the required
+# cites span two or more. These are the genuinely multi-instrument questions: the
+# right answer cannot be read out of any one document, so the system has to fan
+# out across the insurance policies, the governing documents (the Condominium
+# Act and the declaration), and the tenancy statute.
+#
+# Two of these are the cross-corpus FACETS of the insurance conflicts whose
+# policy-reading halves live in insurance.yaml. INS-01 and INS-02 each pose a
+# question the policy alone cannot close: the policy insures only the "standard
+# unit" but defines it by reference to a by-law that is not in the corpus
+# (INS-01), and the policy charges the deductible only as the declaration and
+# the Act provide (INS-02). The fan-out item routes from the insurance question
+# into the governing instruments that actually resolve it. The third family,
+# LEASE-01 (the void no-pets clause), is the original cross-corpus item from v0,
+# moved here from tenancy.yaml so every cross-corpus item lives in one file.
+#
+# Hand-verification protocol (unchanged from #9): every item lands verified:
+# false and flips true ONLY on the owner's per-item sign-off against a local
+# verification packet that quotes the resolved text of every required cite. Git
+# history is the audit record; the eval runner's verified-only filter excludes
+# unsigned items from real runs. Like the insurance slice, these items cite the
+# policy fixtures and/or the Condo Act, which the live index does not yet hold,
+# so they are not live-serviceable and stay gated out of live/smoke runs.
+#
+# No Crown-copyright statute text appears here: cites are addressing-only citable
+# paths into the committed trees (evals/fixtures/golden/trees/), and answer-point
+# text is claim-level paraphrase.
+
+version: 2
+items:
+  # INS-01 (cross-corpus facet): the standard-unit boundary. The insurance-only
+  # facet (answer-improvements-not-covered) establishes that upgrades beyond the
+  # standard unit are insured by neither policy. This fan-out answers the next
+  # question — where exactly is that boundary? — and the discriminating behavior
+  # is recognizing that the answer lives in a by-law absent from the corpus and
+  # routing the owner to a records request under Condo Act s.55, rather than
+  # guessing the boundary from the policy or declaration text.
+  - id: answer-standard-unit-records-request
+    behavior_class: answer
+    corpus: cross-corpus
+    verified: true
+    question: >-
+      My condo's insurance only covers the "standard unit," and both the master
+      policy and the declaration say what the standard unit actually is gets
+      defined in the corporation's by-laws. I've never seen those by-laws. How
+      do I find out where the standard unit ends and my own upgrades begin, so I
+      know what I have to insure myself?
+    answer_points:
+      - id: boundary-lives-in-the-by-laws
+        text: What counts as the "standard unit" — and therefore where an
+          owner's own improvements begin — is fixed by the corporation's
+          by-laws. Both the master policy and the declaration define the insured
+          standard unit by reference to the by-laws rather than setting the
+          boundary out themselves.
+      - id: by-law-absent-from-these-sources
+        text: That standard-unit by-law is not among the documents available
+          here — the declaration, the policies, and the rules — so these sources
+          alone cannot say exactly where the standard unit ends; the boundary
+          depends on a by-law the owner has not seen.
+      - id: by-laws-are-an-obtainable-record
+        text: The corporation is required to keep a copy of its declaration,
+          by-laws, and rules among its records, and to permit an owner, or the
+          owner's authorized agent, to examine or obtain copies of those
+          records. The standard-unit by-law is therefore a record the owner is
+          entitled to request.
+      - id: obtain-it-then-anything-above-is-the-owners
+        text: The owner should obtain the standard-unit by-law through a records
+          request and read the boundary from it; anything in the unit beyond
+          that standard unit, such as upgraded flooring or counters, is an
+          improvement the corporation's insurance does not cover and that the
+          owner must insure under their own policy.
+    required_cites:
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: insured-property }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: insured-property }
+          - { kind: clause, label: p-3 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-i-definitions }
+          - { kind: clause, label: p-9 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: clause, label: p-2 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '3' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-01 — undefined standard unit
+        (cross-corpus fan-out: the boundary lives in a by-law absent from the
+        corpus, routing the owner to a records request under Condo Act s.55)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-01
+
+  # INS-02 (cross-corpus facet): the no-fault deductible chargeback. The
+  # insurance-only facet (answer-policy-defers-deductible) establishes that the
+  # master policy does not itself impose the deductible — it defers to the
+  # declaration. This fan-out answers whether the corporation can actually charge
+  # the owner, no-fault: the Condo Act s.105 machinery (the deductible gap is a
+  # common expense; a fault-based charge is automatic; a by-law may extend it to
+  # no-fault) plus this corporation's declaration, which imposes a chargeback
+  # regardless of fault but capped at the policy deductible and collectible by
+  # lien. The discriminating behavior is reading the cap and the no-fault basis
+  # correctly from the governing documents, not from the policy alone.
+  - id: answer-deductible-chargeback-no-fault
+    behavior_class: answer
+    corpus: cross-corpus
+    verified: true
+    question: >-
+      A pipe failed inside my unit and the corporation's insurance is paying to
+      repair the damage. The property manager now says I have to pay the
+      policy's deductible — and that it doesn't matter that the failure wasn't
+      my fault. Can the corporation really make me pay that?
+    answer_points:
+      - id: policy-sends-you-to-the-declaration
+        text: The master policy does not itself decide this; it states that
+          whether and on what terms an owner is charged the deductible is set out
+          in the corporation's declaration, not in the policy. The answer
+          therefore turns on the declaration and the Condominium Act.
+      - id: act-makes-the-deductible-a-common-expense
+        text: Under the Act the part of a loss left uncovered by the policy's
+          deductible is itself a common expense, and where an owner, the owner's
+          tenant, or someone living in the unit causes damage to that unit
+          through an act or omission, the lesser of the repair cost and the
+          deductible is added automatically to that owner's common expenses.
+      - id: act-allows-a-no-fault-extension
+        text: The Act further lets the corporation pass a by-law extending that
+          charge beyond the owner's own act or omission — a no-fault chargeback —
+          so long as the loss was not caused by the corporation itself.
+      - id: this-declaration-imposes-a-capped-no-fault-chargeback
+        text: This corporation's declaration contains exactly such a chargeback.
+          Where the corporation's policy responds to a loss originating in a
+          unit, the owner of that unit must reimburse the deductible regardless
+          of fault,
+          but only up to the deductible amount stated in the policy, and any
+          unpaid amount is added to the owner's common expenses and recoverable
+          by a lien against the unit.
+      - id: bottom-line-capped-and-coverage-c-is-the-backstop
+        text: So on these documents the corporation can require the owner to pay
+          the deductible on a no-fault basis under its declaration, capped at the
+          policy's deductible and collected like any common expense; the owner's
+          own unit-policy loss-assessment coverage (Coverage C) is the backstop
+          for that amount, up to its limit.
+    required_cites:
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: deductible-responsibility }
+          - { kind: clause, label: p-1 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '3' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: subsection, label: deductible-chargeback }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: subsection, label: deductible-chargeback }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-c-loss-assessment-and-deductible }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-02 — deductible chargeback (cross-corpus
+        fan-out: the declaration imposes a no-fault chargeback capped at the
+        policy deductible on the Act''s s.105 machinery; Coverage C is the
+        backstop)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-02
+
+  # LEASE-01: the lease's blanket no-pets clause is void (RTA s.14), but the
+  # naive "you're fine" answer is incomplete — the condominium declaration is
+  # not a tenancy-agreement provision, the lease itself incorporates the condo
+  # documents, and the declaration's pet limits (two household pets, cat/dog
+  # <= 20 kg) still govern. For a single cat the declaration PERMITS the pet,
+  # subject to its nuisance-removal power. Cross-corpus (lease + RTA +
+  # declaration); moved here from tenancy.yaml to consolidate the slice.
+  - id: flag-void-no-pets
+    behavior_class: flag-void-clause
+    corpus: cross-corpus
+    verified: true
+    question: >-
+      My condo lease says no pets of any kind, but I got a cat anyway. Can my
+      landlord actually do anything about it?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: tenant
+      fixture: LEASE-01
+
+  # flag-void-no-pets: landlord-perspective flip (the enforceability answer is
+  # identical from either side of the lease).
+  - id: flag-void-no-pets-paraphrase-1
+    behavior_class: flag-void-clause
+    corpus: cross-corpus
+    verified: true
+    paraphrase_of: flag-void-no-pets
+    question: >-
+      My condo lease with my tenant says no pets of any kind, but she got a
+      cat anyway. Can I actually enforce that clause?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: landlord
+      fixture: LEASE-01
+
+  # flag-void-no-pets: colloquial tenant register.
+  - id: flag-void-no-pets-paraphrase-2
+    behavior_class: flag-void-clause
+    corpus: cross-corpus
+    verified: true
+    paraphrase_of: flag-void-no-pets
+    question: >-
+      There's a "no pets of any kind" line in my condo lease, and I've had my
+      cat here for a month now. Does my landlord have any actual power here?
+    answer_points:
+      - id: lease-clause-void
+        text: A tenancy-agreement provision prohibiting animals in or about the
+          residential complex is void, so the lease's no-pets clause is
+          unenforceable by the landlord.
+      - id: declaration-still-binds
+        text: The condominium declaration is not a provision in a tenancy
+          agreement, so its pet rules are not voided and continue to bind the
+          unit's occupants.
+      - id: cat-within-limits
+        text: A single cat falls within the declaration's limit of two
+          household pets (cats or dogs up to 20 kg), so the cat itself is
+          permitted, subject to the board's power to require removal of a pet
+          that becomes a nuisance.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '14' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
+        condo-pathway fan-out'
+    tags:
+      difficulty: hard
+      persona: tenant
+      fixture: LEASE-01

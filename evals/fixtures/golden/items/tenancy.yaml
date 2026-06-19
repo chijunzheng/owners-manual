@@ -9,10 +9,14 @@
 # verified-only filter excludes unverified items from real runs, so a drafted
 # but unsigned item can never score.
 #
-# Design (locked in the 2026-06-12 grill session): 16 parents, 6/3/3/2/2 across
-# the five behavior classes, plus 2 paraphrase variants on each of 5 parents.
-# Batches land in order: 6 answer -> 3 flag-void-clause -> 7 refusals -> 10
-# paraphrase variants.
+# Design (locked in the 2026-06-12 grill session): originally 16 parents,
+# 6/3/3/2/2 across the five behavior classes, plus 2 paraphrase variants on each
+# of 5 parents. The LEASE-01 cross-corpus family (the void no-pets clause and
+# its 2 variants) has since moved to cross-corpus.yaml so that every cross-corpus
+# item lives in one file, leaving this tenancy slice at 15 parents (6 answer /
+# 2 flag-void-clause / 3 refuse-advice / 2 refuse-jurisdiction / 2
+# refuse-out-of-scope) and 8 paraphrase variants. Every item here is
+# corpus: tenancy.
 #
 # No Crown-copyright statute text appears here: cites are addressing-only
 # citable paths into the committed trees (evals/fixtures/golden/trees/), and
@@ -315,56 +319,6 @@ items:
       fixture: LEASE-08
 
   # --- batch 2: flag-void-clause class ---------------------------------------
-
-  # LEASE-01: the lease's blanket no-pets clause is void (RTA s.14), but the
-  # naive "you're fine" answer is incomplete — the condominium declaration is
-  # not a tenancy-agreement provision, the lease itself incorporates the condo
-  # documents, and the declaration's pet limits (two household pets, cat/dog
-  # <= 20 kg) still govern. For a single cat the declaration PERMITS the pet,
-  # subject to its nuisance-removal power.
-  - id: flag-void-no-pets
-    behavior_class: flag-void-clause
-    corpus: cross-corpus
-    verified: true
-    question: >-
-      My condo lease says no pets of any kind, but I got a cat anyway. Can my
-      landlord actually do anything about it?
-    answer_points:
-      - id: lease-clause-void
-        text: A tenancy-agreement provision prohibiting animals in or about the
-          residential complex is void, so the lease's no-pets clause is
-          unenforceable by the landlord.
-      - id: declaration-still-binds
-        text: The condominium declaration is not a provision in a tenancy
-          agreement, so its pet rules are not voided and continue to bind the
-          unit's occupants.
-      - id: cat-within-limits
-        text: A single cat falls within the declaration's limit of two
-          household pets (cats or dogs up to 20 kg), so the cat itself is
-          permitted, subject to the board's power to require removal of a pet
-          that becomes a nuisance.
-    required_cites:
-      - documentId: fixture-lease
-        segments:
-          - { kind: section, label: pets }
-          - { kind: clause, label: p-1 }
-      - documentId: rta-2006
-        segments:
-          - { kind: part, label: II }
-          - { kind: section, label: '14' }
-      - documentId: fixture-declaration
-        segments:
-          - { kind: section, label: article-iii-use-and-occupation-of-units }
-          - { kind: subsection, label: pets }
-          - { kind: clause, label: p-1 }
-    provenance:
-      source: designed-fixture
-      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
-        condo-pathway fan-out'
-    tags:
-      difficulty: hard
-      persona: tenant
-      fixture: LEASE-01
 
   # LEASE-03: surface compliance — the adverb "voluntarily" inside an
   # obligating lease term does no legal work. The only money a landlord may
@@ -945,99 +899,6 @@ items:
     tags:
       difficulty: easy
       persona: landlord
-
-  # flag-void-no-pets: landlord-perspective flip (the enforceability answer is
-  # identical from either side of the lease).
-  - id: flag-void-no-pets-paraphrase-1
-    behavior_class: flag-void-clause
-    corpus: cross-corpus
-    verified: true
-    paraphrase_of: flag-void-no-pets
-    question: >-
-      My condo lease with my tenant says no pets of any kind, but she got a
-      cat anyway. Can I actually enforce that clause?
-    answer_points:
-      - id: lease-clause-void
-        text: A tenancy-agreement provision prohibiting animals in or about the
-          residential complex is void, so the lease's no-pets clause is
-          unenforceable by the landlord.
-      - id: declaration-still-binds
-        text: The condominium declaration is not a provision in a tenancy
-          agreement, so its pet rules are not voided and continue to bind the
-          unit's occupants.
-      - id: cat-within-limits
-        text: A single cat falls within the declaration's limit of two
-          household pets (cats or dogs up to 20 kg), so the cat itself is
-          permitted, subject to the board's power to require removal of a pet
-          that becomes a nuisance.
-    required_cites:
-      - documentId: fixture-lease
-        segments:
-          - { kind: section, label: pets }
-          - { kind: clause, label: p-1 }
-      - documentId: rta-2006
-        segments:
-          - { kind: part, label: II }
-          - { kind: section, label: '14' }
-      - documentId: fixture-declaration
-        segments:
-          - { kind: section, label: article-iii-use-and-occupation-of-units }
-          - { kind: subsection, label: pets }
-          - { kind: clause, label: p-1 }
-    provenance:
-      source: designed-fixture
-      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
-        condo-pathway fan-out'
-    tags:
-      difficulty: hard
-      persona: landlord
-      fixture: LEASE-01
-
-  # flag-void-no-pets: colloquial tenant register.
-  - id: flag-void-no-pets-paraphrase-2
-    behavior_class: flag-void-clause
-    corpus: cross-corpus
-    verified: true
-    paraphrase_of: flag-void-no-pets
-    question: >-
-      There's a "no pets of any kind" line in my condo lease, and I've had my
-      cat here for a month now. Does my landlord have any actual power here?
-    answer_points:
-      - id: lease-clause-void
-        text: A tenancy-agreement provision prohibiting animals in or about the
-          residential complex is void, so the lease's no-pets clause is
-          unenforceable by the landlord.
-      - id: declaration-still-binds
-        text: The condominium declaration is not a provision in a tenancy
-          agreement, so its pet rules are not voided and continue to bind the
-          unit's occupants.
-      - id: cat-within-limits
-        text: A single cat falls within the declaration's limit of two
-          household pets (cats or dogs up to 20 kg), so the cat itself is
-          permitted, subject to the board's power to require removal of a pet
-          that becomes a nuisance.
-    required_cites:
-      - documentId: fixture-lease
-        segments:
-          - { kind: section, label: pets }
-          - { kind: clause, label: p-1 }
-      - documentId: rta-2006
-        segments:
-          - { kind: part, label: II }
-          - { kind: section, label: '14' }
-      - documentId: fixture-declaration
-        segments:
-          - { kind: section, label: article-iii-use-and-occupation-of-units }
-          - { kind: subsection, label: pets }
-          - { kind: clause, label: p-1 }
-    provenance:
-      source: designed-fixture
-      reference: 'FIXTURE-DESIGN.md LEASE-01 — void no-pets clause with the
-        condo-pathway fan-out'
-    tags:
-      difficulty: hard
-      persona: tenant
-      fixture: LEASE-01
 
   # flag-void-prepaid-rent: formal tenant register.
   - id: flag-void-prepaid-rent-paraphrase-1
