@@ -168,21 +168,28 @@ def _require_every_dev_corpus(
     sides: dict[str, str],
     items: tuple[GoldenItem, ...],
 ) -> None:
-    """Assert the slice covers every corpus SLICE the dev side makes available.
+    """Assert the slice covers every corpus the VERIFIED dev items make available.
 
     Coverage is measured by the authoritative ``item.corpus`` (the dashboard
     slice), not by the corpora an item's cites happen to touch — so a cite-less
     refusal or adversarial item still counts toward its corpus (Codex PR #60).
-    "Available" is bounded by the holdout seal: a corpus present only on holdout
-    is not available to a dev-only per-merge slice.
+    Two bounds on "available": the holdout seal (a corpus present only on holdout
+    is not available to a dev-only per-merge slice) and verification. The slice
+    is verified-only, so a corpus present on dev only through UNVERIFIED items —
+    a corpus mid-authoring, e.g. insurance before per-item sign-off — is not yet
+    runnable and does not force coverage. Once those items are signed off the
+    corpus becomes verified-dev and the slice must add one: a milestone smoke
+    bump, never an accident of the loader.
     """
-    dev_corpora = {item.corpus for item in golden.items if sides.get(item.id) == "dev"}
+    dev_corpora = {
+        item.corpus for item in golden.items if sides.get(item.id) == "dev" and item.verified
+    }
     slice_corpora = {item.corpus for item in items}
     missing = sorted(dev_corpora - slice_corpora)
     if missing:
         raise ValueError(
-            f"smoke-v2 slice does not cover dev-available corpus/corpora: {missing}. "
-            "The slice must span every corpus the dev side makes available (CONTEXT.md)."
+            f"smoke-v2 slice does not cover verified dev-available corpus/corpora: {missing}. "
+            "The slice must span every corpus the verified dev items make available (CONTEXT.md)."
         )
 
 

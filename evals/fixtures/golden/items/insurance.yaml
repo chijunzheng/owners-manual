@@ -1,0 +1,181 @@
+# Golden set v1 — insurance slice (issue #22). One file of the per-corpus golden
+# directory evals/fixtures/golden/items/.
+#
+# Hand-verification protocol (unchanged from #9): every item lands verified:
+# false and flips true ONLY on the owner's per-item sign-off against a local
+# verification packet that quotes the parsed-tree text of every required cite.
+# Git history is the audit record; the eval runner's verified-only filter
+# excludes unsigned items from real runs.
+#
+# Scope (grill 2026-06-19): the #60 corpus<->cites guardrail makes an item's
+# corpus follow its cites, so the insurance slice is the items that cite ONLY
+# the insurance policies (the synthetic master + unit policies). INS-01 and
+# INS-02 also fan out to the Condo Act / declaration, so their full-fan-out
+# items are cross-corpus (a later file); the insurance slice carries each
+# conflict's insurance-only facet.
+#
+# This batch is the INS-03 family — the unit policy's water-coverage boundary,
+# read against the master policy. All three exercise the same teaching ("what
+# water damage is and is not covered, and where the gap falls"), so all carry
+# tags.fixture: INS-03: the sewer-back-up gap, the gradual-seepage exclusion,
+# and the sudden-escape case that IS covered (a precision control against
+# over-flagging, like LEASE-08 on the tenancy side).
+#
+# No Crown-copyright text appears here (the cited documents are synthetic
+# fixtures): cites are addressing-only citable paths into the committed trees
+# (evals/fixtures/golden/trees/), and answer-point text is claim-level paraphrase.
+
+version: 2
+items:
+  # INS-03 (a): the sewer-back-up coverage gap. The unit policy excludes sewer
+  # back-up with no endorsement; the master policy insures it but only at the
+  # corporation level (common elements + standard unit), never the owner's
+  # contents. The owner's contents therefore fall in a gap. Insurance-only: the
+  # "who pays the master deductible" chargeback is INS-02 (cross-corpus) and is
+  # deliberately NOT asserted here.
+  - id: answer-sewer-backup-gap
+    behavior_class: answer
+    corpus: insurance
+    verified: false
+    question: >-
+      Heavy rain backed up the building's drains and sewage flooded my unit,
+      ruining my furniture and belongings. Between my own condo insurance and
+      the building's policy, am I covered?
+    answer_points:
+      - id: unit-policy-excludes-sewer-backup
+        text: The unit owner's policy does not insure loss or damage caused by
+          water or sewage that backs up from a sewer, drain, or sump, and no
+          endorsement adding that coverage is attached, so the owner's own
+          contents are not covered for a sewer back-up under their policy.
+      - id: master-covers-building-side-only
+        text: The corporation's master policy does insure sewer back-up, but
+          only at the corporation level — the common elements and the standard
+          unit — and expressly not contents or personal property, which remain
+          the owner's responsibility.
+      - id: contents-fall-in-the-gap
+        text: The owner's damaged furniture and belongings therefore fall into a
+          coverage gap, insured by neither policy — the unit policy excludes
+          sewer back-up and the master policy does not insure an owner's
+          contents.
+      - id: master-deductible-noted
+        text: The master policy's sewer back-up coverage is itself subject to a
+          $25,000 water-damage and sewer back-up deductible for each occurrence.
+    required_cites:
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: exclusions }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: exclusions }
+          - { kind: clause, label: p-5 }
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: sewer-back-up-coverage }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: sewer-back-up-coverage }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: deductibles }
+          - { kind: clause, label: p-3 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-03 — missing sewer-backup endorsement
+        (the coverage gap: unit excludes it, master covers building side only)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-03
+
+  # INS-03 (b): the gradual-seepage exclusion. Coverage B is sudden-and-accidental
+  # only; a slow leak that develops over time is excluded, as is loss the owner
+  # could have prevented by maintenance. The discriminating behavior is reading
+  # the temporal limit, not assuming "water damage = covered".
+  - id: answer-gradual-leak-not-covered
+    behavior_class: answer
+    corpus: insurance
+    verified: false
+    question: >-
+      A pipe under my kitchen sink had been leaking slowly for months and rotted
+      the cabinet and subfloor before I noticed. Will my unit insurance cover the
+      damage?
+    answer_points:
+      - id: sudden-and-accidental-only
+        text: The unit policy's water-damage coverage applies only to the sudden
+          and accidental escape of water; it does not cover loss from water that
+          develops over time through continuous or repeated seepage or leakage.
+      - id: maintenance-and-wear-excluded
+        text: The policy also excludes loss the owner could have prevented through
+          reasonable maintenance, and loss caused by wear and tear or gradual
+          deterioration.
+      - id: slow-leak-not-covered
+        text: Damage from a slow leak that develops over months is therefore not
+          covered by the unit policy.
+    required_cites:
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-b-water-damage }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: exclusions }
+          - { kind: clause, label: p-3 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-03 — unit-policy water-coverage boundary
+        (gradual/continuous seepage excluded)'
+    tags:
+      difficulty: medium
+      persona: owner
+      fixture: INS-03
+
+  # INS-03 (c): the precision control. A sudden burst IS covered — the
+  # discriminating behavior is affirming the covered case, not reflexively
+  # denying every water loss. Mirrors LEASE-08's over-flagging control.
+  - id: answer-sudden-burst-covered
+    behavior_class: answer
+    corpus: insurance
+    verified: false
+    question: >-
+      A supply line under my bathroom sink suddenly burst and soaked my rug and
+      dresser. Is that the kind of water damage my unit policy actually covers?
+    answer_points:
+      - id: sudden-escape-covered
+        text: Yes — the unit policy insures direct physical loss to the owner's
+          personal property caused by the sudden and accidental escape of water
+          from a plumbing system or a domestic appliance in the unit or building.
+      - id: contents-under-coverage-a
+        text: Furniture and furnishings are personal property insured under the
+          policy's personal-property coverage, up to the limit shown on the policy.
+      - id: not-a-blanket-denial
+        text: A sudden, accidental escape is the covered case; the policy's water
+          coverage is not a blanket denial, though it does exclude water that
+          seeps in gradually over time.
+    required_cites:
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-b-water-damage }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-b-water-damage }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-a-personal-property }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-a-personal-property }
+          - { kind: clause, label: p-2 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-03 — unit-policy water-coverage boundary
+        (sudden escape covered; precision control against over-flagging)'
+    tags:
+      difficulty: medium
+      persona: owner
+      fixture: INS-03

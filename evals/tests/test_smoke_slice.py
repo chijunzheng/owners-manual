@@ -81,20 +81,38 @@ def test_slice_is_verified_only() -> None:
     assert all(item.verified for item in slice_.items)
 
 
-def test_slice_covers_every_corpus_available_on_the_dev_side() -> None:
+def test_slice_covers_every_verified_corpus_on_the_dev_side() -> None:
     golden = load_golden_v0_set()
     sides = assign_split(golden.items)
-    # Coverage is by the authoritative item.corpus (the dashboard slice), matching
-    # compose_smoke_slice — not by the corpora an item's cites happen to touch.
-    dev_corpora = {item.corpus for item in golden.items if sides[item.id] == "dev"}
+    # Coverage is by the authoritative item.corpus (the dashboard slice), measured
+    # over the VERIFIED dev items — the population the verified-only slice is drawn
+    # from. A corpus on dev only through unverified items (insurance, mid-authoring)
+    # is not yet runnable and does not force coverage until per-item sign-off.
+    verified_dev_corpora = {
+        item.corpus for item in golden.items if sides[item.id] == "dev" and item.verified
+    }
     slice_ = compose_smoke_slice(golden)
     slice_corpora = {item.corpus for item in slice_.items}
-    # After the #22 re-split, the cross-corpus flag-void-no-pets family is dev-side,
-    # so the dev side makes the tenancy AND cross-corpus slices available — and
-    # smoke-v2 covers both. (That cross-corpus item also exercises governing-doc
-    # retrieval; the standalone governing slice enters with governing items.)
-    assert slice_corpora == dev_corpora
+    # smoke-v2 covers exactly the verified dev corpora: tenancy AND cross-corpus
+    # (the flag-void-no-pets family the #22 re-split moved dev-side). If a future
+    # batch verifies a new corpus on dev without adding it here, this trips —
+    # exactly the milestone signal to bump the slice.
+    assert slice_corpora == verified_dev_corpora
     assert {"tenancy", "cross-corpus"} <= slice_corpora
+
+
+def test_an_unverified_only_corpus_on_dev_does_not_force_coverage() -> None:
+    # The #22 insurance batch lands verified: false on the dev side before sign-off.
+    # The verified-only smoke slice must still compose (insurance is not yet
+    # runnable) and must not be required to carry an insurance item.
+    golden = load_golden_v0_set()
+    sides = assign_split(golden.items)
+    unverified_dev_corpora = {
+        item.corpus for item in golden.items if sides[item.id] == "dev" and not item.verified
+    }
+    slice_ = compose_smoke_slice(golden)  # must not raise
+    slice_corpora = {item.corpus for item in slice_.items}
+    assert unverified_dev_corpora.isdisjoint(slice_corpora)
 
 
 def test_compose_rejects_an_unknown_item_id() -> None:
@@ -110,8 +128,10 @@ def test_compose_rejects_a_holdout_item_in_the_allowlist() -> None:
     # would be unsealing the holdout — refuse rather than leak it.
     golden = load_golden_v0_set()
     sides = assign_split(golden.items)
-    holdout_ids = [i.id for i in golden.items if sides[i.id] == "holdout"]
-    assert holdout_ids, "fixture sanity: golden-v0 has a holdout side"
+    # Use a VERIFIED holdout item so the holdout guard is what fires — an
+    # unverified holdout item would trip the earlier verified guard instead.
+    holdout_ids = [i.id for i in golden.items if sides[i.id] == "holdout" and i.verified]
+    assert holdout_ids, "fixture sanity: golden-v0 has a verified holdout side"
     with pytest.raises(ValueError, match="holdout|dev"):
         compose_smoke_slice(golden, item_ids=(*SMOKE_V2_ITEM_IDS[:-1], holdout_ids[0]))
 
