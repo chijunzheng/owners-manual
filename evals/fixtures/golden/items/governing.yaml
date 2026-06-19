@@ -75,6 +75,10 @@ items:
         segments:
           - { kind: section, label: rule-1-pets }
           - { kind: clause, label: p-2 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-3 }
       - documentId: fixture-declaration
         segments:
           - { kind: section, label: article-iii-use-and-occupation-of-units }
@@ -196,9 +200,11 @@ items:
       - id: policy-sheet-misattributes-the-source
         text: The management office's statement that the declaration prohibits
           short-term rentals is wrong as to source. The declaration's leasing
-          article addresses only the owner's duty to notify the corporation of a
-          lease and is silent on short-term rentals; the restriction is real but
-          is carried by the Rules, not the declaration.
+          article imposes leasing-administration duties — notifying the
+          corporation of a lease and delivering the governing documents to the
+          lessee — but contains no short-term-rental or minimum-term restriction;
+          the restriction is real but is carried by the Rules, not the
+          declaration.
       - id: why-the-source-matters
         text: Identifying the correct instrument matters, because the declaration
           and the rules are made, amended, and challenged through different
@@ -217,6 +223,10 @@ items:
         segments:
           - { kind: section, label: article-vi-leasing-of-units }
           - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-2 }
       - documentId: condo-act-1998
         segments:
           - { kind: part, label: IV }
@@ -230,8 +240,8 @@ items:
     provenance:
       source: designed-fixture
       reference: 'FIXTURE-DESIGN.md GOV-05 — short-term-rental ban misattributed:
-        the six-month minimum is a valid Rule, not a declaration provision;
-        verify which instrument carries a restriction'
+        the six-month minimum is carried by a Rule, not a declaration provision;
+        verify which instrument actually carries a restriction'
     tags:
       difficulty: hard
       persona: owner
