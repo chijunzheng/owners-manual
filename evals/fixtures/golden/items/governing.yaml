@@ -321,15 +321,17 @@ items:
       persona: owner
       fixture: GOV-03
 
-  # GOV-04: charges with no authority behind them. A management policy sheet
-  # levies a $150 non-refundable move-in administration charge and a fob
-  # reactivation fee, "collected as common expenses," with no by-law or
-  # declaration indemnity behind them. A corporation may add an amount to an
-  # owner's common expenses and lien it only where authorized by the
+  # GOV-04: charges with no authority the record discloses. A management policy
+  # sheet levies a $150 non-refundable move-in administration charge and a fob
+  # reactivation fee, "collected as common expenses." A corporation may add an
+  # amount to an owner's common expenses and lien it only where authorized by the
   # declaration, by-laws, or the Act (the declaration says exactly this; s.85
-  # liens only common-expense defaults). A policy sheet is not such authority —
-  # the Amlani pattern. Precision control: the $300 REFUNDABLE deposit is a
-  # separate question and is not what this item flags.
+  # liens only common-expense defaults), and a policy sheet is not such authority
+  # — the Amlani pattern. Narrowed after Codex #66 P2: the by-laws are absent from
+  # the corpus, so the answer concludes from the record (the policy sheet cannot
+  # authorize, and the declaration and Act do not) rather than asserting the
+  # absent by-laws grant nothing. The $300 REFUNDABLE deposit is a separate
+  # question, not flagged.
   - id: flag-unauthorized-move-in-fee
     behavior_class: flag-void-clause
     corpus: governing
@@ -350,17 +352,22 @@ items:
           provision of the declaration or the Act, and it cannot by itself create
           a charge against an owner or a power to add one to the owner's common
           expenses.
-      - id: these-charges-are-unauthorized
+      - id: these-charges-lack-authority-on-the-record
         text: The $150 non-refundable administration charge and the fob
-          reactivation fee rest on the policy sheet alone, with no indemnity or
-          charge authorized in the declaration, the by-laws, or the Act, so they
-          are not amounts the owner is obligated to pay as common expenses.
+          reactivation fee rest on the policy sheet alone, which is not an
+          instrument that can authorize a charge. The declaration does not
+          authorize them and the Act does not, and the corporation's by-laws are
+          not among the available documents; so on this record the charges are
+          not shown to rest on any authority, and the owner is not obligated to
+          pay them as common expenses on the strength of the policy sheet.
       - id: cannot-be-added-to-common-expenses-or-liened
         text: Because a lien secures only a default in contributing to common
-          expenses, these unauthorized charges cannot validly be added to the
-          owner's common expenses or made the basis of a lien against the unit. A
+          expenses, a charge the policy sheet imposes without authority in the
+          declaration, a by-law, or the Act cannot validly be added to the
+          owner's common expenses or grounded in a lien; a corporation cannot
+          lien a unit over a fee it has not shown authority to impose. A
           genuinely refundable move-related deposit raises a separate question,
-          but a non-refundable charge and a fee imposed by policy alone do not.
+          but a non-refundable charge imposed by policy alone does not.
     required_cites:
       - documentId: fixture-management-policies
         segments:
