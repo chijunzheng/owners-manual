@@ -162,6 +162,61 @@ def test_rejects_an_unknown_corpus() -> None:
         parse_golden_item(raw, documents=_DOCUMENTS)
 
 
+# --- tags.fixture: tie a designed-fixture item to its planted conflict (#22) ---
+
+
+def _designed_fixture_item() -> dict:
+    raw = _answer_item()
+    raw["id"] = "item-fixture"
+    raw["provenance"] = {
+        "source": "designed-fixture",
+        "reference": "FIXTURE-DESIGN.md LEASE-08 — enforceable-terms control pair",
+    }
+    raw["tags"] = {"fixture": "LEASE-08"}
+    return raw
+
+
+def test_parses_a_designed_fixture_item_with_a_valid_fixture_tag() -> None:
+    item = parse_golden_item(_designed_fixture_item(), documents=_DOCUMENTS)
+    assert ("fixture", "LEASE-08") in item.tags
+
+
+def test_rejects_a_fixture_tag_that_is_not_a_known_planted_conflict_id() -> None:
+    raw = _designed_fixture_item()
+    raw["tags"] = {"fixture": "INS-99"}
+    with pytest.raises(ValueError, match="planted-conflict|fixture"):
+        parse_golden_item(raw, documents=_DOCUMENTS)
+
+
+def test_rejects_a_designed_fixture_item_with_no_tags_block() -> None:
+    raw = _designed_fixture_item()
+    del raw["tags"]
+    with pytest.raises(ValueError, match="fixture"):
+        parse_golden_item(raw, documents=_DOCUMENTS)
+
+
+def test_rejects_a_designed_fixture_item_whose_tags_omit_fixture() -> None:
+    raw = _designed_fixture_item()
+    raw["tags"] = {"difficulty": "hard"}  # tags present, but no fixture key
+    with pytest.raises(ValueError, match="fixture"):
+        parse_golden_item(raw, documents=_DOCUMENTS)
+
+
+def test_a_non_designed_fixture_item_needs_no_fixture_tag() -> None:
+    # _answer_item uses source ltb-interpretation-guideline and carries no tags.
+    item = parse_golden_item(_answer_item(), documents=_DOCUMENTS)
+    assert not any(key == "fixture" for key, _ in item.tags)
+
+
+def test_a_fixture_tag_is_allowed_on_a_non_designed_fixture_source() -> None:
+    # An item may reference a planted conflict by id even when its primary
+    # provenance is a statute or guideline; only the tag VALUE is constrained.
+    raw = _answer_item()
+    raw["tags"] = {"fixture": "LEASE-01"}
+    item = parse_golden_item(raw, documents=_DOCUMENTS)
+    assert ("fixture", "LEASE-01") in item.tags
+
+
 # --- AC 1: required cites must resolve against the provided tree -----------
 
 

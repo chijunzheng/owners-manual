@@ -124,7 +124,7 @@ Fixed-size chunks, vector-only top-k, no reranking, no agent graph — the tutor
 ## Relationships
 
 - A **Corpus** has exactly one **Authority hierarchy**; the reranker weights candidates by it
-- The **Planner** selects one or more **Corpora**; cross-corpus questions (e.g. tenant-caused flood) fan out to several
+- The **Planner** selects one or more **Corpora**; cross-corpus questions (e.g. tenant-caused flood) fan out to several. A golden item's corpus follows its cites (one corpus → that corpus; several → cross-corpus), so a single condo-insurance conflict typically yields *both* an insurance-only item (reading the policy — an exclusion, or the policy deferring the deductible to the declaration) *and* a cross-corpus item (the full fan-out to the declaration + Condo Act). The insurance slice is narrow because the genuinely hard insurance questions are inherently multi-instrument
 - The **Critic gate** rejects any answer claim lacking a **Pin-cite** into a retrieved chunk
 - The **Guard** owns the **Information-not-advice boundary**; the **Adversarial set** tests it
 - The **Golden set** and **Adversarial set** together feed the **Eval gate**
