@@ -179,3 +179,100 @@ items:
       difficulty: medium
       persona: owner
       fixture: INS-03
+
+  # INS-01 (insurance-only facet): the improvements/betterments coverage gap. An
+  # owner's upgrades beyond the standard unit are insured by NEITHER policy — the
+  # master excludes them, the unit policy has no rider. (The full INS-01 — the
+  # standard-unit boundary living in a by-law absent from the corpus, routing the
+  # owner to a records request under Condo Act s.55 — is the cross-corpus facet
+  # and is deliberately NOT asserted here.)
+  - id: answer-improvements-not-covered
+    behavior_class: answer
+    corpus: insurance
+    verified: true
+    question: >-
+      I installed hardwood floors and stone countertops in my unit — upgrades
+      from the builder's standard finishes. If they're damaged, does either my
+      own condo insurance or the building's master policy cover them?
+    answer_points:
+      - id: master-insures-standard-unit-only
+        text: The corporation's master policy insures the common elements and the
+          standard unit only, and expressly does not insure any improvement or
+          betterment an owner makes beyond the standard unit.
+      - id: master-names-the-upgrades
+        text: The master policy's exclusions name exactly these kinds of upgrades —
+          upgraded flooring, upgraded counters, and upgraded or built-in
+          appliances — as improvements it does not insure.
+      - id: unit-policy-no-improvements-rider
+        text: The owner's unit policy also does not insure improvements or
+          betterments beyond the standard unit, and no improvements coverage is
+          attached to it.
+      - id: upgrades-covered-by-neither
+        text: So the owner's hardwood and stone-counter upgrades are insured by
+          neither policy as written; the owner is exposed for them unless
+          improvements coverage is added.
+    required_cites:
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: insured-property }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: exclusions }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: conditions }
+          - { kind: clause, label: p-3 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-01 — undefined standard unit (insurance-only
+        facet: improvements/betterments excluded by both policies)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-01
+
+  # INS-02 (insurance-only facet): the policies themselves do not impose the
+  # deductible chargeback — the master defers it to the declaration, and the unit
+  # policy's Coverage C is the owner's backstop for that exposure. (The full
+  # INS-02 — whether the corporation CAN charge the owner, no-fault, via the
+  # declaration + Condo Act s.105 — is the cross-corpus facet, NOT asserted here.)
+  - id: answer-policy-defers-deductible
+    behavior_class: answer
+    corpus: insurance
+    verified: true
+    question: >-
+      A pipe burst in my unit and the corporation's insurance is paying to repair
+      the damage. Looking only at the insurance policies, does my policy — or the
+      master policy — actually make me pay the deductible?
+    answer_points:
+      - id: master-defers-to-declaration
+        text: The master policy does not itself impose the deductible on an owner;
+          it states that whether, and on what terms, a deductible is charged to an
+          owner is set out in the corporation's declaration and not in the policy.
+      - id: unit-coverage-c-backstop
+        text: The owner's unit policy provides loss-assessment coverage for the
+          amount the owner becomes liable to pay the corporation as that owner's
+          share of the master-policy deductible, up to its limit.
+      - id: policies-point-to-the-declaration
+        text: So neither policy alone settles whether the owner must pay — the
+          policies point to the declaration for the chargeback, while the unit
+          policy's loss-assessment coverage is the owner's backstop for it.
+    required_cites:
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: deductible-responsibility }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-c-loss-assessment-and-deductible }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-02 — deductible chargeback (insurance-only
+        facet: master defers to the declaration; Coverage C backstop)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-02
