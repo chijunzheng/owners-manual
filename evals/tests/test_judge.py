@@ -26,6 +26,7 @@ def _item(item_id: str = "answer-1") -> object:
         {
             "id": item_id,
             "behavior_class": "answer",
+            "corpus": "tenancy",
             "verified": True,
             "question": "Who repairs the unit?",
             "answer_points": [

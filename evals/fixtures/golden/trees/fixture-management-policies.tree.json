@@ -1,0 +1,71 @@
+{
+  "kind": "document",
+  "label": "Resident Policies — Harbourview Terrace (TSCC 9000)",
+  "documentId": "fixture-management-policies",
+  "children": [
+    {
+      "kind": "section",
+      "label": "preamble",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "move-in-and-move-out-procedures",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "barbecues-and-balconies",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "short-term-and-transient-rentals",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

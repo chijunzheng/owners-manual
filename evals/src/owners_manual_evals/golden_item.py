@@ -36,11 +36,21 @@ BehaviorClass = Literal[
 #: The closed set of behavior classes, in canonical order.
 BEHAVIOR_CLASSES: tuple[BehaviorClass, ...] = get_args(BehaviorClass)
 
+#: The corpus slice a golden item belongs to (CONTEXT.md, "Golden set"). The four
+#: base corpora (the vocabulary ``oracle.CORPORA`` keys document ids by) plus
+#: ``cross-corpus`` for an item whose required cites fan out across more than one
+#: corpus. This is the dashboard slice and a stratum key for the dev/holdout split.
+Corpus = Literal["tenancy", "insurance", "governing", "selling", "cross-corpus"]
+
+#: The closed set of corpus slices, in canonical order.
+CORPORA: tuple[Corpus, ...] = get_args(Corpus)
+
 #: The keys a golden-item mapping may carry; reject anything else (strict).
 _ITEM_KEYS = frozenset(
     {
         "id",
         "behavior_class",
+        "corpus",
         "verified",
         "question",
         "answer_points",
@@ -80,8 +90,9 @@ class Provenance:
 @dataclass(frozen=True, slots=True)
 class GoldenItem:
     """One validated golden-set item. ``required_cites`` have each been resolved
-    against the document trees supplied at parse time. ``paraphrase_of`` is the
-    parent item's id when this is a paraphrase variant, else ``None``."""
+    against the document trees supplied at parse time. ``corpus`` is the slice the
+    item belongs to (a stratum key for the split). ``paraphrase_of`` is the parent
+    item's id when this is a paraphrase variant, else ``None``."""
 
     id: str
     behavior_class: BehaviorClass
@@ -90,6 +101,7 @@ class GoldenItem:
     answer_points: tuple[AnswerPoint, ...]
     required_cites: tuple[CitablePath, ...]
     provenance: Provenance
+    corpus: Corpus = "tenancy"
     paraphrase_of: str | None = None
     tags: tuple[tuple[str, str], ...] = ()
 
@@ -109,6 +121,7 @@ def parse_golden_item(value: object, *, documents: Sequence[DocumentTree]) -> Go
 
     item_id = _require_nonempty_str(value, "id", "golden item")
     behavior_class = _parse_behavior_class(value)
+    corpus = _parse_corpus(value, item_id)
     verified = _require_bool(value, "verified", item_id)
     question = _require_nonempty_str(value, "question", f"golden item {item_id!r}")
     answer_points = _parse_answer_points(value, item_id)
@@ -125,6 +138,7 @@ def parse_golden_item(value: object, *, documents: Sequence[DocumentTree]) -> Go
         answer_points=answer_points,
         required_cites=required_cites,
         provenance=provenance,
+        corpus=corpus,
         paraphrase_of=paraphrase_of,
         tags=tags,
     )
@@ -137,6 +151,18 @@ def _parse_behavior_class(value: dict) -> BehaviorClass:
             f"unknown behavior class {behavior_class!r}; expected one of {sorted(BEHAVIOR_CLASSES)}"
         )
     return behavior_class
+
+
+def _parse_corpus(value: dict, item_id: str) -> Corpus:
+    if "corpus" not in value:
+        raise ValueError(f"golden item {item_id!r} requires a corpus key")
+    corpus = value["corpus"]
+    if corpus not in CORPORA:
+        raise ValueError(
+            f"golden item {item_id!r} has unknown corpus {corpus!r}; "
+            f"expected one of {sorted(CORPORA)}"
+        )
+    return corpus
 
 
 def _parse_answer_points(value: dict, item_id: str) -> tuple[AnswerPoint, ...]:
@@ -252,6 +278,8 @@ def _reject_unknown_keys(value: dict, allowed: frozenset[str], what: str) -> Non
 __all__ = [
     "BehaviorClass",
     "BEHAVIOR_CLASSES",
+    "Corpus",
+    "CORPORA",
     "AnswerPoint",
     "Provenance",
     "GoldenItem",

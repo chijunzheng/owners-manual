@@ -27,9 +27,13 @@ export interface GoldenTreeSource {
 }
 
 /**
- * Exactly the documents the v0 golden items cite: the real RTA and Reg 516/06
- * for statute cites, the designed lease and declaration for void-clause cites.
- * Growing the golden set to new documents (#22) means adding entries here and
+ * The documents the golden items resolve required cites against. v0 (#9) cited
+ * the real RTA and Reg 516/06 (statute cites) and the designed lease and
+ * declaration (void-clause cites); v1 (#22) adds the Condominium Act, 1998 (the
+ * statutory ceiling for the insurance and governing slices) and the remaining
+ * four designed fixtures — the rules, management policies, and the master and
+ * unit insurance policies — so insurance/governing/cross-corpus cites resolve.
+ * Growing the golden set to new documents means adding entries here and
  * re-running `npm run golden:trees`.
  */
 export const GOLDEN_TREE_SOURCES: readonly GoldenTreeSource[] = [
@@ -56,6 +60,36 @@ export const GOLDEN_TREE_SOURCES: readonly GoldenTreeSource[] = [
     kind: 'fixture',
     inputFile: 'corpus/fixtures/governing/declaration.html',
     outputFile: 'fixture-declaration.tree.json',
+  },
+  {
+    id: 'fixture-rules',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/governing/rules.html',
+    outputFile: 'fixture-rules.tree.json',
+  },
+  {
+    id: 'fixture-management-policies',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/governing/management-policies.html',
+    outputFile: 'fixture-management-policies.tree.json',
+  },
+  {
+    id: 'fixture-master-policy',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/insurance/master-policy.html',
+    outputFile: 'fixture-master-policy.tree.json',
+  },
+  {
+    id: 'fixture-unit-policy',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/insurance/unit-policy.html',
+    outputFile: 'fixture-unit-policy.tree.json',
+  },
+  {
+    id: 'condo-act-1998',
+    kind: 'corpus',
+    inputFile: 'corpus/raw/governing/condo-act-1998.html',
+    outputFile: 'condo-act-1998.tree.json',
   },
 ]
 

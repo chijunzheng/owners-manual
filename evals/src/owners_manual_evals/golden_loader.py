@@ -134,6 +134,7 @@ def _finalize_set(*, version: int, items: tuple[GoldenItem, ...]) -> GoldenSet:
     # ``_parse_set`` (per file) and the empty-directory guard in ``_load_directory``.
     _reject_duplicate_ids(items)
     _validate_paraphrase_parents(items)
+    _validate_corpus_matches_cites(items)
     return GoldenSet(version=version, items=items)
 
 
@@ -159,6 +160,34 @@ def _validate_paraphrase_parents(items: tuple[GoldenItem, ...]) -> None:
             raise ValueError(
                 f"golden item {item.id!r} is a paraphrase of {parent.id!r}, which is "
                 f"itself a paraphrase; paraphrase variants must hang off a true parent"
+            )
+
+
+def _validate_corpus_matches_cites(items: tuple[GoldenItem, ...]) -> None:
+    """A cite-bearing item's declared corpus must agree with the corpora its
+    required cites resolve to: a single-corpus item carries that corpus, a
+    multi-corpus item carries ``cross-corpus``. Cite-less refusal items are
+    exempt — their corpus cannot be derived from cites, so it is taken on trust
+    (Codex PR #60). A cite whose document id is not in the corpus map (e.g. a
+    legacy sample tree) is skipped rather than failing the load."""
+    from .oracle import corpus_of_document_id  # noqa: PLC0415
+
+    for item in items:
+        cite_corpora: set[str] = set()
+        for cite in item.required_cites:
+            try:
+                cite_corpora.add(corpus_of_document_id(cite.document_id))
+            except ValueError:
+                continue
+        if not cite_corpora:
+            continue
+        expected = "cross-corpus" if len(cite_corpora) > 1 else next(iter(cite_corpora))
+        if item.corpus != expected:
+            raise ValueError(
+                f"golden item {item.id!r} declares corpus {item.corpus!r} but its required "
+                f"cites resolve to {expected!r} (cite corpora: {sorted(cite_corpora)}). A "
+                f"cited item's corpus must match its cites; use 'cross-corpus' when they "
+                f"span more than one."
             )
 
 

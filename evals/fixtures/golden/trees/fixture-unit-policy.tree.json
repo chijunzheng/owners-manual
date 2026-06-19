@@ -1,0 +1,128 @@
+{
+  "kind": "document",
+  "label": "Condominium Unit Owner’s Policy — Harbourview Terrace",
+  "documentId": "fixture-unit-policy",
+  "children": [
+    {
+      "kind": "section",
+      "label": "declarations",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-4",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "coverage-a-personal-property",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "coverage-b-water-damage",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "coverage-c-loss-assessment-and-deductible",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "exclusions",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-4",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-5",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "conditions",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

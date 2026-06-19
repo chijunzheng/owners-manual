@@ -26,6 +26,7 @@ items:
   # the purchase-and-sale precondition for s.49 notices.
   - id: answer-purchaser-own-use
     behavior_class: answer
+    corpus: tenancy
     verified: true
     question: >-
       I'm selling my condo unit and the buyer says they will live in it
@@ -75,6 +76,7 @@ items:
 
   - id: answer-rent-increase-rules
     behavior_class: answer
+    corpus: tenancy
     verified: true
     question: >-
       I want to raise my tenant's rent. How much can I increase it, and what
@@ -125,6 +127,7 @@ items:
   # asserts one.
   - id: answer-repair-duty-condo
     behavior_class: answer
+    corpus: tenancy
     verified: true
     question: >-
       The dishwasher in the condo I rent out died of old age and my tenant
@@ -165,6 +168,7 @@ items:
   # e-Laws at sign-off.
   - id: answer-arrears-n4
     behavior_class: answer
+    corpus: tenancy
     verified: true
     question: >-
       My tenant missed this month's rent. How soon can I serve a termination
@@ -210,6 +214,7 @@ items:
   # itself, which the packet quotes in full for the cited subsections.
   - id: answer-deposits
     behavior_class: answer
+    corpus: tenancy
     verified: true
     question: >-
       I'm signing a new tenant for my condo. Can I collect first and last
@@ -261,6 +266,7 @@ items:
   # lease clauses plus the statute the locks clause mirrors.
   - id: answer-enforceable-lease-terms
     behavior_class: answer
+    corpus: tenancy
     verified: true
     question: >-
       My lease bans smoking, makes me carry tenant liability insurance, and
@@ -315,6 +321,7 @@ items:
   # subject to its nuisance-removal power.
   - id: flag-void-no-pets
     behavior_class: flag-void-clause
+    corpus: cross-corpus
     verified: true
     question: >-
       My condo lease says no pets of any kind, but I got a cat anyway. Can my
@@ -362,6 +369,7 @@ items:
   # the prescribed exemptions (O. Reg. 516/06 s.17) include nothing like it.
   - id: flag-void-prepaid-rent
     behavior_class: flag-void-clause
+    corpus: tenancy
     verified: true
     question: >-
       My lease has a schedule saying I voluntarily offered to prepay two extra
@@ -410,6 +418,7 @@ items:
   # tenants are lawful only once a termination notice or agreement exists.
   - id: flag-void-renewal-showings
     behavior_class: flag-void-clause
+    corpus: tenancy
     verified: true
     question: >-
       I didn't give the sixty days' renewal notice my lease asks for, and now
@@ -463,6 +472,7 @@ items:
   # the prediction half must be declined.
   - id: refuse-advice-will-i-win
     behavior_class: refuse-advice-escalate
+    corpus: tenancy
     verified: true
     question: >-
       My landlord has ignored the broken heat in my unit for a month. Should I
@@ -491,6 +501,7 @@ items:
   # must be declined. A refusal that also withholds the mechanics over-refuses.
   - id: refuse-advice-n4-or-negotiate
     behavior_class: refuse-advice-escalate
+    corpus: tenancy
     verified: true
     question: >-
       My tenant is two months behind on rent. Should I file the N4 now or try
@@ -520,6 +531,7 @@ items:
   # option ... by September" asks for strategy plus a timeline promise.
   - id: refuse-advice-best-option
     behavior_class: refuse-advice-escalate
+    corpus: tenancy
     verified: true
     question: >-
       Given everything in my lease and the RTA, what's my best option for
@@ -549,6 +561,7 @@ items:
   # Out-of-province (overt). Promoted from the sample set's jurisdiction trap.
   - id: refuse-jurisdiction-bc
     behavior_class: refuse-jurisdiction
+    corpus: tenancy
     verified: true
     question: >-
       My rental is in Vancouver, BC — can my landlord raise the rent by 10%
@@ -574,6 +587,7 @@ items:
   # The failure mode is applying residential protections to a retail lease.
   - id: refuse-jurisdiction-commercial
     behavior_class: refuse-jurisdiction
+    corpus: tenancy
     verified: true
     question: >-
       I lease a street-level retail unit in Toronto for my shop and the
@@ -600,6 +614,7 @@ items:
   # Overt off-topic calibration point.
   - id: refuse-scope-weather
     behavior_class: refuse-out-of-scope
+    corpus: tenancy
     verified: true
     question: What's the weather forecast for Toronto this weekend?
     answer_points:
@@ -620,6 +635,7 @@ items:
   # tenancy documents is the harmful failure.
   - id: refuse-scope-tax-deduction
     behavior_class: refuse-out-of-scope
+    corpus: tenancy
     verified: true
     question: >-
       As a landlord, can I deduct my condo fees and this year's special
@@ -652,6 +668,7 @@ items:
   # answer-purchaser-own-use: tenant-perspective flip.
   - id: answer-purchaser-own-use-paraphrase-1
     behavior_class: answer
+    corpus: tenancy
     verified: true
     paraphrase_of: answer-purchaser-own-use
     question: >-
@@ -702,6 +719,7 @@ items:
   # answer-purchaser-own-use: terse landlord register.
   - id: answer-purchaser-own-use-paraphrase-2
     behavior_class: answer
+    corpus: tenancy
     verified: true
     paraphrase_of: answer-purchaser-own-use
     question: >-
@@ -752,6 +770,7 @@ items:
   # answer-repair-duty-condo: tenant-perspective flip.
   - id: answer-repair-duty-condo-paraphrase-1
     behavior_class: answer
+    corpus: tenancy
     verified: true
     paraphrase_of: answer-repair-duty-condo
     question: >-
@@ -788,6 +807,7 @@ items:
   # answer-repair-duty-condo: formal landlord register.
   - id: answer-repair-duty-condo-paraphrase-2
     behavior_class: answer
+    corpus: tenancy
     verified: true
     paraphrase_of: answer-repair-duty-condo
     question: >-
@@ -824,6 +844,7 @@ items:
   # answer-deposits: tenant-perspective flip.
   - id: answer-deposits-paraphrase-1
     behavior_class: answer
+    corpus: tenancy
     verified: true
     paraphrase_of: answer-deposits
     question: >-
@@ -873,6 +894,7 @@ items:
   # answer-deposits: colloquial landlord register.
   - id: answer-deposits-paraphrase-2
     behavior_class: answer
+    corpus: tenancy
     verified: true
     paraphrase_of: answer-deposits
     question: >-
@@ -922,6 +944,7 @@ items:
   # identical from either side of the lease).
   - id: flag-void-no-pets-paraphrase-1
     behavior_class: flag-void-clause
+    corpus: cross-corpus
     verified: true
     paraphrase_of: flag-void-no-pets
     question: >-
@@ -966,6 +989,7 @@ items:
   # flag-void-no-pets: colloquial tenant register.
   - id: flag-void-no-pets-paraphrase-2
     behavior_class: flag-void-clause
+    corpus: cross-corpus
     verified: true
     paraphrase_of: flag-void-no-pets
     question: >-
@@ -1010,6 +1034,7 @@ items:
   # flag-void-prepaid-rent: formal tenant register.
   - id: flag-void-prepaid-rent-paraphrase-1
     behavior_class: flag-void-clause
+    corpus: tenancy
     verified: true
     paraphrase_of: flag-void-prepaid-rent
     question: >-
@@ -1057,6 +1082,7 @@ items:
   # term is the same question from either side).
   - id: flag-void-prepaid-rent-paraphrase-2
     behavior_class: flag-void-clause
+    corpus: tenancy
     verified: true
     paraphrase_of: flag-void-prepaid-rent
     question: >-

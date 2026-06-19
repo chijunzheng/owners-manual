@@ -1,0 +1,161 @@
+{
+  "kind": "document",
+  "label": "Certificate of Property and Liability Insurance — Master Policy (TSCC 9000)",
+  "documentId": "fixture-master-policy",
+  "children": [
+    {
+      "kind": "section",
+      "label": "declarations",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-4",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "insured-property",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        },
+        {
+          "kind": "subsection",
+          "label": "limit-of-insurance",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            }
+          ]
+        },
+        {
+          "kind": "subsection",
+          "label": "insured-perils",
+          "children": [
+            {
+              "kind": "clause",
+              "label": "p-1",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "deductibles",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "sewer-back-up-coverage",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "deductible-responsibility",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "exclusions",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-3",
+          "children": []
+        }
+      ]
+    },
+    {
+      "kind": "section",
+      "label": "conditions",
+      "children": [
+        {
+          "kind": "clause",
+          "label": "p-1",
+          "children": []
+        },
+        {
+          "kind": "clause",
+          "label": "p-2",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

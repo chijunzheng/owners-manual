@@ -16,6 +16,7 @@ items:
   # --- answer: cites resolve, claim-level points, has a paraphrase child ---
   - id: sample-answer-n12-notice
     behavior_class: answer
+    corpus: tenancy
     verified: false
     question: >-
       As a landlord, how much notice must I give a tenant to end the tenancy so
@@ -43,6 +44,7 @@ items:
   # --- a paraphrase variant of the answer item; inherits the parent's side ---
   - id: sample-answer-n12-notice-paraphrase
     behavior_class: answer
+    corpus: tenancy
     verified: false
     paraphrase_of: sample-answer-n12-notice
     question: >-
@@ -71,6 +73,7 @@ items:
   # --- flag-void-clause: cross-document required cites (clause + overriding section) ---
   - id: sample-void-clause-tenant-pays-all
     behavior_class: flag-void-clause
+    corpus: cross-corpus
     verified: false
     question: >-
       My lease says the tenant pays for all damage to the unit. Can I rely on
@@ -102,6 +105,7 @@ items:
   # --- refuse-jurisdiction: a BC question; no cites (nothing to cite) ---
   - id: sample-refuse-jurisdiction-bc
     behavior_class: refuse-jurisdiction
+    corpus: tenancy
     verified: false
     question: >-
       My rental is in Vancouver, BC — can my landlord raise the rent by 10%
@@ -121,6 +125,7 @@ items:
   # --- refuse-out-of-scope: an off-topic question ---
   - id: sample-refuse-out-of-scope-weather
     behavior_class: refuse-out-of-scope
+    corpus: tenancy
     verified: false
     question: What's the weather forecast for Toronto this weekend?
     answer_points:
@@ -137,6 +142,7 @@ items:
   # --- refuse-advice-escalate: advice-seeking phrasing ---
   - id: sample-refuse-advice-escalate-should-i-sue
     behavior_class: refuse-advice-escalate
+    corpus: tenancy
     verified: false
     question: >-
       Should I take my landlord to the LTB over the deductible chargeback, and

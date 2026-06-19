@@ -10,11 +10,12 @@ import { fixtureById } from './fixtures.js'
 import { sourceById } from './sources.js'
 
 /**
- * Issue #9 wiring: the registry of document trees exported for the golden-set
- * loader (evals/fixtures/golden/trees/). Every golden item's required cite must
- * resolve against one of these trees at load time, so the registry pins exactly
- * the documents the v0 items cite: the real RTA and Reg 516/06 (statute cites),
- * and the designed lease + declaration fixtures (void-clause cites).
+ * Issue #9 wiring, extended for #22: the registry of document trees exported for
+ * the golden-set loader (evals/fixtures/golden/trees/). Every golden item's
+ * required cite must resolve against one of these trees at load time. v0 pinned
+ * the RTA + Reg 516/06 and the lease + declaration fixtures; #22 adds the
+ * Condominium Act, 1998 and the rules, management-policy, and master/unit
+ * insurance fixtures for the insurance, governing, and cross-corpus slices.
  */
 
 const repoRoot = join(fileURLToPath(import.meta.url), '..', '..', '..', '..')
@@ -26,6 +27,11 @@ describe('GOLDEN_TREE_SOURCES', () => {
       'reg-516-06',
       'fixture-lease',
       'fixture-declaration',
+      'fixture-rules',
+      'fixture-management-policies',
+      'fixture-master-policy',
+      'fixture-unit-policy',
+      'condo-act-1998',
     ])
   })
 

@@ -8,8 +8,11 @@ reproducible partition that seals a holdout from prompt iteration.
 
 The assignment is:
 
-* **Stratified by behavior class** — each class is split independently so every
-  class is represented on both sides (issue #30 AC 4).
+* **Stratified by corpus × behavior class** — each (corpus, behavior class) cell
+  is split independently, so every behavior class is represented on both sides
+  within every corpus (issue #30 AC 4, generalized for the multi-corpus v1 set,
+  #22). v0 was single-corpus, so this degenerated to behavior-class strata; the
+  glossary ("by corpus × behavior class") always specified the general form.
 * **Deterministic** — parents are ordered within a stratum by a stable digest of
   their id, not by input order or lexical id, so the same set always yields the
   same partition regardless of how the YAML happened to be ordered.
@@ -58,10 +61,13 @@ def assign_split(items: Iterable[GoldenItem]) -> dict[str, Side]:
     return sides
 
 
-def _strata(parents: Iterable[GoldenItem]) -> dict[str, list[GoldenItem]]:
-    strata: dict[str, list[GoldenItem]] = {}
+def _strata(parents: Iterable[GoldenItem]) -> dict[tuple[str, str], list[GoldenItem]]:
+    """Group parents into (corpus, behavior class) cells. Each cell is split
+    independently, so the holdout always carries every behavior class within
+    every corpus — the overfit detector v1's per-corpus slices need."""
+    strata: dict[tuple[str, str], list[GoldenItem]] = {}
     for item in parents:
-        strata.setdefault(item.behavior_class, []).append(item)
+        strata.setdefault((item.corpus, item.behavior_class), []).append(item)
     return strata
 
 
