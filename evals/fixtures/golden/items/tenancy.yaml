@@ -582,6 +582,11 @@ items:
           - { kind: part, label: VII }
           - { kind: section, label: '105' }
           - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
     provenance:
       source: designed-fixture
       reference: 'FIXTURE-DESIGN.md LEASE-04 — conditional key deposit
@@ -632,6 +637,11 @@ items:
           - { kind: part, label: VII }
           - { kind: section, label: '105' }
           - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
       - documentId: rta-2006
         segments:
           - { kind: part, label: VII }
