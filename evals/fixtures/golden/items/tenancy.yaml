@@ -1553,7 +1553,7 @@ items:
     paraphrase_of: flag-void-all-repairs
     question: >-
       My lease says I'm on the hook for every repair no matter the cause. The
-      old stove just died on its own — am I really stuck paying to fix it?
+      fridge just died on its own — am I really stuck paying to fix it?
     answer_points:
       - id: landlord-bears-the-repair-duty
         text: The landlord must keep the rental unit in a good state of repair
