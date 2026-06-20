@@ -500,3 +500,427 @@ items:
       difficulty: hard
       persona: tenant
       fixture: LEASE-01
+
+  # --- paraphrase variants (robustness batch, faithful copies) --------------
+
+  - id: answer-deductible-chargeback-no-fault-paraphrase-1
+    behavior_class: answer
+    corpus: cross-corpus
+    verified: true
+    paraphrase_of: answer-deductible-chargeback-no-fault
+    question: >-
+      The corporation's insurance is fixing a leak that started in my unit,
+      but now they want me to pay the deductible even though the failure
+      wasn't my fault. Do I owe it?
+    answer_points:
+      - id: policy-sends-you-to-the-declaration
+        text: The master policy does not itself decide this; it states that
+          whether and on what terms an owner is charged the deductible is set out
+          in the corporation's declaration, not in the policy. The answer
+          therefore turns on the declaration and the Condominium Act.
+      - id: act-charges-fault-based-damage-automatically
+        text: Under the Act the part of a loss left uncovered by the policy's
+          deductible is a common expense, and where an owner, the owner's tenant,
+          or someone living in the unit causes damage to that unit through an act
+          or omission, the lesser of the repair cost and the deductible is added
+          automatically to that owner's common expenses. That automatic charge
+          depends on an act or omission.
+      - id: no-fault-charge-requires-a-by-law
+        text: A no-fault charge is different. The Act lets the corporation extend
+          the deductible charge to damage not caused by the owner's act or
+          omission only by passing a by-law to that effect; without such a
+          by-law the Act's automatic charge reaches only fault-based damage.
+      - id: declaration-purports-no-fault-but-the-by-law-is-absent
+        text: This corporation's declaration does contain a chargeback worded to
+          apply regardless of fault, capped at the deductible amount stated in
+          the policy and collectible as a common expense by a lien. But the
+          corporation's by-laws are not among the available documents, and the
+          Act locates the no-fault extension in a by-law — so whether a no-fault
+          charge is actually authorized turns on a by-law the owner has not seen
+          and that these sources do not contain.
+      - id: bottom-line-confirm-the-by-law-capped-and-coverage-c
+        text: So a fault-based deductible charge is clearly authorized, but a
+          no-fault charge depends on a by-law the owner should obtain through a
+          records request before treating it as settled; either way any such
+          charge is capped at the policy's deductible, and the owner's own
+          unit-policy loss-assessment coverage (Coverage C) is the backstop for
+          that amount, up to its limit.
+    required_cites:
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: deductible-responsibility }
+          - { kind: clause, label: p-1 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '3' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: subsection, label: deductible-chargeback }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: subsection, label: deductible-chargeback }
+          - { kind: clause, label: p-2 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '3' }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-c-loss-assessment-and-deductible }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-02 — deductible chargeback (cross-corpus
+        fan-out: a no-fault charge requires a s.105(3) by-law absent from the
+        corpus, so the answer routes to a records request rather than equating
+        the declaration with the by-law; the cap and Coverage C backstop hold)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-02
+
+  - id: answer-deductible-chargeback-no-fault-paraphrase-2
+    behavior_class: answer
+    corpus: cross-corpus
+    verified: true
+    paraphrase_of: answer-deductible-chargeback-no-fault
+    question: >-
+      A plumbing failure in my unit triggered the corporation's insurance, and
+      management is charging the deductible back to me regardless of fault. Is
+      that chargeback actually valid?
+    answer_points:
+      - id: policy-sends-you-to-the-declaration
+        text: The master policy does not itself decide this; it states that
+          whether and on what terms an owner is charged the deductible is set out
+          in the corporation's declaration, not in the policy. The answer
+          therefore turns on the declaration and the Condominium Act.
+      - id: act-charges-fault-based-damage-automatically
+        text: Under the Act the part of a loss left uncovered by the policy's
+          deductible is a common expense, and where an owner, the owner's tenant,
+          or someone living in the unit causes damage to that unit through an act
+          or omission, the lesser of the repair cost and the deductible is added
+          automatically to that owner's common expenses. That automatic charge
+          depends on an act or omission.
+      - id: no-fault-charge-requires-a-by-law
+        text: A no-fault charge is different. The Act lets the corporation extend
+          the deductible charge to damage not caused by the owner's act or
+          omission only by passing a by-law to that effect; without such a
+          by-law the Act's automatic charge reaches only fault-based damage.
+      - id: declaration-purports-no-fault-but-the-by-law-is-absent
+        text: This corporation's declaration does contain a chargeback worded to
+          apply regardless of fault, capped at the deductible amount stated in
+          the policy and collectible as a common expense by a lien. But the
+          corporation's by-laws are not among the available documents, and the
+          Act locates the no-fault extension in a by-law — so whether a no-fault
+          charge is actually authorized turns on a by-law the owner has not seen
+          and that these sources do not contain.
+      - id: bottom-line-confirm-the-by-law-capped-and-coverage-c
+        text: So a fault-based deductible charge is clearly authorized, but a
+          no-fault charge depends on a by-law the owner should obtain through a
+          records request before treating it as settled; either way any such
+          charge is capped at the policy's deductible, and the owner's own
+          unit-policy loss-assessment coverage (Coverage C) is the backstop for
+          that amount, up to its limit.
+    required_cites:
+      - documentId: fixture-master-policy
+        segments:
+          - { kind: section, label: deductible-responsibility }
+          - { kind: clause, label: p-1 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '3' }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: subsection, label: deductible-chargeback }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-v-insurance }
+          - { kind: subsection, label: deductible-chargeback }
+          - { kind: clause, label: p-2 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '55' }
+          - { kind: subsection, label: '3' }
+      - documentId: fixture-unit-policy
+        segments:
+          - { kind: section, label: coverage-c-loss-assessment-and-deductible }
+          - { kind: clause, label: p-1 }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md INS-02 — deductible chargeback (cross-corpus
+        fan-out: a no-fault charge requires a s.105(3) by-law absent from the
+        corpus, so the answer routes to a records request rather than equating
+        the declaration with the by-law; the cap and Coverage C backstop hold)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: INS-02
+
+
+  - id: flag-tenant-not-a-trespasser-paraphrase-1
+    behavior_class: flag-void-clause
+    corpus: cross-corpus
+    verified: true
+    paraphrase_of: flag-tenant-not-a-trespasser
+    question: >-
+      Management says my incoming tenant is a 'trespasser' and won't let her
+      move in or book the elevator until I file her ID, all because her
+      paperwork is late. Can they do that?
+    answer_points:
+      - id: leasing-notice-duty-is-narrow
+        text: The only leasing obligation the Act and the declaration place on an
+          owner who leases is to notify the corporation within ten days of the
+          lease or its renewal, to provide the lessee's name, the owner's
+          address, and a copy or summary of the lease, and to give the lessee a
+          copy of the declaration, by-laws, and rules. The declaration's own
+          leasing article states this ten-day baseline and adds that it does not
+          derogate from the owner's obligations under section 83 of the Act.
+          Neither the Act nor the declaration requires the lessee to produce
+          government-issued identification, and neither makes the lessee's
+          possession of the unit depend on the owner having filed anything.
+      - id: rule-adds-requirements-the-instruments-do-not
+        text: Rule 3 demands filing within thirty days and government-issued
+          identification for every lessee, a deadline and an identification
+          requirement that neither the Act nor the declaration imposes on the
+          owner or the lessee. A rule made by the board must be reasonable and
+          consistent with the Act, the declaration, and the by-laws, so to the
+          extent the Rule adds obligations and consequences the governing
+          instruments do not contain, it is unenforceable.
+      - id: corporation-cannot-deem-a-tenant-a-trespasser
+        text: The lessee's right to occupy the unit flows from her tenancy, not
+          from the corporation's leasing file. Under the Residential Tenancies
+          Act, a tenancy may be terminated only in accordance with that Act, and
+          possession of a rental unit may be recovered only after the tenant
+          vacates or abandons it or the Landlord and Tenant Board orders
+          eviction, and then only by the landlord. The condominium corporation is
+          neither the landlord nor a party to the tenancy, so it cannot by rule
+          convert a lawful tenant into a trespasser or bar her from taking
+          possession of the unit because of the owner's paperwork.
+      - id: reasonable-move-logistics-are-a-separate-matter
+        text: The corporation may still reasonably regulate how and when
+          residents use the common elements for a move, such as requiring the
+          moving elevator, loading dock, and service corridor to be reserved in
+          advance and used only during designated hours. What it cannot do is
+          turn that logistical power into a means of denying a lawful tenant
+          possession of her own unit, which is the effect the Rule's trespasser
+          provision purports to have.
+      - id: remedy-for-an-owners-default-runs-against-the-owner
+        text: If an owner fails to give the leasing notice the Act requires, the
+          corporation's recourse is to enforce that obligation against the owner,
+          including by an application for a compliance order if necessary, and
+          not by self-help against the tenant. The tenant is not the party in
+          default, and the consequences of an owner's non-compliance cannot
+          lawfully be visited on her.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-3 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-4-use-of-the-common-elements }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-3 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '83' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '37' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '39' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-06 — tenant-gatekeeping overreach
+        (cross-corpus: a Rule that deems a late-filed tenant a trespasser and
+        gates possession overreaches the narrow ten-day leasing-notice duty in
+        Condo Act s.83(1) and the declaration, the limit on rule-making in
+        s.58(2), and the tenant possession rights protected by RTA s.37 and
+        s.39; the remedy for a leasing-notice default is a compliance order
+        against the owner under s.134)'
+    tags:
+      difficulty: hard
+      persona: landlord
+      fixture: GOV-06
+
+  - id: flag-tenant-not-a-trespasser-paraphrase-2
+    behavior_class: flag-void-clause
+    corpus: cross-corpus
+    verified: true
+    paraphrase_of: flag-tenant-not-a-trespasser
+    question: >-
+      My tenant takes possession Saturday, but the condo office is calling her
+      a trespasser and blocking her move-in over my late leasing paperwork. Is
+      that allowed?
+    answer_points:
+      - id: leasing-notice-duty-is-narrow
+        text: The only leasing obligation the Act and the declaration place on an
+          owner who leases is to notify the corporation within ten days of the
+          lease or its renewal, to provide the lessee's name, the owner's
+          address, and a copy or summary of the lease, and to give the lessee a
+          copy of the declaration, by-laws, and rules. The declaration's own
+          leasing article states this ten-day baseline and adds that it does not
+          derogate from the owner's obligations under section 83 of the Act.
+          Neither the Act nor the declaration requires the lessee to produce
+          government-issued identification, and neither makes the lessee's
+          possession of the unit depend on the owner having filed anything.
+      - id: rule-adds-requirements-the-instruments-do-not
+        text: Rule 3 demands filing within thirty days and government-issued
+          identification for every lessee, a deadline and an identification
+          requirement that neither the Act nor the declaration imposes on the
+          owner or the lessee. A rule made by the board must be reasonable and
+          consistent with the Act, the declaration, and the by-laws, so to the
+          extent the Rule adds obligations and consequences the governing
+          instruments do not contain, it is unenforceable.
+      - id: corporation-cannot-deem-a-tenant-a-trespasser
+        text: The lessee's right to occupy the unit flows from her tenancy, not
+          from the corporation's leasing file. Under the Residential Tenancies
+          Act, a tenancy may be terminated only in accordance with that Act, and
+          possession of a rental unit may be recovered only after the tenant
+          vacates or abandons it or the Landlord and Tenant Board orders
+          eviction, and then only by the landlord. The condominium corporation is
+          neither the landlord nor a party to the tenancy, so it cannot by rule
+          convert a lawful tenant into a trespasser or bar her from taking
+          possession of the unit because of the owner's paperwork.
+      - id: reasonable-move-logistics-are-a-separate-matter
+        text: The corporation may still reasonably regulate how and when
+          residents use the common elements for a move, such as requiring the
+          moving elevator, loading dock, and service corridor to be reserved in
+          advance and used only during designated hours. What it cannot do is
+          turn that logistical power into a means of denying a lawful tenant
+          possession of her own unit, which is the effect the Rule's trespasser
+          provision purports to have.
+      - id: remedy-for-an-owners-default-runs-against-the-owner
+        text: If an owner fails to give the leasing notice the Act requires, the
+          corporation's recourse is to enforce that obligation against the owner,
+          including by an application for a compliance order if necessary, and
+          not by self-help against the tenant. The tenant is not the party in
+          default, and the consequences of an owner's non-compliance cannot
+          lawfully be visited on her.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-3-leasing-and-occupancy }
+          - { kind: clause, label: p-3 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-4-use-of-the-common-elements }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-vi-leasing-of-units }
+          - { kind: clause, label: p-3 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '83' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '37' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: V }
+          - { kind: section, label: '39' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-06 — tenant-gatekeeping overreach
+        (cross-corpus: a Rule that deems a late-filed tenant a trespasser and
+        gates possession overreaches the narrow ten-day leasing-notice duty in
+        Condo Act s.83(1) and the declaration, the limit on rule-making in
+        s.58(2), and the tenant possession rights protected by RTA s.37 and
+        s.39; the remedy for a leasing-notice default is a compliance order
+        against the owner under s.134)'
+    tags:
+      difficulty: hard
+      persona: landlord
+      fixture: GOV-06
+

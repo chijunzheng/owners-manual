@@ -441,3 +441,283 @@ items:
       difficulty: hard
       persona: owner
       adversarial: hallucination-bait
+
+  # --- paraphrase variants (robustness batch, faithful copies) --------------
+
+  - id: flag-invalid-pet-rule-paraphrase-1
+    behavior_class: flag-void-clause
+    corpus: governing
+    verified: true
+    paraphrase_of: flag-invalid-pet-rule
+    question: >-
+      The rules say no dogs over 10 kg and none in the passenger elevator, but
+      the declaration allows pets up to 20 kg. My dog is 15 kg — is she
+      allowed, and what about the elevator?
+    answer_points:
+      - id: declaration-permits-the-dog
+        text: The declaration permits an owner to keep up to two household pets,
+          where a pet is a cat or dog weighing no more than 20 kg, so a single
+          15 kg dog is within what the declaration allows.
+      - id: rules-must-be-consistent-with-the-declaration
+        text: A rule made by the board must be reasonable and consistent with
+          the Act, the declaration, and the by-laws; it cannot impose a
+          restriction that contradicts a permission the declaration grants.
+      - id: weight-ban-unenforceable-to-that-extent
+        text: Rule 1's prohibition on dogs over 10 kg is inconsistent with the
+          declaration's 20 kg limit, so it is unenforceable to the extent it is
+          stricter than the declaration, and the 15 kg dog remains permitted.
+      - id: reasonable-regulation-vs-overreach
+        text: A rule may still reasonably regulate how a pet uses the common
+          elements, such as requiring it to be leashed or carried and cleaned up
+          after, and the board keeps its declaration power to require removal of
+          a pet that genuinely becomes a nuisance; but it cannot ban outright a
+          dog the declaration permits, and an elevator restriction cannot be used
+          as a back-door exclusion of a permitted dog.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-3 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-3 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-01 — rule inconsistent with the
+        declaration (pets): the Declaration > Rules layer of the hierarchy
+        (Condo Act s.58(2))'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: GOV-01
+
+  - id: flag-invalid-pet-rule-paraphrase-2
+    behavior_class: flag-void-clause
+    corpus: governing
+    verified: true
+    paraphrase_of: flag-invalid-pet-rule
+    question: >-
+      Our board passed a 10 kg dog limit even though the declaration permits
+      pets up to 20 kg, and barred dogs from the passenger elevator. Does the
+      rule or the declaration govern my 15 kg dog?
+    answer_points:
+      - id: declaration-permits-the-dog
+        text: The declaration permits an owner to keep up to two household pets,
+          where a pet is a cat or dog weighing no more than 20 kg, so a single
+          15 kg dog is within what the declaration allows.
+      - id: rules-must-be-consistent-with-the-declaration
+        text: A rule made by the board must be reasonable and consistent with
+          the Act, the declaration, and the by-laws; it cannot impose a
+          restriction that contradicts a permission the declaration grants.
+      - id: weight-ban-unenforceable-to-that-extent
+        text: Rule 1's prohibition on dogs over 10 kg is inconsistent with the
+          declaration's 20 kg limit, so it is unenforceable to the extent it is
+          stricter than the declaration, and the 15 kg dog remains permitted.
+      - id: reasonable-regulation-vs-overreach
+        text: A rule may still reasonably regulate how a pet uses the common
+          elements, such as requiring it to be leashed or carried and cleaned up
+          after, and the board keeps its declaration power to require removal of
+          a pet that genuinely becomes a nuisance; but it cannot ban outright a
+          dog the declaration permits, and an elevator restriction cannot be used
+          as a back-door exclusion of a permitted dog.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-2 }
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-1-pets }
+          - { kind: clause, label: p-3 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-1 }
+      - documentId: fixture-declaration
+        segments:
+          - { kind: section, label: article-iii-use-and-occupation-of-units }
+          - { kind: subsection, label: pets }
+          - { kind: clause, label: p-3 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-01 — rule inconsistent with the
+        declaration (pets): the Declaration > Rules layer of the hierarchy
+        (Condo Act s.58(2))'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: GOV-01
+
+
+  - id: flag-invalid-parking-fine-paraphrase-1
+    behavior_class: flag-void-clause
+    corpus: governing
+    verified: true
+    paraphrase_of: flag-invalid-parking-fine
+    question: >-
+      The condo says I owe a $100 parking fine on my common expenses. Do I
+      have to pay it, and can they lien my unit over it?
+    answer_points:
+      - id: no-power-to-fine
+        text: Ontario condominium corporations have no statutory power to impose
+          a fine or monetary penalty on an owner or occupant for breaking a rule;
+          nothing in the Act authorizes a flat penalty of this kind.
+      - id: enforcement-is-by-compliance-order
+        text: The Act enforces the declaration, by-laws, and rules through an
+          application for a compliance order, and only the damages or costs a
+          corporation is actually awarded in such an order, together with its
+          actual costs of obtaining it, may then be added to the unit's common
+          expenses.
+      - id: fine-is-not-a-common-expense-or-lienable
+        text: The $100 charge is a penalty, not a contribution to common expenses
+          that the owner is obligated to pay, so the Rule cannot validly add it
+          to the owner's common expenses; and because a lien secures only a
+          default in contributing to common expenses, the charge cannot be made
+          the basis of a lien against the unit.
+      - id: rule-inconsistent-and-unenforceable
+        text: A rule must be reasonable and consistent with the Act, so the
+          parking Rule's fine is unenforceable to the extent it purports to
+          penalize the owner, and the owner is not obliged to pay the $100;
+          the corporation may still pursue compliance through the Act's process
+          and recover any costs an order awards.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-2-parking-and-visitor-parking }
+          - { kind: clause, label: p-2 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '5' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '85' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-03 — rule purporting to fine: condos have
+        no fining power; enforcement runs through a compliance order (s.134) and
+        the common-expense lien secures only common-expense defaults (s.85)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: GOV-03
+
+  - id: flag-invalid-parking-fine-paraphrase-2
+    behavior_class: flag-void-clause
+    corpus: governing
+    verified: true
+    paraphrase_of: flag-invalid-parking-fine
+    question: >-
+      The board slapped a $100 'fine' on me for parking in the wrong spot and
+      added it to my fees. Are they even allowed to fine me like that?
+    answer_points:
+      - id: no-power-to-fine
+        text: Ontario condominium corporations have no statutory power to impose
+          a fine or monetary penalty on an owner or occupant for breaking a rule;
+          nothing in the Act authorizes a flat penalty of this kind.
+      - id: enforcement-is-by-compliance-order
+        text: The Act enforces the declaration, by-laws, and rules through an
+          application for a compliance order, and only the damages or costs a
+          corporation is actually awarded in such an order, together with its
+          actual costs of obtaining it, may then be added to the unit's common
+          expenses.
+      - id: fine-is-not-a-common-expense-or-lienable
+        text: The $100 charge is a penalty, not a contribution to common expenses
+          that the owner is obligated to pay, so the Rule cannot validly add it
+          to the owner's common expenses; and because a lien secures only a
+          default in contributing to common expenses, the charge cannot be made
+          the basis of a lien against the unit.
+      - id: rule-inconsistent-and-unenforceable
+        text: A rule must be reasonable and consistent with the Act, so the
+          parking Rule's fine is unenforceable to the extent it purports to
+          penalize the owner, and the owner is not obliged to pay the $100;
+          the corporation may still pursue compliance through the Act's process
+          and recover any costs an order awards.
+    required_cites:
+      - documentId: fixture-rules
+        segments:
+          - { kind: section, label: rule-2-parking-and-visitor-parking }
+          - { kind: clause, label: p-2 }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '58' }
+          - { kind: subsection, label: '2' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IX }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '5' }
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: VI }
+          - { kind: section, label: '85' }
+          - { kind: subsection, label: '1' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md GOV-03 — rule purporting to fine: condos have
+        no fining power; enforcement runs through a compliance order (s.134) and
+        the common-expense lien secures only common-expense defaults (s.85)'
+    tags:
+      difficulty: hard
+      persona: owner
+      fixture: GOV-03
+

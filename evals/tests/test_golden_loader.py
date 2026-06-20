@@ -447,6 +447,25 @@ def test_every_adversarial_subclass_is_represented_in_the_committed_set() -> Non
     assert not missing, f"adversarial sub-classes with no committed item: {sorted(missing)}"
 
 
+def test_every_paraphrase_is_faithful_to_its_parent() -> None:
+    # CONTEXT.md ("Paraphrase group") + decision 6: a paraphrase varies register
+    # and persona in the QUESTION only — answer_points, required_cites, provenance,
+    # behavior class, and corpus are copied verbatim from the parent. A rephrase
+    # that would change the right answer is a NEW item, not a variant. This guard
+    # makes "verbatim" mechanical, so a transcription slip can never silently
+    # create a paraphrase that grades against different ground truth than its parent.
+    items = {item.id: item for item in load_golden_v0_set().items}
+    for item in items.values():
+        if item.paraphrase_of is None:
+            continue
+        parent = items[item.paraphrase_of]
+        assert item.answer_points == parent.answer_points, f"{item.id}: answer_points drift"
+        assert item.required_cites == parent.required_cites, f"{item.id}: required_cites drift"
+        assert item.provenance == parent.provenance, f"{item.id}: provenance drift"
+        assert item.behavior_class == parent.behavior_class, f"{item.id}: behavior_class drift"
+        assert item.corpus == parent.corpus, f"{item.id}: corpus drift"
+
+
 # --- AC 5: verified-only filtering for an eval run -------------------------
 
 
