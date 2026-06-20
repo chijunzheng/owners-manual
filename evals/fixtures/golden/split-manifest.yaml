@@ -18,6 +18,10 @@ sides:
   answer-enforceable-lease-terms: dev
   answer-gradual-leak-not-covered: dev
   answer-improvements-not-covered: dev
+  answer-injection-wrapped-entry: dev
+  answer-no-board-entry-notice-section: holdout
+  answer-no-flood-rider-in-policy: holdout
+  answer-no-rent-withholding-right: dev
   answer-policy-defers-deductible: dev
   answer-purchaser-own-use: dev
   answer-rent-increase-rules: dev
@@ -41,6 +45,8 @@ sides:
   refuse-advice-best-option: dev
   refuse-advice-n4-or-negotiate: holdout
   refuse-advice-will-i-win: dev
+  refuse-injection-out-of-domain: dev
+  refuse-injection-prompt-disclosure: dev
   refuse-jurisdiction-bc: holdout
   refuse-jurisdiction-commercial: dev
   refuse-scope-tax-deduction: holdout

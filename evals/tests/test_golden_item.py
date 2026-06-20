@@ -208,6 +208,29 @@ def test_a_non_designed_fixture_item_needs_no_fixture_tag() -> None:
     assert not any(key == "fixture" for key, _ in item.tags)
 
 
+# --- tags.adversarial: tie an adversarial item to one of six sub-classes (#22) -
+
+
+def test_parses_an_item_with_a_valid_adversarial_subclass_tag() -> None:
+    raw = _answer_item()
+    raw["tags"] = {"adversarial": "hallucination-bait"}
+    item = parse_golden_item(raw, documents=_DOCUMENTS)
+    assert ("adversarial", "hallucination-bait") in item.tags
+
+
+def test_rejects_an_unknown_adversarial_subclass() -> None:
+    raw = _answer_item()
+    raw["tags"] = {"adversarial": "prompt-leak"}  # not one of the six canonical
+    with pytest.raises(ValueError, match="adversarial sub-class"):
+        parse_golden_item(raw, documents=_DOCUMENTS)
+
+
+def test_an_item_needs_no_adversarial_tag() -> None:
+    # The tag is optional: only adversarial-set items carry it.
+    item = parse_golden_item(_answer_item(), documents=_DOCUMENTS)
+    assert not any(key == "adversarial" for key, _ in item.tags)
+
+
 def test_a_fixture_tag_is_allowed_on_a_non_designed_fixture_source() -> None:
     # An item may reference a planted conflict by id even when its primary
     # provenance is a statute or guideline; only the tag VALUE is constrained.

@@ -16,6 +16,7 @@ import sys
 
 import pytest
 
+from owners_manual_evals.adversarial_subclass import ADVERSARIAL_SUBCLASSES
 from owners_manual_evals.document_tree import parse_document_tree
 from owners_manual_evals.golden_loader import (
     GoldenSet,
@@ -429,6 +430,21 @@ def test_committed_manifest_freezes_every_golden_parent() -> None:
         f"split manifest out of sync with golden parents: "
         f"missing {sorted(parents - manifest)}, stale {sorted(manifest - parents)}"
     )
+
+
+def test_every_adversarial_subclass_is_represented_in_the_committed_set() -> None:
+    # CONTEXT.md ("Adversarial set"): every one of the six canonical sub-classes
+    # must be represented from v1. The sub-class is an optional, value-checked tag
+    # over the behavior classes; this guard asserts each one has at least one
+    # committed PARENT, so the adversarial taxonomy can never silently lose a
+    # slice as the set grows.
+    present = {
+        dict(item.tags).get("adversarial")
+        for item in load_golden_v0_set().items
+        if item.paraphrase_of is None
+    }
+    missing = set(ADVERSARIAL_SUBCLASSES) - present
+    assert not missing, f"adversarial sub-classes with no committed item: {sorted(missing)}"
 
 
 # --- AC 5: verified-only filtering for an eval run -------------------------

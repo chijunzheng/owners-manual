@@ -20,6 +20,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+from .adversarial_subclass import ADVERSARIAL_SUBCLASS_SET
 from .citable_path import CitablePath, parse_citable_path
 from .cite_matcher import resolves_to_node
 from .document_tree import DocumentTree
@@ -135,6 +136,7 @@ def parse_golden_item(value: object, *, documents: Sequence[DocumentTree]) -> Go
     paraphrase_of = _parse_paraphrase_of(value, item_id)
     tags = _parse_tags(value, item_id)
     _validate_fixture_tag(provenance=provenance, tags=tags, item_id=item_id)
+    _validate_adversarial_tag(tags=tags, item_id=item_id)
 
     return GoldenItem(
         id=item_id,
@@ -285,6 +287,23 @@ def _validate_fixture_tag(
             f"golden item {item_id!r} has provenance source {_DESIGNED_FIXTURE_SOURCE!r} but no "
             f"fixture tag; a designed-fixture item must name the planted conflict it "
             f"instantiates via tags.fixture (issue #22)"
+        )
+
+
+def _validate_adversarial_tag(*, tags: tuple[tuple[str, str], ...], item_id: str) -> None:
+    """Tie an adversarial item to one of the six canonical sub-classes (#22).
+
+    An ``adversarial`` tag, when present, must name a known sub-class
+    (``ADVERSARIAL_SUBCLASS_SET``, sourced from the CONTEXT.md "Adversarial set"
+    glossary) — a typo can never silently drop an item out of the adversarial
+    taxonomy that a guard test asserts is fully represented. The tag is optional:
+    only items in the adversarial set carry it.
+    """
+    subclass = dict(tags).get("adversarial")
+    if subclass is not None and subclass not in ADVERSARIAL_SUBCLASS_SET:
+        raise ValueError(
+            f"golden item {item_id!r} has adversarial tag {subclass!r}, which is not a known "
+            f"adversarial sub-class; expected one of {sorted(ADVERSARIAL_SUBCLASS_SET)}"
         )
 
 
