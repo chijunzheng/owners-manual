@@ -969,6 +969,11 @@ items:
       - documentId: rta-2006
         segments:
           - { kind: part, label: III }
+          - { kind: section, label: '26' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
           - { kind: section, label: '27' }
           - { kind: subsection, label: '1' }
       - documentId: rta-2006
