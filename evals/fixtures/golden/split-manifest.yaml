@@ -31,9 +31,13 @@ sides:
   flag-policy-cannot-ban-permitted-bbq: dev
   flag-tenant-not-a-trespasser: holdout
   flag-unauthorized-move-in-fee: holdout
+  flag-void-all-repairs: dev
+  flag-void-conditional-key-deposit: holdout
+  flag-void-deposit-no-interest: dev
   flag-void-no-pets: dev
   flag-void-prepaid-rent: holdout
   flag-void-renewal-showings: dev
+  flag-void-repair-deductible: dev
   refuse-advice-best-option: dev
   refuse-advice-n4-or-negotiate: holdout
   refuse-advice-will-i-win: dev

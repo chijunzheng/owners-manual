@@ -422,6 +422,246 @@ items:
       persona: tenant
       fixture: LEASE-06
 
+  # LEASE-02: partial voidness — a lease term cannot enlarge the tenant's repair
+  # liability past the statute. The landlord's duty to keep the unit and what it
+  # supplies in a good state of repair survives any "tenant pays for everything"
+  # clause; the tenant answers only for undue damage they or a guest cause
+  # wilfully or negligently. "Whatever the cause" is void to that extent.
+  - id: flag-void-all-repairs
+    behavior_class: flag-void-clause
+    corpus: tenancy
+    verified: true
+    question: >-
+      My lease says I'm responsible for all damage and repairs of any kind,
+      whatever the cause. The fridge just died of old age and my landlord says
+      that clause makes me buy a new one. Does it?
+    answer_points:
+      - id: landlord-bears-the-repair-duty
+        text: The landlord must keep the rental unit in a good state of repair
+          and fit for habitation, a duty that reaches the appliances and
+          fixtures the landlord supplies and cannot be contracted out of by the
+          lease.
+      - id: tenant-liable-only-for-undue-damage
+        text: A tenant is responsible only for repairing undue damage that the
+          tenant, another occupant, or a guest causes wilfully or negligently —
+          not for ordinary wear or for things that fail on their own.
+      - id: clause-void-to-the-extent-it-shifts-repair
+        text: A term making the tenant responsible for all damage and repairs
+          whatever the cause is void to the extent it shifts the landlord's
+          statutory repair duty onto the tenant.
+      - id: fridge-of-old-age-is-the-landlords
+        text: A fridge that fails from age is the landlord's to repair or
+          replace; the clause does not make the tenant pay for it.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: maintenance-and-repairs }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '20' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '34' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-02 — overbroad damages clause
+        (partial voidness against the repair duty)'
+    tags:
+      difficulty: medium
+      persona: tenant
+      design: partial-voidness
+      fixture: LEASE-02
+
+  # LEASE-05: partial voidness with a dollar structure — a standing "first $100
+  # of every repair" deductible shifts the landlord's repair duty onto the
+  # tenant. Ordinary repair to the unit's fixtures and appliances is the
+  # landlord's; only undue damage the tenant causes wilfully or negligently is
+  # chargeable, and then for its cost, not as a flat per-repair toll.
+  - id: flag-void-repair-deductible
+    behavior_class: flag-void-clause
+    corpus: tenancy
+    verified: true
+    question: >-
+      My lease says I pay the first $100 of the cost of every repair to the
+      fixtures and appliances, and the dishwasher just died of old age. Do I owe
+      the $100?
+    answer_points:
+      - id: repair-is-the-landlords-duty
+        text: Keeping the unit's fixtures and appliances in a good state of
+          repair is the landlord's responsibility, not the tenant's.
+      - id: per-repair-deductible-is-void
+        text: A term requiring the tenant to pay the first $100 of every repair
+          is void to the extent it shifts the landlord's repair duty; the
+          landlord cannot impose a standing deductible against its own
+          obligation.
+      - id: only-tenant-caused-damage-is-chargeable
+        text: The tenant pays only for undue damage that the tenant, an occupant,
+          or a guest causes wilfully or negligently — and then for the cost of
+          that damage, not as a flat charge on ordinary repairs.
+      - id: dishwasher-of-old-age-owes-nothing
+        text: A dishwasher that fails from age is an ordinary repair, so the
+          tenant owes none of it — not even the first $100.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: maintenance-and-repairs }
+          - { kind: clause, label: p-2 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: III }
+          - { kind: section, label: '20' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '34' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-05 — $100-per-repair maintenance shift
+        (partial voidness, dollar structure)'
+    tags:
+      difficulty: medium
+      persona: tenant
+      design: partial-voidness
+      fixture: LEASE-05
+
+  # LEASE-04: layered analysis — a key deposit is permitted, but only as a
+  # genuine, refundable key/fob/remote deposit capped at replacement cost.
+  # Conditioning its return on the unit's condition, with deductions for
+  # cleaning or repair, converts it into a security deposit, which is barred.
+  # Half the clause is arguable; the condition is void.
+  - id: flag-void-conditional-key-deposit
+    behavior_class: flag-void-clause
+    corpus: tenancy
+    verified: true
+    question: >-
+      My lease has a $300 key deposit the landlord refunds only after I vacate
+      and return the unit in its original condition, with deductions for any
+      cleaning or repair. He now wants to keep it over a scuff on the wall.
+      Allowed?
+    answer_points:
+      - id: a-genuine-key-deposit-is-permitted
+        text: A refundable deposit for keys, fobs, and remotes is permitted, but
+          only up to their expected replacement cost and only as a true key
+          deposit — refunded when the keys, fobs, and remotes are returned.
+      - id: condition-on-unit-state-makes-it-a-security-deposit
+        text: Refunding the deposit only if the unit is returned in its original
+          condition, with deductions for cleaning or repair, makes it security
+          for the tenant's performance — a security deposit.
+      - id: security-deposits-are-prohibited
+        text: The only security deposit a landlord may collect is a rent deposit;
+          a deposit conditioned on the unit's condition is not permitted, so that
+          condition is void.
+      - id: scuff-cannot-justify-withholding
+        text: The landlord cannot keep the key deposit over a scuff on the wall;
+          it must be returned once the keys, fobs, and remotes are returned,
+          charging only the replacement cost of any not returned.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: deposits }
+          - { kind: subsection, label: key-deposit }
+          - { kind: clause, label: p-1 }
+      - documentId: reg-516-06
+        segments:
+          - { kind: part, label: II }
+          - { kind: section, label: '17' }
+          - { kind: clause, label: '3' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '134' }
+          - { kind: subsection, label: '1' }
+          - { kind: clause, label: a }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-04 — conditional key deposit
+        (layered — arguable amount, void condition)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: layered-voidness
+      fixture: LEASE-04
+
+  # LEASE-07: two embedded errors in one deposit clause. Money held "in trust as
+  # security for performance" is a security deposit, and the only one permitted
+  # is a rent deposit of at most one rent period, applied to the last period;
+  # "first and last" framing over-collects. Separately, the landlord owes annual
+  # interest at the guideline rate, so "no interest" is void.
+  - id: flag-void-deposit-no-interest
+    behavior_class: flag-void-clause
+    corpus: tenancy
+    verified: true
+    question: >-
+      On signing I paid first and last months' rent as a $4,000 deposit my
+      landlord holds in trust as security, and the lease says it bears no
+      interest. Three years in — was I ever owed interest on that money?
+    answer_points:
+      - id: only-a-rent-deposit-is-allowed
+        text: The only security deposit a landlord may collect is a rent deposit;
+          money held in trust as general security for the tenant's performance is
+          not a permitted deposit.
+      - id: capped-at-one-rent-period
+        text: A rent deposit may not exceed one rent period's rent, so a deposit
+          equal to first and last months' rent collects more than the law allows.
+      - id: interest-owed-annually
+        text: The landlord must pay the tenant interest on the rent deposit every
+          year at the rent-increase guideline rate, so the clause saying the
+          deposit bears no interest is void.
+      - id: three-years-of-interest-were-owed
+        text: After three years the tenant was owed three years of annual
+          guideline interest on the lawful last-month deposit, despite the
+          no-interest clause.
+    required_cites:
+      - documentId: fixture-lease
+        segments:
+          - { kind: section, label: deposits }
+          - { kind: subsection, label: first-and-last-months-rent }
+          - { kind: clause, label: p-1 }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '1' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '105' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '2' }
+      - documentId: rta-2006
+        segments:
+          - { kind: part, label: VII }
+          - { kind: section, label: '106' }
+          - { kind: subsection, label: '6' }
+    provenance:
+      source: designed-fixture
+      reference: 'FIXTURE-DESIGN.md LEASE-07 — no-interest last-month deposit
+        (compound error — deposit scope plus interest)'
+    tags:
+      difficulty: hard
+      persona: tenant
+      design: compound-error
+      fixture: LEASE-07
+
   # --- batch 3: refusal classes ----------------------------------------------
   # Refusal items carry no required cites: the asserted behavior is the
   # refusal itself (plus any in-scope information the system may properly give
