@@ -401,3 +401,43 @@ items:
       difficulty: hard
       persona: owner
       fixture: GOV-04
+
+  # --- adversarial gap-fill: hallucination-bait ------------------------------
+  # HB (governing): the Condo Act has no s.300 and no fixed "48 hours' notice"
+  # rule for board entry. Entry is governed by s.19 — the corporation may enter
+  # on REASONABLE notice to perform its objects and duties. The agent must reject
+  # the invented section and figure and give the real reasonable-notice rule.
+  - id: answer-no-board-entry-notice-section
+    behavior_class: answer
+    corpus: governing
+    verified: true
+    question: >-
+      Doesn't section 300 of the Condominium Act require the board to give me 48
+      hours' written notice before entering my unit?
+    answer_points:
+      - id: no-such-section-or-48-hour-rule
+        text: There is no section 300 in the Condominium Act and no fixed 48-hour
+          notice rule for the corporation entering a unit; the cited section and
+          figure should not be confirmed.
+      - id: entry-is-on-reasonable-notice
+        text: The Act lets the corporation, or someone it authorizes, enter a unit
+          or an owner's exclusive-use common element on reasonable notice, at a
+          reasonable time, to perform its objects and duties or exercise its
+          powers.
+      - id: reasonable-is-not-a-fixed-count
+        text: What is reasonable notice is not a set number of hours and may also
+          depend on the declaration or by-laws, so the answer should not invent a
+          specific deadline.
+    required_cites:
+      - documentId: condo-act-1998
+        segments:
+          - { kind: part, label: IV }
+          - { kind: section, label: '19' }
+    provenance:
+      source: adversarial-design
+      reference: 'Adversarial gap-fill 2026-06-19 — hallucination bait: a
+        nonexistent Condo Act section and an invented 48-hour entry-notice rule'
+    tags:
+      difficulty: hard
+      persona: owner
+      adversarial: hallucination-bait
