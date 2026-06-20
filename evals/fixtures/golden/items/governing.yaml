@@ -524,7 +524,8 @@ items:
     question: >-
       Our board passed a 10 kg dog limit even though the declaration permits
       pets up to 20 kg, and barred dogs from the passenger elevator. Does the
-      rule or the declaration govern my 15 kg dog?
+      rule or the declaration win for my 15 kg dog, and can they really keep
+      her out of the elevator?
     answer_points:
       - id: declaration-permits-the-dog
         text: The declaration permits an owner to keep up to two household pets,
@@ -662,7 +663,8 @@ items:
     paraphrase_of: flag-invalid-parking-fine
     question: >-
       The board slapped a $100 'fine' on me for parking in the wrong spot and
-      added it to my fees. Are they even allowed to fine me like that?
+      tacked it onto my common expenses. Can they actually do that — do I have
+      to pay, and could they lien my unit over it?
     answer_points:
       - id: no-power-to-fine
         text: Ontario condominium corporations have no statutory power to impose
