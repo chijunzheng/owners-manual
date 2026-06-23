@@ -68,6 +68,19 @@ export const GOLDEN_V0_DOCUMENTS: readonly CorpusDocumentSource[] = [
   },
 ]
 
+/**
+ * The ids of the corpus-kind (statute / regulation) documents — the sources whose
+ * manifest provenance (checksum + consolidation date) pins the corpus-build hash
+ * (run-record.ts). Ingest and serve MUST snapshot the same set or their build
+ * hashes disagree, so both derive it from this one helper rather than re-filtering
+ * inline (Codex PR #72: a prefix filter omitted the Condo Act).
+ */
+export function corpusSourceIds(
+  documents: readonly CorpusDocumentSource[] = GOLDEN_V0_DOCUMENTS,
+): readonly string[] {
+  return documents.filter((document) => document.kind === 'corpus').map((document) => document.id)
+}
+
 /** Reads one document's HTML by its repo-relative path. Injected for testing. */
 export type HtmlReader = (inputFile: string) => Promise<string>
 

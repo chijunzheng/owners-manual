@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   GOLDEN_V0_DOCUMENTS,
+  corpusSourceIds,
   loadCorpusForIngest,
   loadFixtureSnapshot,
   type HtmlReader,
@@ -46,6 +47,19 @@ describe('GOLDEN_V0_DOCUMENTS', () => {
 
   it('never includes the checksum-failing rent-increase-guideline source', () => {
     expect(GOLDEN_V0_DOCUMENTS.map((d) => d.id)).not.toContain('rent-increase-guideline')
+  })
+})
+
+describe('corpusSourceIds', () => {
+  it('is the corpus-kind statute ids that pin the build — including the Condo Act', () => {
+    // Ingest and serve both snapshot this set into the run record, so it must
+    // include condo-act-1998: a Condo Act currency change then bumps the
+    // corpusBuildHash and the ingest + serve build hashes agree (Codex PR #72).
+    expect(corpusSourceIds(GOLDEN_V0_DOCUMENTS)).toEqual([
+      'rta-2006',
+      'reg-516-06',
+      'condo-act-1998',
+    ])
   })
 })
 
