@@ -54,3 +54,10 @@ def test_error_envelope_raises() -> None:
 def test_missing_result_field_raises() -> None:
     with pytest.raises(ValueError, match="result"):
         parse_judge_cli_envelope(json.dumps({"is_error": False, "total_cost_usd": 0.01}))
+
+
+def test_non_object_envelope_raises() -> None:
+    # `claude -p --output-format json` always returns a JSON OBJECT; a parsed
+    # array (or any other non-object) is rejected, never silently mis-read.
+    with pytest.raises(ValueError, match="JSON object"):
+        parse_judge_cli_envelope(json.dumps(["not", "an", "object"]))
