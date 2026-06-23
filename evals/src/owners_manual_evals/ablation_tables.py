@@ -21,8 +21,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from .ablation_ladders import (
-    COMPONENT_KEYS,
     ORDER_DEPENDENCE_CAVEAT,
+    live_enforceable_components,
     require_component,
 )
 
@@ -205,13 +205,16 @@ def generate_ablation_tables(
 
 
 def _validate_buildup(buildup: Sequence[LadderRowFromLangfuse]) -> None:
-    """The build-up read must be the floor plus the eight components in dependency
-    order — so a derived table cannot silently drop or reorder a rung."""
+    """The build-up read must be the floor plus the live-ENFORCEABLE components in
+    dependency order — so a derived table cannot silently drop or reorder a rung,
+    nor fabricate a rung for a component the deployed service has no off-switch for
+    (Codex Finding 1: the unsupported components are DEFERRED, never tabled)."""
     component_rows = [row.component_key for row in buildup if row.component_key is not None]
-    if tuple(component_rows) != COMPONENT_KEYS:
+    expected = live_enforceable_components()
+    if tuple(component_rows) != expected:
         raise ValueError(
-            "build-up ladder read from Langfuse must cover the eight components in "
-            f"dependency order; got {component_rows}"
+            "build-up ladder read from Langfuse must cover the live-enforceable "
+            f"components in dependency order {list(expected)}; got {component_rows}"
         )
 
 

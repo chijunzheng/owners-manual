@@ -45,10 +45,15 @@ def test_every_component_documents_a_non_empty_off_state() -> None:
         assert component.label.strip() != ""
 
 
-def test_the_three_readme_pinned_off_states_match_the_readme() -> None:
+def test_the_readme_pinned_off_states_match_the_readme() -> None:
     by_key = {c.key: c for c in EIGHT_COMPONENTS}
-    # README ("Component attribution"): the three named fallbacks.
-    assert "single hop" in by_key["planner"].off_state.lower()
+    # README ("Component attribution"): the named fallbacks. The planner off-state
+    # is the HONEST one (Codex Finding 1): OWNERS_MANUAL_QUERY_REFORMULATION gates
+    # only the bounded reformulation — corpus routing runs unconditionally — so the
+    # off-state is "no bounded reformulation (single retrieval pass)", NOT the old
+    # overclaimed "single hop, no routing".
+    assert "no bounded reformulation" in by_key["planner"].off_state.lower()
+    assert "single retrieval pass" in by_key["planner"].off_state.lower()
     assert "unverified" in by_key["critic"].off_state.lower()
     assert "raw similarity" in by_key["authority-rerank"].off_state.lower()
 

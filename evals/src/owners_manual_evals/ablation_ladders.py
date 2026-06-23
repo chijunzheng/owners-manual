@@ -7,27 +7,70 @@ the final system). A component big on build-up but small on knock-out was absorb
 by later additions — a redundancy finding. Every off-state has a defined fallback;
 runs at milestones."
 
-README ("Component attribution") pins the eight components and three off-state
-fallbacks: "the naive-rag → agent gap bundles eight components (hierarchy chunks,
-contextual enrichment, hybrid BM25, metadata filters, graph expansion, authority
-rerank, planner, critic) ... Every off-state has a defined fallback (planner-off =
-single hop across all corpora; critic-off = unverified synthesis; rerank-off = raw
-similarity order); build-up attributions are order-dependent and the README says
-so rather than hiding it."
+README ("Component attribution") pins the eight components and the off-state
+fallbacks. The OFFLINE component model below is the full eight-component framework
+#23 delivers (the ladders, the redundancy findings, the console render), driven by
+an injected fake runner.
 
-This module owns the component model and the rung → flag-configuration mapping —
-the AC2 surface ("off-states documented and enforced for all eight components").
-The ladder runner (AC1), the Langfuse-derived README tables (AC3), and the
-redundancy findings (AC4) build on top of it in the same file's later sections.
+But only a SUBSET of those off-states has a real switch on the DEPLOYED service
+(Codex Finding 1), so each component carries an explicit :class:`Enforcement`:
+
+* CORPUS_BUILD — hierarchy-chunks, contextual-enrichment (a distinct corpus build);
+* QUERY_ENV    — graph-expansion (``OWNERS_MANUAL_XREF_EXPANSION``), authority-rerank
+  (``OWNERS_MANUAL_RERANK``), planner (``OWNERS_MANUAL_QUERY_REFORMULATION`` — which
+  gates ONLY the bounded reformulation; the planner node + corpus routing run
+  unconditionally, so the honest off-state is "no bounded reformulation / single
+  retrieval pass", not "no routing");
+* UNSUPPORTED  — hybrid-bm25 (#14), metadata-filters (#41), critic (wired
+  unconditionally) have NO off-switch yet, so knocking them out changes neither the
+  build nor the env — those rungs would deploy an identical full system. They are
+  DEFERRED (:func:`deferred_components`), surfaced in the runbook, and excluded from
+  the live plan + the derived README tables — never silently faked.
+
+So the LIVE plan/runbook + the Langfuse table path (this module's :func:`ladder_run_plan`,
+:mod:`live_ablation_scores`, :mod:`ablation_tables`) emit rungs ONLY for the
+live-enforceable components, every emitted rung differs from the full-system config
+in build or env, and the offline framework (:func:`run_ablation_ladders`,
+:func:`render_ladders`, the redundancy findings) keeps all eight. The ladder runner
+(AC1), the Langfuse-derived README tables (AC3), and the redundancy findings (AC4)
+build on top of it in the same file's later sections.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from enum import Enum
 
 from .bootstrap import ConfidenceInterval, bootstrap_paired_gap_ci, strict_pass_rate
 from .metrics import ItemScore
+
+
+class Enforcement(Enum):
+    """How a component's OFF-state is actually enforced on the DEPLOYED service.
+
+    The offline component model (the eight components, the two ladders, the
+    redundancy findings) is the full framework #23 delivers, driven by an injected
+    fake runner. But only a SUBSET of those off-states have a real switch on the
+    live service, and the live runbook + the Langfuse-derived README tables must be
+    honest about which (Codex Finding 1):
+
+    * :attr:`CORPUS_BUILD` — an index-time component whose off-state is a distinct
+      corpus build (chunking / enrichment / index shape), enforced by deploying the
+      service against that build.
+    * :attr:`QUERY_ENV` — a query-time component gated by a named ``OWNERS_MANUAL_*``
+      env flag (``agent-query-flags.ts``), enforced by the env the service reads.
+    * :attr:`UNSUPPORTED` — a component with NO off-switch on the deployed service
+      yet: knocking it out changes neither the build nor the env, so the service
+      would stand up an identical full system and report a bogus ~0 delta. These
+      are DEFERRED (see :func:`deferred_components`), with the blocking issue, and
+      excluded from the live plan + the derived README tables — never silently
+      faked.
+    """
+
+    CORPUS_BUILD = "corpus-build"
+    QUERY_ENV = "query-env"
+    UNSUPPORTED = "unsupported"
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,12 +83,18 @@ class AblationComponent:
     fallback"). ``index_time`` marks the components whose off-state needs a
     different corpus build (chunking/enrichment/index shape) rather than a free
     query-time flag flip (CONTEXT.md: index-time vs query-time experiments).
+    ``enforcement`` records HOW that off-state reaches the deployed service (a
+    corpus build, a named env flag, or — for a component with no off-switch yet —
+    :attr:`Enforcement.UNSUPPORTED`); ``deferred_note`` names the blocking issue
+    for an unsupported component and is empty for an enforceable one.
     """
 
     key: str
     label: str
     off_state: str
     index_time: bool
+    enforcement: Enforcement
+    deferred_note: str = ""
 
 
 #: The eight components, in DEPENDENCY ORDER (README, "Component attribution").
@@ -58,48 +107,73 @@ EIGHT_COMPONENTS: tuple[AblationComponent, ...] = (
         label="Hierarchy-aware chunks",
         off_state="fixed-size chunks on citable-unit-blind boundaries (the naive-rag chunker)",
         index_time=True,
+        enforcement=Enforcement.CORPUS_BUILD,
     ),
     AblationComponent(
         key="contextual-enrichment",
         label="Contextual chunk enrichment",
         off_state="no situating context prepended before embedding; the chunk text is embedded raw",
         index_time=True,
+        enforcement=Enforcement.CORPUS_BUILD,
     ),
     AblationComponent(
         key="hybrid-bm25",
         label="Hybrid BM25 + vector",
         off_state="vector-only top-k retrieval; the BM25 leg is dropped (the naive-rag retriever)",
         index_time=False,
+        # No query-time off-switch on the deployed service: hybrid retrieval is the
+        # retriever, with no vector-only flag. Deferred to #14 (hybrid retrieval).
+        enforcement=Enforcement.UNSUPPORTED,
+        deferred_note="no vector-only service switch yet; deferred to #14 (hybrid retrieval)",
     ),
     AblationComponent(
         key="metadata-filters",
         label="Metadata pre-filters",
         off_state="no metadata pre-filter; retrieval ranges over every chunk in the build",
         index_time=False,
+        # No query-time off-switch on the deployed service: the metadata pre-filter
+        # always applies. Deferred to #41 (the metadata-filter switch).
+        enforcement=Enforcement.UNSUPPORTED,
+        deferred_note="no metadata-filter-off service switch yet; deferred to #41",
     ),
     AblationComponent(
         key="graph-expansion",
         label="Cross-reference graph expansion",
         off_state="no graph expansion; the candidate set is exactly hybrid retrieval's output",
         index_time=False,
+        # OWNERS_MANUAL_XREF_EXPANSION (agent-query-flags.ts).
+        enforcement=Enforcement.QUERY_ENV,
     ),
     AblationComponent(
         key="authority-rerank",
         label="Authority-weighted rerank",
         off_state="raw similarity order (the fused-score order); no authority weighting is applied",
         index_time=False,
+        # OWNERS_MANUAL_RERANK (agent-query-flags.ts).
+        enforcement=Enforcement.QUERY_ENV,
     ),
     AblationComponent(
         key="planner",
         label="Retrieval planner",
-        off_state="single hop across all corpora; no corpus routing or multi-hop fan-out",
+        # HONEST off-state (Codex Finding 1): OWNERS_MANUAL_QUERY_REFORMULATION gates
+        # only the bounded reformulation edge — the planner node + corpus routing run
+        # UNCONDITIONALLY (agent-graph.ts wires `planner` always), so the switch
+        # enforces "no bounded reformulation (single retrieval pass)", NOT "no
+        # routing". The off-state is relabelled to what the switch actually enforces.
+        off_state="no bounded reformulation; a single retrieval pass per plan (the "
+        "reformulate edge never fires) — corpus routing still runs (ADR 0006)",
         index_time=False,
+        enforcement=Enforcement.QUERY_ENV,
     ),
     AblationComponent(
         key="critic",
         label="Critic gate",
         off_state="unverified synthesis; no claim-to-chunk check and no Critic re-retrieval",
         index_time=False,
+        # No off-switch: buildAgentGraph (agent-graph.ts) wires the critic node
+        # unconditionally; there is no critic-off env flag. Deferred until one exists.
+        enforcement=Enforcement.UNSUPPORTED,
+        deferred_note="critic node wired unconditionally; needs a critic-off service switch",
     ),
 )
 
@@ -107,6 +181,49 @@ EIGHT_COMPONENTS: tuple[AblationComponent, ...] = (
 COMPONENT_KEYS: tuple[str, ...] = tuple(c.key for c in EIGHT_COMPONENTS)
 
 _COMPONENT_BY_KEY = {c.key: c for c in EIGHT_COMPONENTS}
+
+
+@dataclass(frozen=True, slots=True)
+class DeferredComponent:
+    """A component with no service off-switch yet, surfaced (never dropped).
+
+    ``note`` names WHY it is deferred and the blocking issue, so the runbook and the
+    README can state it explicitly rather than silently faking a ~0 delta rung.
+    """
+
+    component_key: str
+    note: str
+
+
+def component_enforcement(key: str) -> Enforcement:
+    """How ``key``'s off-state is enforced on the deployed service.
+
+    Raises ``ValueError`` for an unknown key (the closed eight-component set), so a
+    typo cannot read as a silent classification.
+    """
+    return require_component(key).enforcement
+
+
+def live_enforceable_components() -> tuple[str, ...]:
+    """The components whose off-state the deployed service can actually enforce, in
+    dependency order — a corpus-build variant or a named query-env flag. These are
+    the ONLY components the live plan emits runnable rungs for (Codex Finding 1)."""
+    return tuple(
+        key
+        for key in COMPONENT_KEYS
+        if _COMPONENT_BY_KEY[key].enforcement is not Enforcement.UNSUPPORTED
+    )
+
+
+def deferred_components() -> tuple[DeferredComponent, ...]:
+    """The components with no service off-switch yet (``Enforcement.UNSUPPORTED``),
+    in dependency order, each with its blocking-issue note. Surfaced in the runbook
+    and excluded from the derived README tables — explicitly DEFERRED, never faked."""
+    return tuple(
+        DeferredComponent(component_key=c.key, note=c.deferred_note)
+        for c in EIGHT_COMPONENTS
+        if c.enforcement is Enforcement.UNSUPPORTED
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,6 +309,47 @@ def flags_for_knockout_rung(component_key: str) -> LadderFlags:
     eight components).
     """
     require_component(component_key)
+    return LadderFlags(enabled=frozenset(COMPONENT_KEYS) - {component_key})
+
+
+# --- LIVE flag builders: only enforceable components toggle ----------------
+#
+# The OFFLINE ladder (above) toggles all eight components; the LIVE plan can only
+# toggle the components the deployed service has a switch for (Codex Finding 1).
+# An UNSUPPORTED component has no off-switch, so on the live service it is always
+# ON — knocking it out is a fiction the service cannot honour. The live flag
+# builders therefore force every unsupported component ON and toggle only the
+# live-enforceable ones, so a live rung's flags reflect the configuration the
+# service can ACTUALLY stand up.
+
+#: The unsupported components, always ON on the deployed service (no off-switch).
+_FORCED_ON_KEYS: frozenset[str] = frozenset(
+    c.key for c in EIGHT_COMPONENTS if c.enforcement is Enforcement.UNSUPPORTED
+)
+
+
+def live_flags_for_buildup_rung(rung: int) -> LadderFlags:
+    """The LIVE build-up flags at ``rung``: the first ``rung`` LIVE-ENFORCEABLE
+    components ON (cumulative over the enforceable subset), plus every unsupported
+    component forced ON (the service cannot turn them off). Rung 0 is the live floor
+    (all enforceable off, unsupported on); the top rung is the full system."""
+    enforceable = live_enforceable_components()
+    if not 0 <= rung <= len(enforceable):
+        raise ValueError(f"live build-up rung must be in [0, {len(enforceable)}]; got {rung}")
+    return LadderFlags(enabled=frozenset(enforceable[:rung]) | _FORCED_ON_KEYS)
+
+
+def live_flags_for_knockout_rung(component_key: str) -> LadderFlags:
+    """The LIVE leave-one-out flags for ``component_key``: the full system minus
+    that one enforceable component (every other component, including the always-on
+    unsupported ones, stays ON). Raises ``ValueError`` if ``component_key`` is not
+    live-enforceable — only those have a real off-switch to knock out."""
+    require_component(component_key)
+    if component_key not in live_enforceable_components():
+        raise ValueError(
+            f"component {component_key!r} is not live-enforceable (no service off-switch); "
+            "it cannot be knocked out on the deployed service — see deferred_components()"
+        )
     return LadderFlags(enabled=frozenset(COMPONENT_KEYS) - {component_key})
 
 
@@ -395,8 +553,10 @@ def run_ablation_ladders(
 #:   * ``OWNERS_MANUAL_DEFINITIONS_IN_PROMPT`` ← graph-expansion AND planner (the
 #:     definitions-index ride-along is meaningful only once the agent graph plans
 #:     and the cross-reference sidecar is in play)
-#:   * ``OWNERS_MANUAL_QUERY_REFORMULATION``   ← planner (the bounded reformulate
-#:     edge is a planner-gated hop; ADR 0006)
+#:   * ``OWNERS_MANUAL_QUERY_REFORMULATION``   ← planner (gates ONLY the bounded
+#:     reformulate edge — a single retrieval pass when off; the planner node and
+#:     corpus routing run UNCONDITIONALLY, so this enforces "no bounded
+#:     reformulation", NOT "no routing"; ADR 0006 / Codex Finding 1)
 #: so the full system turns all four ON and the naive floor turns all four OFF.
 def _env_truthy(on: bool) -> str:
     return "1" if on else "0"
@@ -408,10 +568,11 @@ def rung_env(flags: LadderFlags) -> dict[str, str]:
     The bridge from a :class:`LadderFlags` rung to the env the live service reads
     (`agent-query-flags.ts`): each query-time component's off-state turns its env
     flag OFF, so standing the service up with this env enforces the rung's
-    ablation. The non-env components (chunks, enrichment, hybrid, metadata, planner
-    routing, critic) are realised by the rung's corpus build and the service build
-    the operator deploys — see :func:`ladder_run_plan`, which pairs this env with
-    :func:`build_for_rung`.
+    ablation. The index-time components (chunks, enrichment) are realised by the
+    rung's corpus build; the components with NO service off-switch yet (hybrid,
+    metadata, critic) are :func:`deferred_components` and are not toggled here —
+    see :func:`ladder_run_plan`, which pairs this env with :func:`build_for_rung`
+    and emits only the live-enforceable rungs.
     """
     xref = flags.is_on("graph-expansion")
     rerank = flags.is_on("authority-rerank")
@@ -446,18 +607,28 @@ class RunPlanStep:
 def ladder_run_plan(
     *, pinned_builds: Sequence[str] = DEFAULT_PINNED_BUILDS
 ) -> tuple[RunPlanStep, ...]:
-    """The full per-rung run plan for both ladders (the live milestone runbook).
+    """The HONEST live per-rung run plan for both ladders (the milestone runbook).
 
-    Build-up: the naive-rag floor then each component added in dependency order
-    (9 steps). Knock-out: the full system minus each component (8 steps). Each step
-    pairs the rung's :func:`rung_env` with its :func:`build_for_rung`, so an
-    unpinned build raises here too. The plan is the documented, enforced form of
-    the off-states (AC2) and the runbook the one-command live runner walks (AC1).
+    Emits runnable rungs ONLY for the live-ENFORCEABLE components (Codex Finding 1):
+    a rung that toggled an unsupported component would deploy a configuration the
+    service cannot stand up (an identical full system) and report a bogus ~0 delta,
+    so it is never emitted. The unsupported components are surfaced as DEFERRED in
+    the runbook (:func:`render_run_plan`) and excluded from the derived README
+    tables — never silently faked.
+
+    Build-up: the live floor (every enforceable component off, the always-on
+    unsupported ones on) then each enforceable component added in dependency order;
+    the top rung is the full-system anchor. Knock-out: the full system minus each
+    enforceable component once. Each step pairs the rung's :func:`rung_env` with its
+    :func:`build_for_rung`, so an unpinned build raises here too. Every emitted
+    ablation rung differs from the full-system config in build or env (the invariant
+    pinned by ``test_ablation_run_plan``).
     """
+    enforceable = live_enforceable_components()
     steps: list[RunPlanStep] = []
-    for rung in range(len(EIGHT_COMPONENTS) + 1):
-        flags = flags_for_buildup_rung(rung)
-        component_key = None if rung == 0 else COMPONENT_KEYS[rung - 1]
+    for rung in range(len(enforceable) + 1):
+        flags = live_flags_for_buildup_rung(rung)
+        component_key = None if rung == 0 else enforceable[rung - 1]
         rung_id = "buildup-00-floor" if rung == 0 else f"buildup-{rung:02d}-{component_key}"
         steps.append(
             RunPlanStep(
@@ -469,8 +640,8 @@ def ladder_run_plan(
                 env=rung_env(flags),
             )
         )
-    for offset, key in enumerate(COMPONENT_KEYS):
-        flags = flags_for_knockout_rung(key)
+    for offset, key in enumerate(enforceable):
+        flags = live_flags_for_knockout_rung(key)
         steps.append(
             RunPlanStep(
                 ladder="knock-out",
@@ -651,7 +822,12 @@ def render_run_plan(plan: Sequence[RunPlanStep], *, run_name: str) -> str:
     This is a MILESTONE activity, not a per-merge CI job (CONTEXT.md: ~16 runs over
     3 builds, at milestones). An operator walks each step, deploys the service with
     the shown build + env, and runs that rung; the Langfuse-derived README tables
-    (`generate-ablation-readme`) then read every rung back by ``run_name``."""
+    (`generate-ablation-readme`) then read every rung back by ``run_name``.
+
+    The runbook lists ONLY the live-enforceable rungs, then explicitly names the
+    DEFERRED components (Codex Finding 1) — those with no service off-switch yet —
+    with the blocking issue, so the honest scope is documented, never silently
+    dropped."""
     lines = [
         f"=== {run_name} — two-ladder ablation run plan (MILESTONE runbook) ===",
         "",
@@ -666,6 +842,15 @@ def render_run_plan(plan: Sequence[RunPlanStep], *, run_name: str) -> str:
         exports = " ".join(f"{name}={value}" for name, value in sorted(step.env.items()))
         lines.append(f"[{step.rung_id}]  ladder={step.ladder}  build={step.build}")
         lines.append(f"    env: {exports}")
+    deferred = deferred_components()
+    if deferred:
+        lines.append("")
+        lines.append(
+            "DEFERRED components (no deployed-service off-switch yet — NOT run, NOT in "
+            "the derived tables; tracked, never faked):"
+        )
+        for entry in deferred:
+            lines.append(f"    {entry.component_key}: {entry.note}")
     lines.append("")
     lines.append(
         "After all rungs are run and Langfuse holds their scores, regenerate the "
@@ -779,6 +964,11 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
 
 __all__ = [
     "AblationComponent",
+    "Enforcement",
+    "DeferredComponent",
+    "component_enforcement",
+    "live_enforceable_components",
+    "deferred_components",
     "EIGHT_COMPONENTS",
     "COMPONENT_KEYS",
     "LadderFlags",
@@ -787,6 +977,8 @@ __all__ = [
     "require_component",
     "flags_for_buildup_rung",
     "flags_for_knockout_rung",
+    "live_flags_for_buildup_rung",
+    "live_flags_for_knockout_rung",
     "BUILD_FULL",
     "BUILD_NO_ENRICHMENT",
     "BUILD_NAIVE_CHUNKS",

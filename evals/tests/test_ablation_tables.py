@@ -15,7 +15,7 @@ that returns Langfuse-shaped per-rung rows.
 
 from __future__ import annotations
 
-from owners_manual_evals.ablation_ladders import COMPONENT_KEYS
+from owners_manual_evals.ablation_ladders import live_enforceable_components
 from owners_manual_evals.ablation_tables import (
     ABLATION_TABLE_MARKER,
     LadderRowFromLangfuse,
@@ -23,6 +23,10 @@ from owners_manual_evals.ablation_tables import (
     generate_ablation_tables,
     splice_into_readme,
 )
+
+#: The components the LIVE plan emits rungs for (Codex Finding 1): the table path
+#: is derived only from the live-enforceable subset, never the unsupported ones.
+ENFORCEABLE_KEYS = live_enforceable_components()
 
 
 def _fake_reader() -> dict:
@@ -35,7 +39,7 @@ def _fake_reader() -> dict:
             component_key=key,
             strict_pass_rate=0.20 + 0.05 * (i + 1),
         )
-        for i, key in enumerate(COMPONENT_KEYS)
+        for i, key in enumerate(ENFORCEABLE_KEYS)
     )
     knockout = tuple(
         LadderRowFromLangfuse(
@@ -43,7 +47,7 @@ def _fake_reader() -> dict:
             component_key=key,
             strict_pass_rate=0.60 - 0.02,
         )
-        for key in COMPONENT_KEYS
+        for key in ENFORCEABLE_KEYS
     )
     mechanism = (
         MechanismRowFromLangfuse(stage="graph-expansion", reached=12, rescued_only=4),
@@ -75,8 +79,9 @@ def test_tables_carry_the_stable_readme_marker() -> None:
 
 def test_buildup_table_shows_each_components_arrival_delta_derived() -> None:
     tables = generate_ablation_tables(read_ladder_scores=_fake_reader, run_name="ablation-v1")
-    # Each build-up component is named in dependency order; the floor is present.
-    for key in COMPONENT_KEYS:
+    # Each live-enforceable build-up component is named in dependency order; the
+    # floor is present. Unsupported components are deferred, never in the table.
+    for key in ENFORCEABLE_KEYS:
         assert key in tables
     assert "naive-rag" in tables.lower()
     # The order-dependence caveat sits beside the build-up ladder (never hidden).
