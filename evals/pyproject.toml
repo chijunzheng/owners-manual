@@ -25,6 +25,8 @@ run-variance = "owners_manual_evals.run_variance:main"
 release-digest = "owners_manual_evals.release_digest:main"
 run-smoke = "owners_manual_evals.smoke_runner:main"
 smoke-find-comment = "owners_manual_evals.smoke_pr_comment:main"
+ablation-ladders = "owners_manual_evals.ablation_ladders:main"
+generate-ablation-readme = "owners_manual_evals.ablation_tables:main"
 
 [dependency-groups]
 dev = [
