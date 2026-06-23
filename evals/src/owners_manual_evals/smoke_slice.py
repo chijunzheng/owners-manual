@@ -1,14 +1,14 @@
-"""The fixed, versioned smoke-v2 slice composition (issues #11, #22).
+"""The fixed, versioned smoke-v3 slice composition (issues #11, #22).
 
 CONTEXT.md ("Smoke slice"): the fixed ~12-item subset run on every merge — all
 five behavior classes, every available corpus, ≥1 cross-corpus item, drawn from
 stable-at-baseline items so a failure is signal, not flake. Scored with
 deterministic metrics only (the structured answer envelope makes behavior and
 cites machine-checkable without a judge). The composition is versioned
-(``smoke-v1``, ``smoke-v2``) and changes only at milestones, so trend lines
+(``smoke-v1``, ``smoke-v2``, ``smoke-v3``) and changes only at milestones, so trend lines
 compare like with like.
 
-The composition is an explicit, committed id allowlist (:data:`SMOKE_V2_ITEM_IDS`)
+The composition is an explicit, committed id allowlist (:data:`SMOKE_V3_ITEM_IDS`)
 resolved against the loaded golden set. It is a PURE function: the same golden
 set always yields the same slice, and any drift — a curated id that vanished, an
 item that moved to holdout, a missing behavior class, an unverified item, an item
@@ -30,20 +30,18 @@ enforced here rather than left to a caller:
   a curated synthetic item is stable by construction.
 * **Live-serviceable.** The smoke gate runs against the deployed service, so it
   may only draw items whose required cites the LIVE index actually holds
-  (:mod:`live_corpus`). The offline trees are corpus-complete, but the live index
-  is the tenancy-v0 subset; an item citing a not-yet-indexed document would
-  report a false failure.
+  (:mod:`live_corpus`). The offline trees are corpus-complete; after the #22
+  corpus expansion the live index spans all five corpora, but an item citing a
+  still-unindexed future corpus would report a false failure.
 
-Coverage (smoke-v2): the slice covers every corpus the VERIFIED, dev-side,
-LIVE-SERVICEABLE items make available — currently tenancy and cross-corpus (the
-``flag-void-no-pets`` family the #22 re-split moved dev-side; its cites — lease,
-RTA, declaration — are all live-indexed). The #22 insurance slice (INS-03) is
-authored and verified but cites the insurance policy fixtures, which the live
-index does NOT yet hold, so it is gated out of this live gate. When the live
-corpus expands to insurance (add the policies to GOLDEN_V0_DOCUMENTS + re-ingest),
-insurance becomes live-serviceable and verified-dev, and the coverage invariant
-will require the slice to add an insurance item — the milestone smoke-v3 bump,
-surfaced loudly rather than slipped in.
+Coverage (smoke-v3): the slice covers every corpus the VERIFIED, dev-side,
+LIVE-SERVICEABLE items make available. The #22 corpus expansion added the
+Condominium Act and the governing/insurance fixtures to GOLDEN_V0_DOCUMENTS and
+re-ingested, so insurance and governing joined tenancy and cross-corpus as
+live-serviceable verified-dev corpora — and the coverage invariant required the
+slice to add one item each (``answer-sewer-backup-gap`` for insurance,
+``answer-str-restriction-provenance`` for governing): the smoke-v3 bump, surfaced
+loudly rather than slipped in. (The selling corpus has no golden items yet.)
 """
 
 from __future__ import annotations
@@ -56,15 +54,18 @@ from .golden_split import assign_split
 from .live_corpus import is_live_serviceable
 
 #: The versioned composition tag (CONTEXT.md): trend lines compare like with like.
-SMOKE_SLICE_VERSION = "smoke-v2"
+SMOKE_SLICE_VERSION = "smoke-v3"
 
-#: The committed smoke-v2 item ids, in run order. All ten are dev-side, verified,
-#: live-serviceable golden parents spanning all five behavior classes and the
-#: tenancy and cross-corpus slices. Changing this list is a milestone composition
-#: change (smoke-v3), never incidental. Grouped by behavior class:
+#: The committed smoke-v3 item ids, in run order. All twelve are dev-side,
+#: verified, live-serviceable golden parents spanning all five behavior classes
+#: and the tenancy, cross-corpus, insurance, and governing slices. Changing this
+#: list is a milestone composition change (smoke-v4 next), never incidental.
+#: Grouped by behavior class:
 #:
-#: * answer (4): the core in-scope answers, including the enforceable-terms
-#:   over-flagging control;
+#: * answer (6): the core in-scope answers, including the enforceable-terms
+#:   over-flagging control and — added at smoke-v3 when the #22 corpus expansion
+#:   made them live-serviceable — one insurance answer (``answer-sewer-backup-gap``)
+#:   and one governing answer (``answer-str-restriction-provenance``);
 #: * flag-void-clause (2): the void-clause analyses — including ``flag-void-no-pets``,
 #:   the ``cross-corpus`` item (its cites span tenancy and the governing
 #:   declaration, both live-indexed) the #22 re-split put on the dev side;
@@ -73,12 +74,15 @@ SMOKE_SLICE_VERSION = "smoke-v2"
 #:
 #: Paraphrase variants are deliberately excluded — paraphrase robustness is a
 #: separate delta (CONTEXT.md), not part of the per-merge signal.
-SMOKE_V2_ITEM_IDS: tuple[str, ...] = (
+SMOKE_V3_ITEM_IDS: tuple[str, ...] = (
     # answer
     "answer-purchaser-own-use",
     "answer-rent-increase-rules",
     "answer-arrears-n4",
     "answer-enforceable-lease-terms",
+    # answer — insurance + governing, added at smoke-v3 (corpus expansion #22)
+    "answer-sewer-backup-gap",
+    "answer-str-restriction-provenance",
     # flag-void-clause (flag-void-no-pets is the cross-corpus tenancy × governing item)
     "flag-void-no-pets",
     "flag-void-renewal-showings",
@@ -96,7 +100,7 @@ SMOKE_V2_ITEM_IDS: tuple[str, ...] = (
 class SmokeSlice:
     """The resolved smoke slice: its version tag and the ordered golden items.
 
-    ``items`` is in :data:`SMOKE_V2_ITEM_IDS` order — the run order — and has
+    ``items`` is in :data:`SMOKE_V3_ITEM_IDS` order — the run order — and has
     passed every composition invariant (present, verified, dev-side,
     live-serviceable, all five behavior classes, every verified-dev-available
     corpus).
@@ -109,7 +113,7 @@ class SmokeSlice:
 def compose_smoke_slice(
     golden: GoldenSet,
     *,
-    item_ids: tuple[str, ...] = SMOKE_V2_ITEM_IDS,
+    item_ids: tuple[str, ...] = SMOKE_V3_ITEM_IDS,
 ) -> SmokeSlice:
     """Resolve the curated ``item_ids`` against ``golden`` into a :class:`SmokeSlice`.
 
@@ -126,7 +130,7 @@ def compose_smoke_slice(
       available.
 
     ``item_ids`` is injectable purely so the invariants can be tested against a
-    deliberately-broken list; production always uses :data:`SMOKE_V2_ITEM_IDS`.
+    deliberately-broken list; production always uses :data:`SMOKE_V3_ITEM_IDS`.
     """
     by_id = {item.id: item for item in golden.items}
     sides = assign_split(golden.items)
@@ -134,7 +138,7 @@ def compose_smoke_slice(
     missing = [item_id for item_id in item_ids if item_id not in by_id]
     if missing:
         raise ValueError(
-            f"smoke-v2 slice names item id(s) absent from the golden set: {missing}. "
+            f"smoke-v3 slice names item id(s) absent from the golden set: {missing}. "
             "The composition is versioned and changes only at milestones — a vanished "
             "item is a drift to fix, not to skip."
         )
@@ -144,14 +148,14 @@ def compose_smoke_slice(
     unverified = [item.id for item in items if not item.verified]
     if unverified:
         raise ValueError(
-            f"smoke-v2 slice names unverified item id(s): {unverified}. An unverified "
+            f"smoke-v3 slice names unverified item id(s): {unverified}. An unverified "
             "item can never enter a scored run (CONTEXT.md, Golden set)."
         )
 
     holdout = [item.id for item in items if sides.get(item.id) != "dev"]
     if holdout:
         raise ValueError(
-            f"smoke-v2 slice names holdout-side item id(s): {holdout}. The per-merge "
+            f"smoke-v3 slice names holdout-side item id(s): {holdout}. The per-merge "
             "smoke tier is iteration-facing and must run the dev split only; drawing a "
             "holdout item would leak the overfit detector (CONTEXT.md, Dev/holdout split)."
         )
@@ -159,7 +163,7 @@ def compose_smoke_slice(
     unserviceable = [item.id for item in items if not is_live_serviceable(item)]
     if unserviceable:
         raise ValueError(
-            f"smoke-v2 slice names item id(s) the live index cannot serve: {unserviceable}. "
+            f"smoke-v3 slice names item id(s) the live index cannot serve: {unserviceable}. "
             "The smoke gate runs against the deployed service, so every item's required cites "
             "must be live-indexed (live_corpus.LIVE_INDEXED_DOCUMENT_IDS); a corpus authored "
             "offline enters the gate only once it is indexed and re-ingested."
@@ -169,7 +173,7 @@ def compose_smoke_slice(
     missing_classes = [cls for cls in BEHAVIOR_CLASSES if cls not in present_classes]
     if missing_classes:
         raise ValueError(
-            f"smoke-v2 slice is missing behavior class(es): {missing_classes}. The slice "
+            f"smoke-v3 slice is missing behavior class(es): {missing_classes}. The slice "
             "must exercise all five behavior classes on every merge (CONTEXT.md)."
         )
 
@@ -208,14 +212,14 @@ def _require_every_dev_corpus(
     missing = sorted(dev_corpora - slice_corpora)
     if missing:
         raise ValueError(
-            f"smoke-v2 slice does not cover live-serviceable verified dev corpus/corpora: "
+            f"smoke-v3 slice does not cover live-serviceable verified dev corpus/corpora: "
             f"{missing}. The slice must span every corpus the verified, dev, live-serviceable "
             "items make available (CONTEXT.md)."
         )
 
 
 def load_smoke_slice() -> SmokeSlice:
-    """Load the golden set and compose the committed smoke-v2 slice from it.
+    """Load the golden set and compose the committed smoke-v3 slice from it.
 
     The convenience entry point the live runner and the workflow use; the heavy
     golden loader is imported lazily so importing this module stays cheap and
@@ -228,7 +232,7 @@ def load_smoke_slice() -> SmokeSlice:
 
 __all__ = [
     "SMOKE_SLICE_VERSION",
-    "SMOKE_V2_ITEM_IDS",
+    "SMOKE_V3_ITEM_IDS",
     "SmokeSlice",
     "compose_smoke_slice",
     "load_smoke_slice",

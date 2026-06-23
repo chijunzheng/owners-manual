@@ -33,8 +33,13 @@ describe('corpusOfDocument', () => {
     expect(tagged).toEqual([
       ['rta-2006', 'tenancy'],
       ['reg-516-06', 'tenancy'],
+      ['condo-act-1998', 'governing'],
       ['fixture-lease', 'tenancy'],
       ['fixture-declaration', 'governing'],
+      ['fixture-rules', 'governing'],
+      ['fixture-management-policies', 'governing'],
+      ['fixture-master-policy', 'insurance'],
+      ['fixture-unit-policy', 'insurance'],
     ])
   })
 })
@@ -49,11 +54,15 @@ describe('documentsForCorpora', () => {
     const corpora: readonly CorpusTag[] = ['governing', 'tenancy']
     const routed = documentsForCorpora(GOLDEN_V0_DOCUMENTS, corpora)
     // The document order is the corpus's canonical order, NOT the routing order.
+    // Insurance docs (master/unit policy) are correctly excluded.
     expect(routed.map((d) => d.id)).toEqual([
       'rta-2006',
       'reg-516-06',
+      'condo-act-1998',
       'fixture-lease',
       'fixture-declaration',
+      'fixture-rules',
+      'fixture-management-policies',
     ])
   })
 

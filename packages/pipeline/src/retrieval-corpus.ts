@@ -40,13 +40,22 @@ export interface RetrievalCorpusRow {
 
 /**
  * The designed fixtures whose chunk text the offline comparison searches — the
- * lease and the declaration, the two fixtures golden v0's void-clause items
- * cite. Growing the offline corpus means adding entries here and re-running the
- * generator; statute documents are deliberately absent (text uncommittable).
+ * tenancy lease, the governing declaration, rules, and management policies, and
+ * the master and unit insurance policies: the fixtures golden v1's void-clause
+ * and coverage items cite. Growing the offline corpus means adding entries here
+ * and re-running the generator; statute documents are deliberately absent (text
+ * uncommittable).
  */
 export const RETRIEVAL_CORPUS_SOURCES: readonly RetrievalCorpusSource[] = [
   { id: 'fixture-lease', inputFile: 'corpus/fixtures/tenancy/lease.html' },
   { id: 'fixture-declaration', inputFile: 'corpus/fixtures/governing/declaration.html' },
+  { id: 'fixture-rules', inputFile: 'corpus/fixtures/governing/rules.html' },
+  {
+    id: 'fixture-management-policies',
+    inputFile: 'corpus/fixtures/governing/management-policies.html',
+  },
+  { id: 'fixture-master-policy', inputFile: 'corpus/fixtures/insurance/master-policy.html' },
+  { id: 'fixture-unit-policy', inputFile: 'corpus/fixtures/insurance/unit-policy.html' },
 ]
 
 /** Chunk one fixture's HTML into its retrieval-corpus rows, in document order. */

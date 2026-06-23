@@ -59,8 +59,10 @@ def test_item_with_all_cites_live_indexed_is_serviceable() -> None:
 
 
 def test_item_with_a_non_indexed_cite_is_not_serviceable() -> None:
-    # The insurance policy fixtures are tree-resolvable offline but not live-indexed.
-    assert not is_live_serviceable(_item("rta-2006", "fixture-master-policy"))
+    # A future offline-only fixture is tree-resolvable but not yet live-indexed
+    # (the #22 corpus expansion indexed all five corpora; this stands in for the
+    # next corpus authored before its source is ingested and re-ingested).
+    assert not is_live_serviceable(_item("rta-2006", "fixture-purchase-agreement"))
 
 
 def test_a_citeless_item_is_serviceable() -> None:

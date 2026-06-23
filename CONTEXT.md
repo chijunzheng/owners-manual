@@ -105,7 +105,7 @@ The one-line verdict every failed item receives before the next experiment may l
 _Avoid_: triage label, TODO comment
 
 **Smoke slice**:
-The fixed ~12-item subset run on every merge: all five behavior classes, every corpus, ≥1 cross-corpus item, drawn from stable-at-baseline items so a failure is signal, not flake. Scored with deterministic metrics only — the structured answer envelope makes behavior and cites machine-checkable without a judge. Composition is versioned (smoke-v1, smoke-v2) and changes only at milestones.
+The fixed ~12-item subset run on every merge: all five behavior classes, every corpus, ≥1 cross-corpus item, drawn from stable-at-baseline items so a failure is signal, not flake. Scored with deterministic metrics only — the structured answer envelope makes behavior and cites machine-checkable without a judge. Composition is versioned (smoke-v1, smoke-v2, smoke-v3) and changes only at milestones (smoke-v3: the #22 corpus expansion made insurance and governing live-serviceable, so the slice added one item from each).
 _Avoid_: sanity check, quick test
 
 **Eval gate**:
