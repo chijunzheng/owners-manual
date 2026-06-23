@@ -15,7 +15,12 @@ import { readFile } from 'node:fs/promises'
 import { citableUnitChunker } from '@owners-manual/enrichment'
 
 import { chunkParsedDocuments } from './chunk-corpus.js'
-import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest, loadFixtureSnapshot } from './corpus-loader.js'
+import {
+  GOLDEN_V0_DOCUMENTS,
+  corpusSourceIds,
+  loadCorpusForIngest,
+  loadFixtureSnapshot,
+} from './corpus-loader.js'
 import { createVoyageEmbeddingProvider } from './embedding.js'
 import { NAIVE_RAG_PIPELINE_CONFIG } from './pipeline-config.js'
 import { buildRunRecord, type ManifestSnapshotSource } from './run-record.js'
@@ -97,11 +102,12 @@ async function main(): Promise<number> {
     await store.close()
   }
 
+  // Every corpus-kind source's manifest provenance pins the build hash — the same
+  // set serve-cli snapshots, derived from the shared helper so the ingest and
+  // serve corpusBuildHashes can never disagree (Codex PR #72).
   const manifestSources: ManifestSnapshotSource[] = await loadManifestSnapshot(
     repoPath('corpus', 'manifest.json'),
-    corpus
-      .filter((c) => c.documentId.startsWith('rta-') || c.documentId.startsWith('reg-'))
-      .map((c) => c.documentId),
+    corpusSourceIds(GOLDEN_V0_DOCUMENTS),
   )
   const fixtureSources = await loadFixtureSnapshot({
     documents: GOLDEN_V0_DOCUMENTS,

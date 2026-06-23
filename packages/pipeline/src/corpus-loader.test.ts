@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   GOLDEN_V0_DOCUMENTS,
+  corpusSourceIds,
   loadCorpusForIngest,
   loadFixtureSnapshot,
   type HtmlReader,
@@ -30,10 +31,15 @@ const fixtureReader: HtmlReader = async (relPath) => {
 }
 
 describe('GOLDEN_V0_DOCUMENTS', () => {
-  it('is tenancy-scoped: the two statutes plus the lease and declaration fixtures', () => {
+  it('spans all five corpora: RTA, Reg 516/06, Condo Act, plus the six designed fixtures', () => {
     expect(GOLDEN_V0_DOCUMENTS.map((d) => d.id).sort()).toEqual([
+      'condo-act-1998',
       'fixture-declaration',
       'fixture-lease',
+      'fixture-management-policies',
+      'fixture-master-policy',
+      'fixture-rules',
+      'fixture-unit-policy',
       'reg-516-06',
       'rta-2006',
     ])
@@ -44,10 +50,27 @@ describe('GOLDEN_V0_DOCUMENTS', () => {
   })
 })
 
+describe('corpusSourceIds', () => {
+  it('is the corpus-kind statute ids that pin the build — including the Condo Act', () => {
+    // Ingest and serve both snapshot this set into the run record, so it must
+    // include condo-act-1998: a Condo Act currency change then bumps the
+    // corpusBuildHash and the ingest + serve build hashes agree (Codex PR #72).
+    expect(corpusSourceIds(GOLDEN_V0_DOCUMENTS)).toEqual([
+      'rta-2006',
+      'reg-516-06',
+      'condo-act-1998',
+    ])
+  })
+})
+
 describe('loadCorpusForIngest', () => {
   it('parses each requested document into a tree + text sidecar', async () => {
     const corpus = await loadCorpusForIngest({
-      documents: GOLDEN_V0_DOCUMENTS.filter((d) => d.kind === 'fixture'),
+      // The inline fixtureReader serves only the lease and declaration HTML, so
+      // route just those two (the full fixture set is exercised by the live ingest).
+      documents: GOLDEN_V0_DOCUMENTS.filter(
+        (d) => d.id === 'fixture-lease' || d.id === 'fixture-declaration',
+      ),
       read: fixtureReader,
     })
     expect(corpus.map((c) => c.documentId).sort()).toEqual(['fixture-declaration', 'fixture-lease'])
@@ -79,7 +102,11 @@ describe('loadCorpusForIngest', () => {
 describe('loadFixtureSnapshot', () => {
   it('hashes exactly the fixture documents, skipping corpus sources', async () => {
     const snapshot = await loadFixtureSnapshot({
-      documents: GOLDEN_V0_DOCUMENTS,
+      // Route the two inline-HTML fixtures plus a statute: the statute is a corpus
+      // source loadFixtureSnapshot must skip (the reader throws if it reads one).
+      documents: GOLDEN_V0_DOCUMENTS.filter((d) =>
+        ['fixture-lease', 'fixture-declaration', 'rta-2006'].includes(d.id),
+      ),
       read: fixtureReader, // statutes throw if read — proves they are never read
     })
     expect(snapshot.map((s) => s.id)).toEqual(['fixture-lease', 'fixture-declaration'])

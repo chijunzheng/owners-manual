@@ -1,10 +1,12 @@
 /**
- * Corpus loader: parse the golden-v0 (tenancy-only) documents into trees + text
- * sidecars the index build chunks and embeds.
+ * Corpus loader: parse the golden-v0 documents into trees + text sidecars the
+ * index build chunks and embeds.
  *
- * The set mirrors the golden-v0 tree sources exactly — the real RTA and Reg
- * 516/06 (statute cites) and the designed lease and declaration (void-clause
- * cites) — so retrieval can serve every required cite the dev split asks for.
+ * The set mirrors the golden tree sources exactly — the real RTA, Reg 516/06,
+ * and the Condominium Act, 1998 (statute cites) plus the designed lease,
+ * declaration, rules, management policies, and master/unit insurance policies
+ * (void-clause and coverage cites) — so retrieval can serve every required cite
+ * the golden items resolve against.
  * The checksum-failing `rent-increase-guideline` source (upstream drift, known
  * issue) is absent by construction; this PR neither ingests it nor touches the
  * manifest. Parsing dispatches through the existing `parseSource` /
@@ -30,20 +32,54 @@ export interface CorpusDocumentSource {
 }
 
 /**
- * The golden-v0 corpus: tenancy-only. Identical document set to
+ * The golden corpus, spanning all five corpora (#22). Identical document set to
  * `GOLDEN_TREE_SOURCES` (parser) so the index serves exactly the cites the
  * golden items resolve against.
  */
 export const GOLDEN_V0_DOCUMENTS: readonly CorpusDocumentSource[] = [
   { id: 'rta-2006', kind: 'corpus', inputFile: 'corpus/raw/tenancy/rta-2006.html' },
   { id: 'reg-516-06', kind: 'corpus', inputFile: 'corpus/raw/tenancy/reg-516-06.html' },
+  {
+    id: 'condo-act-1998',
+    kind: 'corpus',
+    inputFile: 'corpus/raw/governing/condo-act-1998.html',
+  },
   { id: 'fixture-lease', kind: 'fixture', inputFile: 'corpus/fixtures/tenancy/lease.html' },
   {
     id: 'fixture-declaration',
     kind: 'fixture',
     inputFile: 'corpus/fixtures/governing/declaration.html',
   },
+  { id: 'fixture-rules', kind: 'fixture', inputFile: 'corpus/fixtures/governing/rules.html' },
+  {
+    id: 'fixture-management-policies',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/governing/management-policies.html',
+  },
+  {
+    id: 'fixture-master-policy',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/insurance/master-policy.html',
+  },
+  {
+    id: 'fixture-unit-policy',
+    kind: 'fixture',
+    inputFile: 'corpus/fixtures/insurance/unit-policy.html',
+  },
 ]
+
+/**
+ * The ids of the corpus-kind (statute / regulation) documents — the sources whose
+ * manifest provenance (checksum + consolidation date) pins the corpus-build hash
+ * (run-record.ts). Ingest and serve MUST snapshot the same set or their build
+ * hashes disagree, so both derive it from this one helper rather than re-filtering
+ * inline (Codex PR #72: a prefix filter omitted the Condo Act).
+ */
+export function corpusSourceIds(
+  documents: readonly CorpusDocumentSource[] = GOLDEN_V0_DOCUMENTS,
+): readonly string[] {
+  return documents.filter((document) => document.kind === 'corpus').map((document) => document.id)
+}
 
 /** Reads one document's HTML by its repo-relative path. Injected for testing. */
 export type HtmlReader = (inputFile: string) => Promise<string>

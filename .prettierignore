@@ -25,3 +25,11 @@ packages/parser/src/golden/items/*.source.html
 # read byte-for-byte and asserted to match the fixture. Reformatting would break
 # the verbatim-slice integrity check, so treat as opaque content.
 packages/parser/src/golden/fixture-items/*.source.html
+
+# Golden eval set + generated eval fixtures: hand-authored items (questions,
+# answer rubrics, required cites), the generated document trees, and the
+# byte-asserted retrieval-chunk corpus. The loader and faithfulness guards read
+# these byte-for-byte (a paraphrase's answer_points/cites must match its parent's
+# exact bytes; the retrieval corpus must regenerate identically), so reformatting
+# could perturb owner-verified content. Treat as opaque, like the fixtures above.
+evals/fixtures/

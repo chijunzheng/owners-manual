@@ -45,7 +45,12 @@ import {
   parseRetrieveDebugRequest,
   type RetrieveDebugRequest,
 } from './retrieve-debug.js'
-import { GOLDEN_V0_DOCUMENTS, loadCorpusForIngest, loadFixtureSnapshot } from './corpus-loader.js'
+import {
+  GOLDEN_V0_DOCUMENTS,
+  corpusSourceIds,
+  loadCorpusForIngest,
+  loadFixtureSnapshot,
+} from './corpus-loader.js'
 import { chunkParsedDocuments, type CorpusChunk } from './chunk-corpus.js'
 import { corpusOfDocument } from './corpus-tag.js'
 import { STUFF_RUNTIME_CONFIG, buildChunksForArm } from './stuff-config.js'
@@ -133,7 +138,7 @@ async function main(): Promise<void> {
     db: live.mongoDb,
   })
 
-  const corpusIds = GOLDEN_V0_DOCUMENTS.filter((d) => d.kind === 'corpus').map((d) => d.id)
+  const corpusIds = corpusSourceIds(GOLDEN_V0_DOCUMENTS)
   const manifestSources = await loadManifestSnapshot(repoPath('corpus', 'manifest.json'), corpusIds)
   const fixtureSources = await loadFixtureSnapshot({
     documents: GOLDEN_V0_DOCUMENTS,
