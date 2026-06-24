@@ -162,7 +162,8 @@ def run_four_arm_comparison(
                 "a context evaluator was provided (RAGAS enabled) but no retrieved contexts "
                 f"were supplied for RAG arm(s) {rag_arms_without_contexts}: RAGAS would score an "
                 "empty retrieval and corrupt the context columns. Wire the retrieved chunk text "
-                "per item (e.g. from /retrieve/debug) before enabling RAGAS, or run without it."
+                "per item (#76; e.g. from /retrieve/debug) before enabling RAGAS, or "
+                "run without it."
             )
 
     columns = {
@@ -311,7 +312,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
             items=items,
             documents=documents,
             answers=answers,
-            contexts_by_arm={},  # contexts wired from /retrieve/debug when RAGAS goes live
+            contexts_by_arm={},  # contexts wired from /retrieve/debug when RAGAS goes live (#76)
             judge_client=judge_client,
             context_evaluator=context_evaluator,
             score_sink=score_sink,
