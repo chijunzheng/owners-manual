@@ -34,6 +34,7 @@ from .judge import JudgeClient, judge_item
 from .judge_scores import write_judge_scores
 from .metrics import ItemScore, score_item
 from .ragas_metrics import (
+    RAG_ARMS,
     ContextEvaluator,
     ContextMetrics,
     evaluate_context_metrics,
@@ -149,6 +150,20 @@ def run_four_arm_comparison(
     missing = [arm for arm in ARM_ORDER if arm not in answers]
     if missing:
         raise ValueError(f"four-arm comparison is missing answer function(s) for arm(s): {missing}")
+
+    # RAGAS enabled but no retrieved contexts wired → fail loud rather than score an
+    # empty retrieval and corrupt the RAG-only context columns (Codex P1, PR #75). The
+    # live CLI still defers the /retrieve/debug contexts wiring, so guard the gross case
+    # (a RAG arm with no contexts at all); per-item completeness lands with that wiring.
+    if context_evaluator is not None:
+        rag_arms_without_contexts = [arm for arm in RAG_ARMS if not contexts_by_arm.get(arm)]
+        if rag_arms_without_contexts:
+            raise ValueError(
+                "a context evaluator was provided (RAGAS enabled) but no retrieved contexts "
+                f"were supplied for RAG arm(s) {rag_arms_without_contexts}: RAGAS would score an "
+                "empty retrieval and corrupt the context columns. Wire the retrieved chunk text "
+                "per item (e.g. from /retrieve/debug) before enabling RAGAS, or run without it."
+            )
 
     columns = {
         arm: _run_arm(

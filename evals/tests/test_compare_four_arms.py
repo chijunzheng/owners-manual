@@ -261,3 +261,30 @@ def test_rejects_an_arm_with_a_missing_answer_function() -> None:
         assert "arm" in str(error).lower()
     else:  # pragma: no cover
         raise AssertionError("expected a ValueError for missing arms")
+
+
+def test_rejects_ragas_enabled_without_retrieved_contexts() -> None:
+    # Codex P1 (PR #75): with RAGAS enabled but the retrieved contexts not wired, the
+    # live CLI would hand the evaluator an empty retrieved_contexts and score an empty
+    # retrieval — silently corrupting the RAG-only context columns. The runner must
+    # fail loud instead.
+    items = (_item("a1"),)
+    try:
+        run_four_arm_comparison(
+            items=items,
+            documents=_DOCUMENTS,
+            answers={
+                "stuff": _arm_fn("stuff"),
+                "stuff-oracle": _arm_fn("oracle"),
+                "naive-rag": _arm_fn("naive"),
+                "agent": _arm_fn("agent"),
+            },
+            contexts_by_arm={},  # RAGAS on, but no contexts supplied for the RAG arms
+            judge_client=_judge(),
+            context_evaluator=_evaluator(),
+            score_sink=lambda **_kw: None,
+        )
+    except ValueError as error:
+        assert "retrieved contexts" in str(error).lower()
+    else:  # pragma: no cover
+        raise AssertionError("expected a ValueError when RAGAS is on but contexts are empty")
