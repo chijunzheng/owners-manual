@@ -39,6 +39,11 @@ const METADATA: BuildMetadata = {
   enrichmentModel: 'claude-enrichment-test',
 }
 
+// A tree sidecar carries only the THREE tree-level pass versions — the 4th
+// pipeline pass (`situating-context`) is chunk-level and never persisted in a
+// tree (only `trees` are serialized; chunk enrichment is not). So the artifact's
+// `treeEnrichmentSchema` requires exactly these three, even though the enrichment
+// `PipelineConfig` carries four prompt versions.
 const TREE: TreeEnrichment = {
   documentId: 'rta-2006',
   treeHash: 'c'.repeat(64),

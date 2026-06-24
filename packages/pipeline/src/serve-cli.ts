@@ -75,6 +75,10 @@ import { createVertexStuffLlm } from './live/vertex-stuff-llm.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
 import { createVertexSummarizer } from './live/vertex-summarizer.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
+import { createAgentEnrichmentAccess } from './live/agent-enrichment.js'
+import { loadEnrichmentArtifactFile } from './live/enrichment-artifact-reader.js'
+import { assertEnrichmentBuildMatchesCorpus } from './live/enrichment-build-guard.js'
+import { buildEnrichmentLookup } from './live/enrichment-lookup.js'
 import { createCohereRerank } from './live/cohere-rerank.js'
 import { createLlmRerank } from './live/llm-rerank.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
@@ -194,14 +198,26 @@ async function main(): Promise<void> {
     llm: createLlmRerank({ model: config.runtime.model, location: live.vertexLocation }),
   })
 
-  // INTERIM (#16 / live-run milestone): the agent's query-time graph expansion and
-  // definitions attachment consume #13's tree-level sidecars, but loading the
-  // PERSISTED sidecars + an Atlas-backed expansion-target lookup is deferred to the
-  // live-run milestone (alongside live hybrid-arm ingestion and the `/stuff`
-  // context-cache lifecycle). Until then `enrichment` is left undefined, so the
-  // `xrefExpansion` / `definitionsInPrompt` flags fall back to their documented
-  // off-state (no expansion, no definitions) even if toggled on — the mechanism is
-  // unit-tested against `createAgentEnrichmentAccess`; only the live load is pending.
+  // #16 (live-run milestone): the agent's query-time graph expansion and
+  // definitions attachment consume #13's tree-level sidecars, now WIRED live. The
+  // PERSISTED sidecars are loaded from the gitignored artifact `enrich:build` wrote
+  // and FAIL LOUD if they were produced against a different corpus than serve is
+  // answering over (`assertEnrichmentBuildMatchesCorpus` vs `runRecord.corpusBuildHash`,
+  // ADR 0004 content-addressing). The expansion-target lookup resolves an edge's far
+  // endpoint to a candidate from the SAME Atlas chunk store the agent retrieves over,
+  // read once here (`store.listChunks`). With this binding the `xrefExpansion` /
+  // `definitionsInPrompt` flags engage when toggled on, rather than collapsing to their
+  // documented off-state — the mechanism stays unit-tested against fakes, this is the
+  // thin live load (mirrors `createAgentRetrieve`).
+  const enrichmentBuild = await loadEnrichmentArtifactFile(
+    repoPath('corpus', 'enrichment', 'build.json'),
+  )
+  assertEnrichmentBuildMatchesCorpus({
+    artifactCorpusBuildHash: enrichmentBuild.corpusBuildHash,
+    corpusBuildHash: runRecord.corpusBuildHash,
+  })
+  const enrichmentLookup = buildEnrichmentLookup(await store.listChunks())
+
   const chatDeps: ChatServiceDeps = {
     model: createVertexAgentModel({ model: config.runtime.model, location: live.vertexLocation }),
     retrieve: createAgentRetrieve({
@@ -211,6 +227,12 @@ async function main(): Promise<void> {
       // Same corpus registry as the debug endpoint, so a planner hop's authority
       // levels become a true pre-filter pushed into the stages (#41 / ADR 0002).
       corpusDocumentIds: GOLDEN_V0_DOCUMENTS.map((d) => d.id),
+    }),
+    // The query-time access to #13's sidecars (#16): restricted per query to the
+    // documents the candidates touch, resolving expansion targets from the chunk store.
+    enrichment: createAgentEnrichmentAccess({
+      trees: enrichmentBuild.trees,
+      lookup: enrichmentLookup,
     }),
     rerank: agentRerank,
     flags: agentFlags,

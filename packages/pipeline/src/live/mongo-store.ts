@@ -43,6 +43,14 @@ export interface MongoStore {
   ensureTextIndex(): Promise<EnsureIndexResult>
   /** Replace all chunk rows with the supplied embedded chunks. */
   replaceChunks(rows: readonly ChunkRow[]): Promise<number>
+  /**
+   * Read every stored chunk row (#16). The agent's one-hop graph expansion
+   * resolves a cross-reference edge's far endpoint to a candidate through these
+   * rows (projected by `buildEnrichmentLookup`); serve loads them ONCE at start,
+   * not per query. Live by design — the projection + lookup map are unit-tested
+   * offline against in-memory rows.
+   */
+  listChunks(): Promise<readonly ChunkRow[]>
   /** Count stored chunk rows. */
   count(): Promise<number>
   /** A vector-search executor over the stored rows. */
@@ -110,6 +118,18 @@ export async function connectMongoStore(options: MongoStoreOptions): Promise<Mon
         await collection.insertMany(rows.map((row) => ({ ...row })))
       }
       return rows.length
+    },
+    async listChunks() {
+      // Drop only Mongo's `_id`; the stored fields ARE the ChunkRow shape (#16).
+      const rows = await collection.find({}, { projection: { _id: 0 } }).toArray()
+      return rows.map((row) => ({
+        id: String(row.id),
+        citablePathKey: String(row.citablePathKey),
+        text: String(row.text),
+        documentId: String(row.documentId),
+        chunker: String(row.chunker),
+        embedding: Array.isArray(row.embedding) ? (row.embedding as number[]) : [],
+      }))
     },
     count: () => collection.countDocuments({}),
     search,
