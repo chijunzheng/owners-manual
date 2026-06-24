@@ -82,13 +82,16 @@ def _outcome(
     item: object,
     *,
     trace_seed: str,
+    observed_behavior: str = "answer",
+    candidate_cites: tuple[CitablePath, ...] | None = None,
+    retrieved_path_keys: tuple[str, ...] = ("rta-2006|part:III|section:20|subsection:1",),
     retrieved_texts: tuple[str, ...] = ("SYNTHETIC retrieved chunk for the duty.",),
 ) -> ItemOutcome:
     return ItemOutcome(
         item_id=item.id,  # type: ignore[attr-defined]
-        observed_behavior="answer",
-        candidate_cites=(_path(),),
-        retrieved_path_keys=("rta-2006|part:III|section:20|subsection:1",),
+        observed_behavior=observed_behavior,
+        candidate_cites=(_path(),) if candidate_cites is None else candidate_cites,
+        retrieved_path_keys=retrieved_path_keys,
         retrieved_texts=retrieved_texts,
         latency_ms={"total": 100.0},
         cost_usd=0.01,
@@ -295,11 +298,13 @@ def test_rejects_an_arm_with_a_missing_answer_function() -> None:
         raise AssertionError("expected a ValueError for missing arms")
 
 
-def test_rejects_ragas_enabled_when_a_rag_arm_item_has_no_retrieved_contexts() -> None:
-    # #76 replaces PR #75's gross arm-level guard with PER-ITEM completeness: now that
-    # the contexts are derived from each RAG arm's OWN ItemOutcome.retrieved_texts, an
-    # item that yields an EMPTY retrieval while RAGAS is on must fail loud rather than
-    # score an empty retrieval and silently corrupt the RAG-only context columns.
+def test_fails_loud_when_a_rag_arm_retrieved_but_carried_no_context_text() -> None:
+    # #76's PER-ITEM guard fails loud on a genuinely BROKEN envelope: the arm retrieved
+    # candidates (non-empty retrieved_path_keys) but its answer envelope carried NO chunk
+    # text — RAGAS would score an empty retrieval and silently corrupt the RAG-only
+    # context columns. This is distinct from a refusal (no retrieval at all), which is
+    # skipped, not failed: here there IS a retrieval, but the #76 text projection is
+    # missing.
     items = (_item("a1"),)
     try:
         run_four_arm_comparison(
@@ -308,7 +313,8 @@ def test_rejects_ragas_enabled_when_a_rag_arm_item_has_no_retrieved_contexts() -
             answers={
                 "stuff": _arm_fn("stuff"),
                 "stuff-oracle": _arm_fn("oracle"),
-                # The naive-rag arm returns an item with NO retrieved chunk text.
+                # naive-rag RETRIEVED (path keys present, the _outcome default) but the
+                # envelope carried no chunk text — the broken projection #76 must catch.
                 "naive-rag": _arm_fn("naive", retrieved_texts=()),
                 "agent": _arm_fn("agent"),
             },
@@ -319,10 +325,11 @@ def test_rejects_ragas_enabled_when_a_rag_arm_item_has_no_retrieved_contexts() -
     except ValueError as error:
         message = str(error).lower()
         assert "retrieved" in message
-        # The message must still point at the real cause (an empty RAG-arm retrieval).
+        # The message points at the real cause: retrieved candidates, no carried text.
         assert "naive-rag" in message
+        assert "text" in message
     else:  # pragma: no cover
-        raise AssertionError("expected a ValueError when a RAG-arm item has no contexts")
+        raise AssertionError("expected a ValueError when a RAG arm retrieved but carried no text")
 
 
 def test_does_not_guard_empty_retrieval_when_ragas_is_disabled() -> None:
@@ -342,3 +349,53 @@ def test_does_not_guard_empty_retrieval_when_ragas_is_disabled() -> None:
         score_sink=lambda **_kw: None,
     )
     assert result.dashboard is not None
+
+
+def test_skips_context_metrics_when_a_rag_arm_item_did_not_retrieve() -> None:
+    # Codex P1 (PR #77): a refusal short-circuits at the Guard with NO retrieval — no
+    # cite paths and no chunk text (metrics.py scores refusals as cite-less), and several
+    # VERIFIED refusal items live in the dev split. That empty retrieval is CORRECT, not a
+    # broken envelope, so with RAGAS enabled the runner must SKIP context metrics for an
+    # item the arm did not retrieve for, rather than fail loud and crash the whole
+    # four-arm experiment the moment an arm correctly refuses.
+    consulted: list[tuple[str, ...]] = []
+
+    def evaluator(*, question: str, contexts, reference: str):
+        from owners_manual_evals.ragas_metrics import ContextMetrics
+
+        consulted.append(tuple(contexts))
+        return ContextMetrics(context_precision=0.9, context_recall=0.8)
+
+    def refusal_arm(trace_seed: str):
+        # A Guard refusal: no retrieved cite paths, no chunk text.
+        def answer(item: object) -> ItemOutcome:
+            return _outcome(
+                item,
+                trace_seed=trace_seed,
+                observed_behavior="refuse-out-of-scope",
+                candidate_cites=(),
+                retrieved_path_keys=(),
+                retrieved_texts=(),
+            )
+
+        return answer
+
+    result = run_four_arm_comparison(
+        items=(_item("a1"),),
+        documents=_DOCUMENTS,
+        answers={
+            "stuff": _arm_fn("stuff"),
+            "stuff-oracle": _arm_fn("oracle"),
+            "naive-rag": refusal_arm("naive"),
+            "agent": refusal_arm("agent"),
+        },
+        judge_client=_judge(),
+        context_evaluator=evaluator,
+        score_sink=lambda **_kw: None,
+    )
+    # The evaluator is never consulted for an item the arm didn't retrieve for, so no
+    # crash; the RAG arms simply carry no RAGAS metric for the (only) refusal item.
+    assert consulted == []
+    by_arm = {row.arm: row for row in result.dashboard.overall}
+    assert by_arm["naive-rag"].context_recall is None
+    assert by_arm["agent"].context_recall is None

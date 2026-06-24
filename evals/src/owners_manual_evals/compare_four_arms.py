@@ -74,7 +74,7 @@ def _write_deterministic(score: ItemScore, trace_id: str | None, sink: ScoreSink
 
 
 def _item_contexts(arm: str, outcome: ItemOutcome) -> tuple[str, ...]:
-    """The per-item RAGAS contexts for one RAG-arm outcome (#76).
+    """The per-item RAGAS contexts for one RAG-arm outcome that DID retrieve (#76).
 
     Per-arm-accurate by construction: the contexts are this arm's OWN retrieved chunk
     text (``ItemOutcome.retrieved_texts``), sourced from its answer envelope, NOT a
@@ -82,17 +82,20 @@ def _item_contexts(arm: str, outcome: ItemOutcome) -> tuple[str, ...]:
     different retrieval (bounded reformulation + graph expansion + authority rerank)
     and its lift over naive-rag is never hidden behind an identical shared context.
 
-    Fails loud when RAGAS is enabled but a RAG-arm item retrieved nothing: scoring an
-    empty retrieval would silently corrupt the RAG-only context columns (Codex P1,
-    PR #75). This is the PER-ITEM completeness check that replaced PR #75's gross
-    arm-level guard, now that the contexts are wired from each arm's outcome.
+    Called ONLY for an item the arm actually retrieved for (non-empty
+    ``retrieved_path_keys``); a refusal that short-circuits with no retrieval is skipped
+    by the caller, not scored. So an empty ``retrieved_texts`` HERE means the arm
+    retrieved candidates but its answer envelope carried no ``retrievedContexts`` text — a
+    broken #76 projection — and fails loud rather than scoring an empty retrieval, which
+    would silently corrupt the RAG-only context columns (the failure mode Codex flagged on
+    PR #75).
     """
     if not outcome.retrieved_texts:
         raise ValueError(
-            f"RAGAS is enabled but RAG arm {arm!r} retrieved NO chunk text for item "
-            f"{outcome.item_id!r}: RAGAS would score an empty retrieval and corrupt the "
-            "RAG-only context columns. Confirm the arm's answer envelope carries "
-            "`retrievedContexts` (#76), or run without --ragas."
+            f"RAG arm {arm!r} retrieved {len(outcome.retrieved_path_keys)} candidate(s) for "
+            f"item {outcome.item_id!r} but its answer envelope carried NO chunk text: RAGAS "
+            "would score an empty retrieval and corrupt the RAG-only context columns. Confirm "
+            "the arm projects `retrievedContexts` text alongside `retrievedCitablePathKeys` (#76)."
         )
     return outcome.retrieved_texts
 
@@ -130,16 +133,21 @@ def _run_arm(
         point_scores[item.id] = verdict.point_score
         write_judge_scores(verdict, trace_id=outcome.trace_id, score_sink=score_sink)
 
-        # RAGAS context metrics — RAG arms only, and only when RAGAS is enabled.
-        # Opt-in: a None evaluator leaves the RAG columns without RAGAS rather than
-        # forcing the live `ragas` build, so the four-arm table still renders.
-        # ADR 0009: the metrics are scored REFERENCE-based against the answer
-        # points (the hand-verified ground truth), NOT the produced answer — the
-        # produced answer is the judge's job, and keeping it out of the context
-        # metrics is what attributes a failure to retrieval vs generation. The
-        # contexts are this arm's OWN retrieval (#76), so the per-arm columns are
-        # never blended; an empty RAG-arm retrieval fails loud in `_item_contexts`.
-        if context_evaluator is not None and is_rag_arm(arm):
+        # RAGAS context metrics — RAG arms only, when RAGAS is enabled, and ONLY for an
+        # item the arm actually retrieved for. Opt-in: a None evaluator leaves the RAG
+        # columns without RAGAS rather than forcing the live `ragas` build, so the table
+        # still renders. ADR 0009: the metrics are scored REFERENCE-based against the
+        # answer points (the hand-verified ground truth), NOT the produced answer — the
+        # produced answer is the judge's job, and keeping it out of the context metrics is
+        # what attributes a failure to retrieval vs generation. The contexts are this
+        # arm's OWN retrieval (#76), so the per-arm columns are never blended.
+        #
+        # A refusal short-circuits at the Guard with NO retrieval (no cite paths, no chunk
+        # text — metrics.py scores refusals as cite-less), and verified refusal items are
+        # in the dev split; that empty retrieval is correct, so SKIP it rather than fail
+        # loud and crash the run (Codex P1, PR #77). A genuinely broken envelope —
+        # retrieved candidates but no carried text — still fails loud in `_item_contexts`.
+        if context_evaluator is not None and is_rag_arm(arm) and outcome.retrieved_path_keys:
             metrics = evaluate_context_metrics(
                 arm=arm,
                 question=item.question,
@@ -173,10 +181,10 @@ def run_four_arm_comparison(
 
     When RAGAS is enabled (``context_evaluator is not None``), each RAG arm is scored on
     ITS OWN retrieval: the per-item contexts are derived from each arm's
-    :class:`ItemOutcome.retrieved_texts` (#76), so the agent arm's retrieval lift is
-    never hidden behind a shared retrieval, and a RAG-arm item that retrieved nothing
-    fails loud per item rather than silently scoring an empty context (see
-    :func:`_item_contexts`).
+    :class:`ItemOutcome.retrieved_texts` (#76), so the agent arm's retrieval lift is never
+    hidden behind a shared retrieval. An item the arm did not retrieve for (a refusal that
+    short-circuits at the Guard) is skipped; a broken envelope that retrieved candidates
+    but carried no text fails loud per item (see :func:`_item_contexts`).
     """
     missing = [arm for arm in ARM_ORDER if arm not in answers]
     if missing:
