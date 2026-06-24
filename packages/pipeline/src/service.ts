@@ -82,6 +82,30 @@ export interface ServiceDeps {
   readonly tracer?: NaiveRagTracer
 }
 
+/**
+ * One retrieved candidate's path key paired with its chunk TEXT (#76).
+ *
+ * The live RAGAS context metrics (ADR 0009) for the RAG arms are scored on each
+ * arm's OWN retrieval, so the harness needs the retrieved chunk text — not just
+ * the path key — straight off this arm's answer envelope. Derived from the SAME
+ * candidate set {@link AnswerResponse.retrievedCitablePathKeys} is, so the two
+ * arrays stay aligned candidate-for-candidate by construction.
+ */
+export interface RetrievedContext {
+  readonly citablePathKey: string
+  readonly text: string
+}
+
+/** Project a retrieved candidate set to its path-key + chunk-text pairs (#76). */
+export function toRetrievedContexts(
+  candidates: readonly { readonly citablePathKey: string; readonly text: string }[],
+): readonly RetrievedContext[] {
+  return candidates.map((candidate) => ({
+    citablePathKey: candidate.citablePathKey,
+    text: candidate.text,
+  }))
+}
+
 /** The response shape the harness consumes. */
 export interface AnswerResponse {
   /** The propagated trace id, echoed for correlation. */
@@ -89,6 +113,12 @@ export interface AnswerResponse {
   readonly envelope: AnswerEnvelope
   /** Every retrieved candidate's path key — input to retrieval hit rate. */
   readonly retrievedCitablePathKeys: readonly string[]
+  /**
+   * The retrieved chunk text per candidate (#76) — the live RAGAS context input
+   * for this RAG arm's OWN retrieval. Aligned with
+   * {@link AnswerResponse.retrievedCitablePathKeys}, candidate for candidate.
+   */
+  readonly retrievedContexts: readonly RetrievedContext[]
   readonly runRecord: RunRecord
   readonly latencyMs: {
     readonly retrieval: number
@@ -118,6 +148,9 @@ export async function handleAnswerRequest(
     traceId: request.traceId,
     envelope: result.envelope,
     retrievedCitablePathKeys: result.candidates.map((candidate) => candidate.citablePathKey),
+    // The SAME candidate set, projected to its chunk text for the live RAGAS
+    // context columns (#76) — this arm's OWN retrieval, never a shared call.
+    retrievedContexts: toRetrievedContexts(result.candidates),
     runRecord: deps.runRecord,
     latencyMs: result.latencyMs,
   }

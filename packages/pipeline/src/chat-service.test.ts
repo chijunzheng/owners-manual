@@ -118,6 +118,25 @@ describe('handleChatRequest — streaming', () => {
     expect(result.retrievedCitablePathKeys).toContain('rta-2006|part:III|section:20|subsection:1')
   })
 
+  it('the result event carries the agent arm OWN retrieved chunk text for live RAGAS (#76)', async () => {
+    // #76: the agent arm is RAGAS-scored on ITS OWN retrieval (bounded reformulation
+    // + graph expansion + authority rerank), never a shared /retrieve/debug call —
+    // so the terminal result must expose the retrieved chunk text, derived from the
+    // SAME candidates retrievedCitablePathKeys is, aligned per-candidate.
+    const events = await collect({ question: 'who repairs the unit?', itemId: 'answer-repair' })
+    const result = events.find((e) => e.type === 'result')
+    if (result?.type !== 'result') throw new Error('no result event')
+    expect(result.retrievedContexts).toEqual([
+      {
+        citablePathKey: 'rta-2006|part:III|section:20|subsection:1',
+        text: 'The landlord must keep the unit in a good state of repair.',
+      },
+    ])
+    expect(result.retrievedContexts.map((c) => c.citablePathKey)).toEqual(
+      result.retrievedCitablePathKeys,
+    )
+  })
+
   it('echoes the propagated trace id on the result event', async () => {
     const events = await collect({ question: 'q', itemId: 'x', traceId: 'b'.repeat(32) })
     const result = events.find((e) => e.type === 'result')

@@ -132,6 +132,7 @@ def build_live_answer(
             observed_behavior=result.behavior_class,
             candidate_cites=result.candidate_cites,
             retrieved_path_keys=result.retrieved_path_keys,
+            retrieved_texts=result.retrieved_texts,
             latency_ms=dict(result.latency_ms),
             cost_usd=0.0,  # cost-per-item lands when Vertex usage flows through (#14+)
             trace_id=trace_id,
@@ -189,6 +190,7 @@ def build_offline_answer(*, service_url: str, run_name: str) -> AnswerFn:
             observed_behavior=result.behavior_class,
             candidate_cites=result.candidate_cites,
             retrieved_path_keys=result.retrieved_path_keys,
+            retrieved_texts=result.retrieved_texts,
             latency_ms=dict(result.latency_ms),
             cost_usd=0.0,
             trace_id=trace_id,

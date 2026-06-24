@@ -141,4 +141,12 @@ describe('handleStuffRequest', () => {
     expect(response.stuffedSourceCount).toBe(1) // tenancy only
     expect(response.retrievedCitablePathKeys).toEqual(['rta-2006|part:III|section:20|subsection:1'])
   })
+
+  it('carries NO retrievedContexts: the stuff arms are not RAG arms, so they get no RAGAS columns (#76)', async () => {
+    // #76 wires retrieved chunk text onto the RAG arms ONLY (naive-rag, agent). The
+    // stuffing arms have no retrieval to score, so their envelope is unchanged — the
+    // four-arm dashboard leaves their RAGAS columns blank, never blended.
+    const response = await handleStuffRequest({ question: 'q', itemId: 'x' }, deps())
+    expect('retrievedContexts' in response).toBe(false)
+  })
 })

@@ -50,6 +50,12 @@ class ItemOutcome:
     cost_usd: float
     trace_id: str | None
     answer_text: str = ""
+    #: The retrieved chunk text per candidate, for the live RAGAS context columns
+    #: (#76). Sourced from the RAG arm's OWN answer envelope (never a shared
+    #: ``/retrieve/debug`` call), aligned with ``retrieved_path_keys``. Empty for the
+    #: stuffing arms (not RAG arms) and for a RAG arm that retrieved nothing — the
+    #: four-arm runner's per-item RAGAS guard fails loud on the latter.
+    retrieved_texts: tuple[str, ...] = ()
 
 
 #: A per-item answer function: take a golden item, return its service outcome.

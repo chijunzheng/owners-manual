@@ -122,6 +122,8 @@ def _outcome(item: GoldenItem, result: Any, trace_id: str) -> ItemOutcome:
         observed_behavior=result.behavior_class,
         candidate_cites=result.candidate_cites,
         retrieved_path_keys=result.retrieved_path_keys,
+        # The agent arm's OWN retrieved chunk text for the live RAGAS columns (#76).
+        retrieved_texts=getattr(result, "retrieved_texts", ()),
         latency_ms=dict(result.latency_ms),
         cost_usd=0.0,  # cost-per-item lands when Vertex usage flows through (later)
         trace_id=trace_id,

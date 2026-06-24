@@ -88,6 +88,27 @@ describe('handleAnswerRequest', () => {
     expect(response.latencyMs.total).toBeGreaterThanOrEqual(0)
   })
 
+  it('carries the per-arm retrieved chunk TEXT for the live RAGAS context columns (#76)', async () => {
+    // #76: this arm's RAGAS context metrics are scored on ITS OWN retrieval (never a
+    // shared /retrieve/debug call), so the envelope must expose the retrieved chunk
+    // text — derived from the SAME candidates retrievedCitablePathKeys is, so the two
+    // are aligned per-candidate by construction.
+    const response = await handleAnswerRequest(
+      { question: 'who repairs the unit?', itemId: 'answer-repair', traceId: 'a'.repeat(32) },
+      deps(),
+    )
+    expect(response.retrievedContexts).toEqual([
+      {
+        citablePathKey: 'rta-2006|part:III|section:20|subsection:1',
+        text: 'The landlord maintains the unit.',
+      },
+    ])
+    // The text array stays aligned with the path-key array, candidate for candidate.
+    expect(response.retrievedContexts.map((c) => c.citablePathKey)).toEqual(
+      response.retrievedCitablePathKeys,
+    )
+  })
+
   it('echoes the propagated trace id so the harness can correlate', async () => {
     const response = await handleAnswerRequest(
       { question: 'q', itemId: 'x', traceId: 'b'.repeat(32) },

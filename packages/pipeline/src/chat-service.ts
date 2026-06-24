@@ -24,6 +24,7 @@ import {
 } from './agent-types.js'
 import { type AgentQueryFlags } from './agent-query-flags.js'
 import { runAgent, type AgentTracer } from './agent-run.js'
+import { toRetrievedContexts, type RetrievedContext } from './service.js'
 import { type RunRecord } from './run-record.js'
 import { type OwnerProfile, type ProfileStore } from './owner-profile.js'
 import {
@@ -77,6 +78,13 @@ export type ChatEvent =
       readonly traceId?: string
       readonly envelope: AnswerEnvelope
       readonly retrievedCitablePathKeys: readonly string[]
+      /**
+       * The retrieved chunk text per candidate (#76) — the live RAGAS context input
+       * for the agent arm's OWN retrieval (bounded reformulation + graph expansion +
+       * authority rerank), never a shared /retrieve/debug call. Aligned with
+       * {@link retrievedCitablePathKeys}, candidate for candidate.
+       */
+      readonly retrievedContexts: readonly RetrievedContext[]
       readonly runRecord: RunRecord
       readonly degraded: boolean
       readonly latencyMs: { readonly total: number }
@@ -225,6 +233,9 @@ export async function handleChatRequest(
       traceId: request.traceId,
       envelope: result.envelope,
       retrievedCitablePathKeys: result.candidates.map((c) => c.citablePathKey),
+      // The SAME candidate set, projected to its chunk text for the live RAGAS
+      // context columns (#76) — the agent arm's OWN retrieval, never a shared call.
+      retrievedContexts: toRetrievedContexts(result.candidates),
       runRecord: deps.runRecord,
       degraded: result.degraded,
       latencyMs: result.latencyMs,

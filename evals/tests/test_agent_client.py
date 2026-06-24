@@ -46,6 +46,12 @@ def _result_event(*, trace_id: str | None = None, degraded: bool = False) -> dic
             ],
         },
         "retrievedCitablePathKeys": ["rta-2006|part:III|section:20|subsection:1"],
+        "retrievedContexts": [
+            {
+                "citablePathKey": "rta-2006|part:III|section:20|subsection:1",
+                "text": "SYNTHETIC agent-retrieved chunk for the repair duty.",
+            }
+        ],
         "runRecord": {
             "pipelineConfigHash": "f" * 64,
             "corpusBuildHash": "a" * 64,
@@ -133,6 +139,17 @@ def test_client_parses_the_terminal_result_into_a_typed_result() -> None:
     assert result.corpus_build_hash == "a" * 64
     assert result.latency_ms["total"] == 1234.0
     assert result.tokens == ("The ", "landlord.")
+
+
+def test_client_parses_the_agent_OWN_retrieved_texts_for_live_ragas() -> None:
+    # #76: the agent arm's RAGAS context columns are scored on ITS OWN retrieval (never
+    # a shared /retrieve/debug call), so the SSE client parses the retrieved chunk text
+    # off the terminal result, aligned with retrieved_path_keys.
+    transport = _FakeSseTransport([_frame(_result_event(trace_id="c" * 32))])
+    client = AgentChatClient(base_url="http://svc:8787", transport=transport)
+    result = client.chat(question="q", item_id="x", trace_id="c" * 32)
+    assert result.retrieved_texts == ("SYNTHETIC agent-retrieved chunk for the repair duty.",)
+    assert len(result.retrieved_texts) == len(result.retrieved_path_keys)
 
 
 def test_client_captures_the_degraded_flag() -> None:

@@ -23,7 +23,7 @@ from typing import Protocol
 
 from .answer_claim import AnswerClaim, flatten_cites, parse_answer_claims
 from .citable_path import CitablePath
-from .service_client import build_traceparent
+from .service_client import build_traceparent, parse_retrieved_texts
 
 
 class SseTransport(Protocol):
@@ -85,6 +85,10 @@ class ChatResult:
     #: envelope to its owned root observation in nested mode (#50). Empty for
     #: refusals. ``candidate_cites`` is these claims' cites, flattened.
     claims: tuple[AnswerClaim, ...] = ()
+    #: The retrieved chunk text per candidate (#76) — the live RAGAS context input
+    #: for the agent arm's OWN retrieval (bounded reformulation + graph expansion +
+    #: authority rerank). Aligned with ``retrieved_path_keys``; empty when omitted.
+    retrieved_texts: tuple[str, ...] = ()
 
 
 def parse_sse_events(lines: Iterable[str]) -> Iterable[dict]:
@@ -174,6 +178,7 @@ class AgentChatClient:
             candidate_cites=flatten_cites(claims),
             claims=claims,
             retrieved_path_keys=tuple(result_event.get("retrievedCitablePathKeys", [])),
+            retrieved_texts=parse_retrieved_texts(result_event),
             corpus_build_hash=run_record["corpusBuildHash"],
             pipeline_config_hash=run_record["pipelineConfigHash"],
             latency_ms=result_event.get("latencyMs", {}),
