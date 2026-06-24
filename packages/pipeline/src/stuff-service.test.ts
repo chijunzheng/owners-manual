@@ -9,6 +9,7 @@ import {
   parseStuffRequest,
   type StuffServiceDeps,
 } from './stuff-service.js'
+import { type StuffArm } from './stuff.js'
 import { type StuffLlmComplete } from './stuff-synthesis.js'
 
 const RUN_RECORD: RunRecord = buildRunRecord({
@@ -148,5 +149,35 @@ describe('handleStuffRequest', () => {
     // four-arm dashboard leaves their RAGAS columns blank, never blended.
     const response = await handleStuffRequest({ question: 'q', itemId: 'x' }, deps())
     expect('retrievedContexts' in response).toBe(false)
+  })
+
+  // The #44 context-cache binding gives `stuff` a cached completion (suffix-only
+  // send) but keeps `stuff-oracle` UNCACHED (its routed subset is not the cached
+  // prefix). The handler selects the per-arm completion through `completeForArm`
+  // when wired; absent it, the single `complete` serves both arms (the pure default).
+  it('selects the per-arm completion via completeForArm when wired (cached stuff, uncached oracle)', async () => {
+    const seen: StuffArm[] = []
+    const completeForArm = (arm: StuffArm): StuffLlmComplete => {
+      return async () => {
+        seen.push(arm)
+        return llm('')
+      }
+    }
+    await handleStuffRequest({ question: 'q', itemId: 'x' }, deps({ completeForArm }))
+    await handleStuffRequest(
+      { question: 'q', itemId: 'x', arm: 'stuff-oracle', corpora: ['tenancy'] },
+      deps({ completeForArm }),
+    )
+    expect(seen).toEqual(['stuff', 'stuff-oracle'])
+  })
+
+  it('falls back to the single complete when completeForArm is not wired', async () => {
+    let calls = 0
+    const complete: StuffLlmComplete = async (prompt) => {
+      calls += 1
+      return llm(prompt)
+    }
+    await handleStuffRequest({ question: 'q', itemId: 'x' }, deps({ complete }))
+    expect(calls).toBe(1)
   })
 })

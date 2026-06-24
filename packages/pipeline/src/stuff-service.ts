@@ -75,6 +75,15 @@ export interface StuffRequest {
 /** The dependencies the stuff handlers need — injected so the handler is pure. */
 export interface StuffServiceDeps {
   readonly complete: StuffLlmComplete
+  /**
+   * Optionally resolve the completion per arm (#44): the `stuff` arm rides the
+   * context cache (its prompt IS the cached prefix + the question, sent suffix-only),
+   * while `stuff-oracle` runs UNCACHED — it routes a SUBSET of the corpus, so its
+   * prompt is not the cached prefix + a suffix and cannot reference the one
+   * full-corpus cache. When omitted, {@link StuffServiceDeps.complete} serves both
+   * arms (the pure default the unit suite uses).
+   */
+  readonly completeForArm?: (arm: StuffArm) => StuffLlmComplete
   readonly runRecord: RunRecord
   /**
    * Resolve the chunks to stuff for an arm: the entire corpus for `stuff`, the
@@ -110,13 +119,16 @@ export async function handleStuffRequest(
 ): Promise<StuffResponse> {
   const arm: StuffArm = request.arm ?? 'stuff'
   const chunks = deps.chunksForArm(arm, request.corpora)
+  // Pick the arm's completion: cached for `stuff`, uncached for `stuff-oracle`
+  // (#44). Absent the per-arm resolver, the single injected completion serves both.
+  const complete = deps.completeForArm?.(arm) ?? deps.complete
 
   const result = await runStuff({
     question: request.question,
     itemId: request.itemId,
     arm,
     chunks,
-    complete: deps.complete,
+    complete,
     traceId: request.traceId,
     parentSpanId: request.parentSpanId,
     orderSeed: request.orderSeed,
