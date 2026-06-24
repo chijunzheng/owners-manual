@@ -9,6 +9,11 @@ reference/
 # --- corpus: fetched at ingest, never committed (Crown copyright) ---
 corpus/raw/
 
+# --- stuff-arm context-cache record (#44): the live Vertex cachedContent the
+# `stuff` arm last provisioned, persisted so a later run reuses an unexpired cache.
+# Derived from the live build + a Vertex resource name — never committed.
+corpus/stuff-cache.json
+
 # --- BYOD inbox: real personal documents (leases, declarations, policies)
 # dropped here as private reference for fixture design / future BYOD runs.
 # NEVER committed — fixtures are synthetic by design (see corpus/fixtures/FIXTURE-DESIGN.md)
