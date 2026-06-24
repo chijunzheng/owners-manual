@@ -319,10 +319,17 @@ async function main(): Promise<void> {
 
   const stuffDeps: StuffServiceDeps = {
     complete: uncachedStuffComplete,
-    // `stuff` rides the cache when one resolved; `stuff-oracle` always runs uncached
-    // (its routed subset is not the cached full-corpus prefix — see the note above).
-    completeForArm: (arm) =>
-      arm === 'stuff' && cachedStuffComplete ? cachedStuffComplete : uncachedStuffComplete,
+    // The cache serves ONLY canonical-order `stuff` (orderSeed 0) — its prompt is the
+    // cached prefix + the question. `stuff-oracle` runs uncached (its routed subset is
+    // not the cached full-corpus prefix), and so does the order-permutation probe
+    // (orderSeed > 0): its prompt is built over PERMUTED chunks, so it is not the
+    // cached canonical prefix and must bypass the cache rather than fail the
+    // prefix-strip (Codex P2 on #44). The probe runs uncached honestly — it measures
+    // order-sensitivity, not cache cost.
+    completeForArm: (arm, orderSeed) =>
+      arm === 'stuff' && orderSeed === 0 && cachedStuffComplete
+        ? cachedStuffComplete
+        : uncachedStuffComplete,
     runRecord,
     chunksForArm,
     costRates: STUFF_RUNTIME_CONFIG.costRates,

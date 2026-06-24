@@ -76,14 +76,17 @@ export interface StuffRequest {
 export interface StuffServiceDeps {
   readonly complete: StuffLlmComplete
   /**
-   * Optionally resolve the completion per arm (#44): the `stuff` arm rides the
-   * context cache (its prompt IS the cached prefix + the question, sent suffix-only),
-   * while `stuff-oracle` runs UNCACHED — it routes a SUBSET of the corpus, so its
-   * prompt is not the cached prefix + a suffix and cannot reference the one
-   * full-corpus cache. When omitted, {@link StuffServiceDeps.complete} serves both
-   * arms (the pure default the unit suite uses).
+   * Optionally resolve the completion per arm AND order seed (#44): canonical-order
+   * `stuff` (seed 0) rides the context cache (its prompt IS the cached prefix + the
+   * question, sent suffix-only), while `stuff-oracle` runs UNCACHED — it routes a
+   * SUBSET of the corpus, so its prompt is not the cached prefix + a suffix. The
+   * order-permutation probe (`orderSeed > 0`) also runs UNCACHED: its prompt is built
+   * over PERMUTED chunks, so it is not the cached canonical prefix — hence the seed is
+   * forwarded so the binding can route the probe around the cache (Codex P2 on #44).
+   * When omitted, {@link StuffServiceDeps.complete} serves both arms (the pure default
+   * the unit suite uses).
    */
-  readonly completeForArm?: (arm: StuffArm) => StuffLlmComplete
+  readonly completeForArm?: (arm: StuffArm, orderSeed: number) => StuffLlmComplete
   readonly runRecord: RunRecord
   /**
    * Resolve the chunks to stuff for an arm: the entire corpus for `stuff`, the
@@ -118,10 +121,13 @@ export async function handleStuffRequest(
   deps: StuffServiceDeps,
 ): Promise<StuffResponse> {
   const arm: StuffArm = request.arm ?? 'stuff'
+  const orderSeed = request.orderSeed ?? 0
   const chunks = deps.chunksForArm(arm, request.corpora)
-  // Pick the arm's completion: cached for `stuff`, uncached for `stuff-oracle`
-  // (#44). Absent the per-arm resolver, the single injected completion serves both.
-  const complete = deps.completeForArm?.(arm) ?? deps.complete
+  // Pick the completion by arm AND order seed: the cache serves only canonical-order
+  // `stuff` (seed 0); `stuff-oracle` and the order-permutation probe (seed > 0) run
+  // uncached, since neither prompt is the cached canonical prefix (#44). Absent the
+  // resolver, the single injected completion serves both arms (the pure default).
+  const complete = deps.completeForArm?.(arm, orderSeed) ?? deps.complete
 
   const result = await runStuff({
     question: request.question,
@@ -131,7 +137,7 @@ export async function handleStuffRequest(
     complete,
     traceId: request.traceId,
     parentSpanId: request.parentSpanId,
-    orderSeed: request.orderSeed,
+    orderSeed,
     costRates: deps.costRates,
     tracer: deps.tracer,
   })
