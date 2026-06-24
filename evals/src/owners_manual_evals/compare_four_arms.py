@@ -34,10 +34,10 @@ from .judge import JudgeClient, judge_item
 from .judge_scores import write_judge_scores
 from .metrics import ItemScore, score_item
 from .ragas_metrics import (
-    RAG_ARMS,
     ContextEvaluator,
     ContextMetrics,
     evaluate_context_metrics,
+    is_rag_arm,
     reference_from_answer_points,
 )
 from .run_naive_rag import AnswerFn, ItemOutcome, ScoreSink
@@ -73,13 +73,36 @@ def _write_deterministic(score: ItemScore, trace_id: str | None, sink: ScoreSink
         sink(trace_id=trace_id, name=name, value=value)
 
 
+def _item_contexts(arm: str, outcome: ItemOutcome) -> tuple[str, ...]:
+    """The per-item RAGAS contexts for one RAG-arm outcome (#76).
+
+    Per-arm-accurate by construction: the contexts are this arm's OWN retrieved chunk
+    text (``ItemOutcome.retrieved_texts``), sourced from its answer envelope, NOT a
+    shared ``/retrieve/debug`` retrieval — so the agent arm is scored on its genuinely
+    different retrieval (bounded reformulation + graph expansion + authority rerank)
+    and its lift over naive-rag is never hidden behind an identical shared context.
+
+    Fails loud when RAGAS is enabled but a RAG-arm item retrieved nothing: scoring an
+    empty retrieval would silently corrupt the RAG-only context columns (Codex P1,
+    PR #75). This is the PER-ITEM completeness check that replaced PR #75's gross
+    arm-level guard, now that the contexts are wired from each arm's outcome.
+    """
+    if not outcome.retrieved_texts:
+        raise ValueError(
+            f"RAGAS is enabled but RAG arm {arm!r} retrieved NO chunk text for item "
+            f"{outcome.item_id!r}: RAGAS would score an empty retrieval and corrupt the "
+            "RAG-only context columns. Confirm the arm's answer envelope carries "
+            "`retrievedContexts` (#76), or run without --ragas."
+        )
+    return outcome.retrieved_texts
+
+
 def _run_arm(
     *,
     arm: str,
     items: Sequence[GoldenItem],
     documents: Sequence[DocumentTree],
     answer: AnswerFn,
-    contexts: Mapping[str, Sequence[str]],
     judge_client: JudgeClient,
     context_evaluator: ContextEvaluator | None,
     score_sink: ScoreSink,
@@ -113,12 +136,14 @@ def _run_arm(
         # ADR 0009: the metrics are scored REFERENCE-based against the answer
         # points (the hand-verified ground truth), NOT the produced answer — the
         # produced answer is the judge's job, and keeping it out of the context
-        # metrics is what attributes a failure to retrieval vs generation.
-        if context_evaluator is not None:
+        # metrics is what attributes a failure to retrieval vs generation. The
+        # contexts are this arm's OWN retrieval (#76), so the per-arm columns are
+        # never blended; an empty RAG-arm retrieval fails loud in `_item_contexts`.
+        if context_evaluator is not None and is_rag_arm(arm):
             metrics = evaluate_context_metrics(
                 arm=arm,
                 question=item.question,
-                contexts=contexts.get(item.id, ()),
+                contexts=_item_contexts(arm, outcome),
                 reference=reference_from_answer_points(item.answer_points),
                 evaluator=context_evaluator,
             )
@@ -137,7 +162,6 @@ def run_four_arm_comparison(
     items: Sequence[GoldenItem],
     documents: Sequence[DocumentTree],
     answers: Mapping[str, AnswerFn],
-    contexts_by_arm: Mapping[str, Mapping[str, Sequence[str]]],
     judge_client: JudgeClient,
     context_evaluator: ContextEvaluator | None,
     score_sink: ScoreSink,
@@ -146,25 +170,17 @@ def run_four_arm_comparison(
 
     Raises ``ValueError`` if any of the four arms is missing an answer function — a
     four-arm comparison needs all four.
+
+    When RAGAS is enabled (``context_evaluator is not None``), each RAG arm is scored on
+    ITS OWN retrieval: the per-item contexts are derived from each arm's
+    :class:`ItemOutcome.retrieved_texts` (#76), so the agent arm's retrieval lift is
+    never hidden behind a shared retrieval, and a RAG-arm item that retrieved nothing
+    fails loud per item rather than silently scoring an empty context (see
+    :func:`_item_contexts`).
     """
     missing = [arm for arm in ARM_ORDER if arm not in answers]
     if missing:
         raise ValueError(f"four-arm comparison is missing answer function(s) for arm(s): {missing}")
-
-    # RAGAS enabled but no retrieved contexts wired → fail loud rather than score an
-    # empty retrieval and corrupt the RAG-only context columns (Codex P1, PR #75). The
-    # live CLI still defers the /retrieve/debug contexts wiring, so guard the gross case
-    # (a RAG arm with no contexts at all); per-item completeness lands with that wiring.
-    if context_evaluator is not None:
-        rag_arms_without_contexts = [arm for arm in RAG_ARMS if not contexts_by_arm.get(arm)]
-        if rag_arms_without_contexts:
-            raise ValueError(
-                "a context evaluator was provided (RAGAS enabled) but no retrieved contexts "
-                f"were supplied for RAG arm(s) {rag_arms_without_contexts}: RAGAS would score an "
-                "empty retrieval and corrupt the context columns. Wire the retrieved chunk text "
-                "per item (#76; e.g. from /retrieve/debug) before enabling RAGAS, or "
-                "run without it."
-            )
 
     columns = {
         arm: _run_arm(
@@ -172,7 +188,6 @@ def run_four_arm_comparison(
             items=items,
             documents=documents,
             answer=answers[arm],
-            contexts=contexts_by_arm.get(arm, {}),
             judge_client=judge_client,
             context_evaluator=context_evaluator,
             score_sink=score_sink,
@@ -312,7 +327,6 @@ def main(argv: Sequence[str] | None = None) -> int:  # pragma: no cover - live w
             items=items,
             documents=documents,
             answers=answers,
-            contexts_by_arm={},  # contexts wired from /retrieve/debug when RAGAS goes live (#76)
             judge_client=judge_client,
             context_evaluator=context_evaluator,
             score_sink=score_sink,

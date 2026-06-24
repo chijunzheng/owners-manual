@@ -54,6 +54,25 @@ def build_traceparent(*, trace_id: str, span_id: str) -> str:
     return f"00-{trace_id}-{span_id}-01"
 
 
+def parse_retrieved_texts(response: Mapping[str, object]) -> tuple[str, ...]:
+    """Parse the per-arm retrieved chunk text off a RAG-arm answer envelope (#76).
+
+    The TS RAG arms (naive-rag ``/answer`` and the agent ``/chat`` terminal result)
+    carry ``retrievedContexts`` — a list of ``{citablePathKey, text}`` projected from
+    the SAME candidate set ``retrievedCitablePathKeys`` is, so the returned texts stay
+    aligned with the path keys, candidate for candidate. The live RAGAS context columns
+    are scored on this arm's OWN retrieval, never a shared ``/retrieve/debug`` call.
+
+    A response without ``retrievedContexts`` (e.g. an older service, or a stuffing arm
+    that never carries it) parses to an empty tuple rather than raising — the per-item
+    RAGAS guard in the four-arm runner then fails loud at the real call site.
+    """
+    contexts = response.get("retrievedContexts")
+    if not isinstance(contexts, list):
+        return ()
+    return tuple(str(entry.get("text", "")) for entry in contexts if isinstance(entry, dict))
+
+
 @dataclass(frozen=True, slots=True)
 class AnswerResult:
     """The parsed naive-rag response for one item."""
@@ -71,6 +90,10 @@ class AnswerResult:
     #: full envelope to its owned root observation in nested mode (#50). Empty for
     #: refusals. ``candidate_cites`` is these claims' cites, flattened.
     claims: tuple[AnswerClaim, ...] = ()
+    #: The retrieved chunk text per candidate (#76) — the live RAGAS context input
+    #: for this RAG arm's OWN retrieval. Parsed off the envelope's ``retrievedContexts``
+    #: and aligned with ``retrieved_path_keys``. Empty when the service omits it.
+    retrieved_texts: tuple[str, ...] = ()
 
 
 class NaiveRagClient:
@@ -106,6 +129,7 @@ class NaiveRagClient:
             candidate_cites=flatten_cites(claims),
             claims=claims,
             retrieved_path_keys=tuple(response.get("retrievedCitablePathKeys", [])),
+            retrieved_texts=parse_retrieved_texts(response),
             corpus_build_hash=run_record["corpusBuildHash"],
             pipeline_config_hash=run_record["pipelineConfigHash"],
             latency_ms=response.get("latencyMs", {}),
@@ -113,4 +137,10 @@ class NaiveRagClient:
         )
 
 
-__all__ = ["HttpTransport", "NaiveRagClient", "AnswerResult", "build_traceparent"]
+__all__ = [
+    "HttpTransport",
+    "NaiveRagClient",
+    "AnswerResult",
+    "build_traceparent",
+    "parse_retrieved_texts",
+]
