@@ -77,6 +77,7 @@ import { createVertexSummarizer } from './live/vertex-summarizer.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
 import { loadEnrichmentArtifactFile } from './live/enrichment-artifact-reader.js'
 import { resolveAgentEnrichment } from './live/enrichment-resolver.js'
+import { ENRICHMENT_PIPELINE_CONFIG } from './live/enrichment-config.js'
 import { createCohereRerank } from './live/cohere-rerank.js'
 import { createLlmRerank } from './live/llm-rerank.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
@@ -215,6 +216,9 @@ async function main(): Promise<void> {
     flags: agentFlags,
     artifactPath: repoPath('corpus', 'enrichment', 'build.json'),
     corpusBuildHash: runRecord.corpusBuildHash,
+    // The enrichment config the corpus hash is blind to (model + prompt versions):
+    // a stale artifact built by an old model fails loud here (Codex P2, PR #78).
+    expectedEnrichmentConfig: ENRICHMENT_PIPELINE_CONFIG,
     loadArtifact: loadEnrichmentArtifactFile,
     listChunks: () => store.listChunks(),
   })

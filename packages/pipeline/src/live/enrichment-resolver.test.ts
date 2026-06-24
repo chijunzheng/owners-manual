@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { type PipelineConfig } from '@owners-manual/enrichment'
+
 import { authorityLevelOf } from '../authority.js'
 import { type ChunkRow } from './mongo-store.js'
 import { type PersistedEnrichmentBuild } from './enrichment-artifact.js'
@@ -26,6 +28,20 @@ const ALL_OFF = {
 const ARTIFACT_PATH = 'corpus/enrichment/build.json'
 const CORPUS_HASH = 'a'.repeat(64)
 
+// The enrichment config the artifact was built under; serve passes the SAME value
+// as `expectedEnrichmentConfig`, so a matching pair is the happy path and any
+// drift (model swap / prompt-version bump) must fail loud (Codex P2, PR #78).
+const ENRICHMENT_CONFIG: PipelineConfig = {
+  chunkerId: 'hierarchy-v1',
+  enrichmentModel: 'claude-enrichment-test',
+  promptVersions: {
+    'cross-references': 'v1',
+    definitions: 'v1',
+    'amendment-flags': 'v1',
+    'situating-context': 'v1',
+  },
+}
+
 const NOTICE_KEY = 'rta-2006|section:12'
 
 const row = (citablePathKey: string, text: string): ChunkRow => ({
@@ -42,17 +58,8 @@ const build = (corpusBuildHash: string): PersistedEnrichmentBuild => ({
   metadata: {
     buildHash: 'b'.repeat(64),
     manifestHash: 'c'.repeat(64),
-    pipelineConfig: {
-      chunkerId: 'hierarchy-v1',
-      enrichmentModel: 'claude-enrichment-test',
-      promptVersions: {
-        'cross-references': 'v1',
-        definitions: 'v1',
-        'amendment-flags': 'v1',
-        'situating-context': 'v1',
-      },
-    },
-    enrichmentModel: 'claude-enrichment-test',
+    pipelineConfig: ENRICHMENT_CONFIG,
+    enrichmentModel: ENRICHMENT_CONFIG.enrichmentModel,
   },
   trees: [
     {
@@ -80,6 +87,7 @@ describe('resolveAgentEnrichment', () => {
       flags: ALL_OFF,
       artifactPath: ARTIFACT_PATH,
       corpusBuildHash: CORPUS_HASH,
+      expectedEnrichmentConfig: ENRICHMENT_CONFIG,
       loadArtifact,
       listChunks,
     })
@@ -97,6 +105,7 @@ describe('resolveAgentEnrichment', () => {
       flags: { ...ALL_OFF, xrefExpansion: true },
       artifactPath: ARTIFACT_PATH,
       corpusBuildHash: CORPUS_HASH,
+      expectedEnrichmentConfig: ENRICHMENT_CONFIG,
       loadArtifact,
       listChunks,
     })
@@ -116,6 +125,7 @@ describe('resolveAgentEnrichment', () => {
       flags: { ...ALL_OFF, definitionsInPrompt: true },
       artifactPath: ARTIFACT_PATH,
       corpusBuildHash: CORPUS_HASH,
+      expectedEnrichmentConfig: ENRICHMENT_CONFIG,
       loadArtifact,
       listChunks,
     })
@@ -133,10 +143,32 @@ describe('resolveAgentEnrichment', () => {
         flags: { ...ALL_OFF, xrefExpansion: true },
         artifactPath: ARTIFACT_PATH,
         corpusBuildHash: CORPUS_HASH,
+        expectedEnrichmentConfig: ENRICHMENT_CONFIG,
         loadArtifact,
         listChunks,
       }),
     ).rejects.toThrow(/enrichment artifact corpus build hash/i)
+    expect(listChunks).not.toHaveBeenCalled()
+  })
+
+  it('throws when corpus matches but the artifact enrichment config drifted (stale model)', async () => {
+    // The artifact was built under ENRICHMENT_CONFIG (model claude-enrichment-test)
+    // and its corpus hash matches — but serve now expects a DIFFERENT enrichment
+    // model. The corpus hash is blind to that, so only the config guard catches it
+    // (Codex P2, PR #78). Must fail fast, before the chunk-store read.
+    const loadArtifact = vi.fn(async () => build(CORPUS_HASH))
+    const listChunks = vi.fn(async () => [] as readonly ChunkRow[])
+
+    await expect(
+      resolveAgentEnrichment({
+        flags: { ...ALL_OFF, xrefExpansion: true },
+        artifactPath: ARTIFACT_PATH,
+        corpusBuildHash: CORPUS_HASH,
+        expectedEnrichmentConfig: { ...ENRICHMENT_CONFIG, enrichmentModel: 'claude-new-model' },
+        loadArtifact,
+        listChunks,
+      }),
+    ).rejects.toThrow(/enrichment/i)
     expect(listChunks).not.toHaveBeenCalled()
   })
 
@@ -151,6 +183,7 @@ describe('resolveAgentEnrichment', () => {
         flags: { ...ALL_OFF, xrefExpansion: true },
         artifactPath: ARTIFACT_PATH,
         corpusBuildHash: CORPUS_HASH,
+        expectedEnrichmentConfig: ENRICHMENT_CONFIG,
         loadArtifact,
         listChunks,
       }),

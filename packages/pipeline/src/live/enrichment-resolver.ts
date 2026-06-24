@@ -12,16 +12,23 @@
  *
  * So this loads the artifact ONLY when a flag requests expansion or definitions;
  * otherwise it returns `undefined` and touches NEITHER injected seam (no file
- * read, no chunk-store read). When a flag IS on it loads, FAILS LOUD if the build
- * is for a different corpus (`assertEnrichmentBuildMatchesCorpus`), and projects
- * the chunk rows into the expansion-target lookup. Pure over its injected seams
- * (`loadArtifact` / `listChunks`), so the gating is unit-tested offline.
+ * read, no chunk-store read). When a flag IS on it loads and FAILS LOUD on EITHER
+ * identity drift — the corpus build hash (`assertEnrichmentBuildMatchesCorpus`)
+ * AND the enrichment config the corpus hash is blind to, i.e. a model/prompt
+ * bump (`assertEnrichmentConfigCurrent`) — BEFORE the chunk-store read, then
+ * projects the chunk rows into the expansion-target lookup. Pure over its injected
+ * seams (`loadArtifact` / `listChunks`), so the gating is unit-tested offline.
  */
+
+import { type PipelineConfig } from '@owners-manual/enrichment'
 
 import { type AgentEnrichmentAccess } from '../agent-types.js'
 import { type AgentQueryFlags } from '../agent-query-flags.js'
 import { createAgentEnrichmentAccess } from './agent-enrichment.js'
-import { assertEnrichmentBuildMatchesCorpus } from './enrichment-build-guard.js'
+import {
+  assertEnrichmentBuildMatchesCorpus,
+  assertEnrichmentConfigCurrent,
+} from './enrichment-build-guard.js'
 import { type PersistedEnrichmentBuild } from './enrichment-artifact.js'
 import { buildEnrichmentLookup } from './enrichment-lookup.js'
 import { type ChunkRow } from './mongo-store.js'
@@ -34,6 +41,12 @@ export interface ResolveAgentEnrichmentInput {
   readonly artifactPath: string
   /** The corpus build hash serve is answering over (the fail-loud reconciliation target). */
   readonly corpusBuildHash: string
+  /**
+   * The enrichment config serve currently expects (the pinned
+   * `ENRICHMENT_PIPELINE_CONFIG`) — reconciled against the artifact's own
+   * `metadata.pipelineConfig`, the axis the corpus hash cannot see.
+   */
+  readonly expectedEnrichmentConfig: PipelineConfig
   /** Reads + validates the persisted artifact (live: file read; tests: a fake). */
   readonly loadArtifact: (path: string) => Promise<PersistedEnrichmentBuild>
   /** Reads the stored chunk rows the expansion-target lookup projects (live: Atlas). */
@@ -64,6 +77,12 @@ export async function resolveAgentEnrichment(
   assertEnrichmentBuildMatchesCorpus({
     artifactCorpusBuildHash: build.corpusBuildHash,
     corpusBuildHash: input.corpusBuildHash,
+  })
+  // The corpus hash is blind to the enrichment model/prompts; reconcile them too,
+  // and fail fast — before the chunk-store read — on a drift (Codex P2, PR #78).
+  assertEnrichmentConfigCurrent({
+    artifactEnrichmentConfig: build.metadata.pipelineConfig,
+    expectedEnrichmentConfig: input.expectedEnrichmentConfig,
   })
   const lookup = buildEnrichmentLookup(await input.listChunks())
   return createAgentEnrichmentAccess({ trees: build.trees, lookup })
