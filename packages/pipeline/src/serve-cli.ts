@@ -75,10 +75,8 @@ import { createVertexStuffLlm } from './live/vertex-stuff-llm.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
 import { createVertexSummarizer } from './live/vertex-summarizer.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
-import { createAgentEnrichmentAccess } from './live/agent-enrichment.js'
 import { loadEnrichmentArtifactFile } from './live/enrichment-artifact-reader.js'
-import { assertEnrichmentBuildMatchesCorpus } from './live/enrichment-build-guard.js'
-import { buildEnrichmentLookup } from './live/enrichment-lookup.js'
+import { resolveAgentEnrichment } from './live/enrichment-resolver.js'
 import { createCohereRerank } from './live/cohere-rerank.js'
 import { createLlmRerank } from './live/llm-rerank.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
@@ -199,24 +197,27 @@ async function main(): Promise<void> {
   })
 
   // #16 (live-run milestone): the agent's query-time graph expansion and
-  // definitions attachment consume #13's tree-level sidecars, now WIRED live. The
-  // PERSISTED sidecars are loaded from the gitignored artifact `enrich:build` wrote
-  // and FAIL LOUD if they were produced against a different corpus than serve is
-  // answering over (`assertEnrichmentBuildMatchesCorpus` vs `runRecord.corpusBuildHash`,
-  // ADR 0004 content-addressing). The expansion-target lookup resolves an edge's far
-  // endpoint to a candidate from the SAME Atlas chunk store the agent retrieves over,
-  // read once here (`store.listChunks`). With this binding the `xrefExpansion` /
-  // `definitionsInPrompt` flags engage when toggled on, rather than collapsing to their
-  // documented off-state — the mechanism stays unit-tested against fakes, this is the
-  // thin live load (mirrors `createAgentRetrieve`).
-  const enrichmentBuild = await loadEnrichmentArtifactFile(
-    repoPath('corpus', 'enrichment', 'build.json'),
-  )
-  assertEnrichmentBuildMatchesCorpus({
-    artifactCorpusBuildHash: enrichmentBuild.corpusBuildHash,
+  // definitions attachment consume #13's tree-level sidecars, now WIRED live —
+  // but GATED on the flags. `xrefExpansion` / `definitionsInPrompt` are
+  // default-off A/B flags, and the sidecars are built offline by a live Claude
+  // pass (`enrich:build`), so the persisted artifact is loaded ONLY when a flag
+  // requests it: an off run (the default agent, the naive-rag/stuff arms, the
+  // all-off ablation floor, the smoke gate) boots WITHOUT requiring the artifact,
+  // which is the correct off-state. When a flag IS on the resolver loads the
+  // artifact, FAILS LOUD if it was built against a different corpus than serve is
+  // answering over (vs `runRecord.corpusBuildHash`, ADR 0004), and resolves
+  // expansion targets from the SAME Atlas chunk store the agent retrieves over
+  // (`store.listChunks`, read once). The gating + guard are unit-tested against
+  // fakes; the load/list are the thin live seams (mirrors `createAgentRetrieve`).
+  // This replaces the old `undefined` path — the bug where flags-on still got no
+  // enrichment — while keeping flags-off + no-artifact a clean boot.
+  const enrichment = await resolveAgentEnrichment({
+    flags: agentFlags,
+    artifactPath: repoPath('corpus', 'enrichment', 'build.json'),
     corpusBuildHash: runRecord.corpusBuildHash,
+    loadArtifact: loadEnrichmentArtifactFile,
+    listChunks: () => store.listChunks(),
   })
-  const enrichmentLookup = buildEnrichmentLookup(await store.listChunks())
 
   const chatDeps: ChatServiceDeps = {
     model: createVertexAgentModel({ model: config.runtime.model, location: live.vertexLocation }),
@@ -228,12 +229,9 @@ async function main(): Promise<void> {
       // levels become a true pre-filter pushed into the stages (#41 / ADR 0002).
       corpusDocumentIds: GOLDEN_V0_DOCUMENTS.map((d) => d.id),
     }),
-    // The query-time access to #13's sidecars (#16): restricted per query to the
-    // documents the candidates touch, resolving expansion targets from the chunk store.
-    enrichment: createAgentEnrichmentAccess({
-      trees: enrichmentBuild.trees,
-      lookup: enrichmentLookup,
-    }),
+    // The query-time access to #13's sidecars (#16), gated on the flags above:
+    // undefined (the off-state) unless expansion/definitions is requested.
+    enrichment,
     rerank: agentRerank,
     flags: agentFlags,
     // The #17 stores + summarizer: the chat handler loads the owner profile and
