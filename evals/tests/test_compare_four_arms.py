@@ -148,6 +148,44 @@ def test_ragas_columns_for_rag_arms_only() -> None:
     assert by_arm["stuff-oracle"].context_recall is None
 
 
+def test_ragas_evaluator_is_handed_the_reference_synthesized_from_answer_points() -> None:
+    # ADR 0009: the call site builds reference=reference_from_answer_points(item
+    # .answer_points) and drops the produced answer / required cites. The evaluator
+    # must receive that reference (the hand-verified ground truth), NOT the
+    # produced answer_text.
+    seen: list[dict[str, object]] = []
+
+    def evaluator(*, question: str, contexts, reference: str):
+        from owners_manual_evals.ragas_metrics import ContextMetrics
+
+        seen.append({"question": question, "reference": reference})
+        return ContextMetrics(context_precision=0.9, context_recall=0.8)
+
+    items = (_item("a1"),)
+    run_four_arm_comparison(
+        items=items,
+        documents=_DOCUMENTS,
+        answers={
+            "stuff": _arm_fn("stuff"),
+            "stuff-oracle": _arm_fn("oracle"),
+            "naive-rag": _arm_fn("naive"),
+            "agent": _arm_fn("agent"),
+        },
+        contexts_by_arm={
+            "naive-rag": {"a1": ("ctx",)},
+            "agent": {"a1": ("ctx",)},
+        },
+        judge_client=_judge(),
+        context_evaluator=evaluator,
+        score_sink=lambda **_kw: None,
+    )
+    # Only the two RAG arms consult the evaluator; the reference is the joined
+    # answer-point text ("the duty"), never the produced answer.
+    assert len(seen) == 2
+    assert all(call["reference"] == "the duty" for call in seen)
+    assert all("repair" not in str(call["reference"]) for call in seen)
+
+
 def test_judge_scores_are_written_joined_to_each_arms_trace() -> None:
     captured: list[dict] = []
 

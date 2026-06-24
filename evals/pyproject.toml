@@ -33,6 +33,15 @@ dev = [
   "pytest>=8.3",
   "ruff>=0.8",
 ]
+# RAGAS context metrics for the RAG arms (ADR 0009) — its OWN optional group, NOT
+# pulled by `uv sync` of the base/dev surface. ragas_live.py imports both lazily,
+# so the offline unit suite mocks the evaluator seam and never installs either.
+# ragas runs LLM-only over Gemini-on-Vertex (ADR 0005) via langchain-google-vertexai,
+# so no embedding dependency is declared. Install with `uv sync --group ragas`.
+ragas = [
+  "ragas>=0.2,<0.3",
+  "langchain-google-vertexai>=2,<3",
+]
 
 [build-system]
 requires = ["hatchling"]

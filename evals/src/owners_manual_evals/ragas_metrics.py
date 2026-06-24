@@ -1,4 +1,4 @@
-"""RAGAS context metrics, for the RAG arms ONLY (issue #18).
+"""RAGAS context metrics, for the RAG arms ONLY (issues #18, #46).
 
 RAGAS context-precision / context-recall measure how well a RETRIEVED context
 serves the answer. They are meaningful for the RAG arms — naive-rag and the agent,
@@ -8,17 +8,30 @@ module gates RAGAS to :data:`RAG_ARMS` and returns ``None`` for the stuffing arm
 the four-arm dashboard marks the columns RAG-only and leaves the stuffing rows
 blank, never blending a stuffing arm into a context metric.
 
+ADR 0009 anchors the metrics REFERENCE-based on the golden answer points: the
+evaluator scores the retrieved context against a *reference answer* synthesized
+from an item's claim-level answer points (the hand-verified ground truth), not
+against the produced answer or the required cites. So the :class:`ContextEvaluator`
+seam carries exactly ``(question, contexts, reference)`` — what
+``LLMContextPrecisionWithReference`` + ``LLMContextRecall`` consume — and the
+``answer_points → reference`` synthesis is the pure :func:`reference_from_answer_points`
+helper. The RAGAS context recall is the SEMANTIC counterpart to the deterministic,
+structural ``retrieval_hit_rate``; the two are reported side by side, never blended.
+
 The RAGAS computation is injected behind the :class:`ContextEvaluator` seam, so
 this module is pure and unit-tested with a fake. The live binding lazy-imports
 ``ragas`` (kept out of the unit suite's dependency surface, like Langfuse and the
-Agent SDK) and runs it against the same Gemini product model.
+Agent SDK) and runs it against the Gemini product model on Vertex (ADR 0005).
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from .golden_item import AnswerPoint
 
 #: The arms RAGAS context metrics apply to — the ones that retrieve a context.
 RAG_ARMS: tuple[str, ...] = ("naive-rag", "agent")
@@ -33,16 +46,30 @@ class ContextMetrics:
 
 
 class ContextEvaluator(Protocol):
-    """The slice of a RAGAS evaluator this module needs — injectable for tests."""
+    """The slice of a RAGAS evaluator this module needs — injectable for tests.
+
+    ADR 0009: the seam carries the synthesized ``reference`` answer the two
+    reference-based metrics score against, not the produced answer or the cites.
+    """
 
     def __call__(
         self,
         *,
         question: str,
         contexts: Sequence[str],
-        answer: str,
-        required_cites: Sequence[str],
+        reference: str,
     ) -> ContextMetrics: ...
+
+
+def reference_from_answer_points(points: Iterable[AnswerPoint]) -> str:
+    """Synthesize the RAGAS reference answer from an item's answer points (ADR 0009).
+
+    Newline-joins the point texts in order. The answer points are already discrete,
+    hand-verified claims, so the join hands ``LLMContextRecall`` a pre-segmented
+    reference — one claim per line — without an extra decomposition pass. Pure: it
+    never mutates ``points`` and reads only each point's ``text``.
+    """
+    return "\n".join(point.text for point in points)
 
 
 def is_rag_arm(arm: str) -> bool:
@@ -56,20 +83,14 @@ def evaluate_context_metrics(
     arm: str,
     question: str,
     contexts: Sequence[str],
-    answer: str,
-    required_cites: Sequence[str],
+    reference: str,
     evaluator: ContextEvaluator,
 ) -> ContextMetrics | None:
     """Evaluate RAGAS context metrics for a RAG arm; return ``None`` (and never
     consult the evaluator) for a stuffing arm."""
     if not is_rag_arm(arm):
         return None
-    return evaluator(
-        question=question,
-        contexts=contexts,
-        answer=answer,
-        required_cites=required_cites,
-    )
+    return evaluator(question=question, contexts=contexts, reference=reference)
 
 
 def scripted_context_evaluator(
@@ -83,10 +104,9 @@ def scripted_context_evaluator(
         *,
         question: str,
         contexts: Sequence[str],
-        answer: str,
-        required_cites: Sequence[str],
+        reference: str,
     ) -> ContextMetrics:
-        _ = (question, contexts, answer, required_cites)
+        _ = (question, contexts, reference)
         return ContextMetrics(
             context_precision=context_precision,
             context_recall=context_recall,
@@ -99,6 +119,7 @@ __all__ = [
     "RAG_ARMS",
     "ContextMetrics",
     "ContextEvaluator",
+    "reference_from_answer_points",
     "is_rag_arm",
     "evaluate_context_metrics",
     "scripted_context_evaluator",

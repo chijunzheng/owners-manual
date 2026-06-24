@@ -33,7 +33,12 @@ from .golden_item import GoldenItem
 from .judge import JudgeClient, judge_item
 from .judge_scores import write_judge_scores
 from .metrics import ItemScore, score_item
-from .ragas_metrics import ContextEvaluator, ContextMetrics, evaluate_context_metrics
+from .ragas_metrics import (
+    ContextEvaluator,
+    ContextMetrics,
+    evaluate_context_metrics,
+    reference_from_answer_points,
+)
 from .run_naive_rag import AnswerFn, ItemOutcome, ScoreSink
 
 #: The deterministic scores written per item, beside the judge's (issue #10).
@@ -103,15 +108,17 @@ def _run_arm(
 
         # RAGAS context metrics — RAG arms only, and only when RAGAS is enabled.
         # Opt-in: a None evaluator leaves the RAG columns without RAGAS rather than
-        # forcing the live `ragas` build (a deferred ADR; `ragas` is not a declared
-        # dependency), so the four-arm table still renders.
+        # forcing the live `ragas` build, so the four-arm table still renders.
+        # ADR 0009: the metrics are scored REFERENCE-based against the answer
+        # points (the hand-verified ground truth), NOT the produced answer — the
+        # produced answer is the judge's job, and keeping it out of the context
+        # metrics is what attributes a failure to retrieval vs generation.
         if context_evaluator is not None:
             metrics = evaluate_context_metrics(
                 arm=arm,
                 question=item.question,
                 contexts=contexts.get(item.id, ()),
-                answer=outcome.answer_text,
-                required_cites=tuple(outcome.retrieved_path_keys),
+                reference=reference_from_answer_points(item.answer_points),
                 evaluator=context_evaluator,
             )
             if metrics is not None:
