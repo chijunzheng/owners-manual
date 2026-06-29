@@ -37,3 +37,27 @@ Pins HOW issue #19 validates the LLM judge before its point scores carry weight 
 - **Iterate rubric → recompute until κ clears the bar.** Overfits the instrument to its own validation set; the published κ would be meaningless. Rejected in favor of one correction pass, one recompute.
 - **Average Claude + Gemini into the headline judge.** Destroys the cross-family signal (ADR 0005) and hides same-family bias. Gemini stays diagnostic. Rejected.
 - **Calibrate across all four arms.** More faithful to the full eval but 4× the labeling for ~20 items; the agent arm is the headline and item selection already balances the credited/not base rate. Deferred to v2 (cross-arm judge stability).
+
+## Execution runbook
+
+The decisions above settle WHAT calibration measures; this section pins HOW it is run on live-verify day, so the live procedure lives in the repo and **blind labeling is the only manual step**. The `calibrate` CLI (`evals/src/owners_manual_evals/calibration_cli.py`) is the live seam; every pure unit behind it is tested offline against fakes.
+
+**Resolved execution design**
+
+1. **Slice-only `calibrate run` is the input producer.** A small, targeted run — agent arm over the 20 frozen-slice items + both judges — produces the three input files, INDEPENDENT of the four-arm matrix. It never spends the four-arm GCP credit and never touches the #21 disposition queue (Decision 7: calibrate early, off the disposition gate).
+2. **The blind sheet states the judge's verbatim credit criterion.** So the human grades the SAME construct the judge does. This is NOT a blinding violation: only the per-item judge verdict/rationale stays hidden. The criterion is sliced live from `judge._JUDGE_INSTRUCTION` (not a hardcoded copy), with a drift-guard test, so a future change to the judge's credit rule forces the sheet to follow.
+3. **Single blind labeler** (the owner). κ is judge-vs-one-human, not vs-consensus — a stated limitation (an optional 5-item second-labeler overlap is the reliability ceiling, flagged not required).
+4. **Calibrate-first sequencing.** Calibration runs BEFORE the full four-arm matrix spends GCP credit, on its own CLI path, off the disposition pre-flight gate.
+5. **Honest-default triage.** `judge-error` is the default bucket; a relabel (`rubric-wrong` / `human-error`) needs a WRITTEN justification (enforced by the strict `corrections.yaml` parser, for every correction); corrections are applied ONCE and κ is recomputed ONCE (never iterate-to-target). **Every `rubric-wrong` correction ALSO obliges a committed golden-point edit** on the dev split (the clarified gold label), since the finding is the golden set's own bug; the holdout stays sealed (ADR 0007).
+6. **The trust band is a published label, never a gate.** Landis–Koch bands (Decision 3) annotate the published κ; they never silently pass/fail a CI run.
+
+**The six-step procedure**
+
+1. `calibrate run --out-dir <dir>` — produce `answers.json` (the agent arm's answer per slice item), `claude.json` and `gemini.json` (the primary + secondary judge verdict maps over the SAME answers). `answers.json` is the single source of answer text fed to both judges and, next, to the sheet — so all three raters grade the identical answer.
+2. `calibrate sheet --answers <dir>/answers.json --out labels.yaml` — emit the blind labeling sheet (one row per (item, point), the verbatim credit criterion in the header, no judge verdict anywhere).
+3. **Blind-label** `labels.yaml` in place (the only manual step): set each `human_credited` true/false against the answer, applying the shared credit criterion, without consulting the judge.
+4. `calibrate kappa --labels labels.yaml --judge claude.json --gemini gemini.json` — compute and publish the calibration table: κ(Claude↔human) with its seeded-bootstrap CI + trust band, observed agreement, prevalence, per-behavior-class κ, and the two Gemini diagnostic κ.
+5. `calibrate triage --labels labels.yaml --judge claude.json --corrections corrections.yaml` — triage every judge↔human mismatch, apply relabels once, recompute κ once; prints BOTH the before-κ and after-κ tables, the per-bucket counts, and the written justifications. **Commit the golden-point edit for every `rubric-wrong` finding.**
+6. **Publish.** Commit `labels.yaml` (the #19 deliverable) and the κ table; the live binding writes `human_point:<id>` + the run-level κ scores back to Langfuse (the sole system of record).
+
+**What closes #19** (it stays open as a live-verify tracker until all of these land): `labels.yaml` committed under `evals/fixtures/calibration/`; the κ table published with the CI + observed agreement + prevalence + per-class κ; the judge↔judge κ (Claude↔human, Gemini↔human, Claude↔Gemini); the triage + recompute-once with BOTH the before-κ and after-κ shown; and the scores written to Langfuse.

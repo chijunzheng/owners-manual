@@ -28,6 +28,7 @@ from owners_manual_evals.calibration_labels import (
     render_labeling_sheet,
 )
 from owners_manual_evals.golden_item import parse_golden_item
+from owners_manual_evals.judge import _JUDGE_INSTRUCTION
 
 #: Keys that would void the blind measurement if they reached the labeling sheet.
 _FORBIDDEN_KEYS = {"judge", "credited", "verdict", "rationale"}
@@ -112,6 +113,51 @@ def test_rendered_sheet_shows_the_answer_for_grading_but_never_a_verdict() -> No
     assert "rationale" not in lowered
 
 
+# --- the shared credit criterion (ADR 0010 Decision 2; the build's decision 2) ---
+# The blind sheet must state the judge's VERBATIM credit rule so the human grades
+# the SAME construct the judge does — not a blinding violation (only the per-item
+# verdict/rationale stays hidden). The criterion lives in the header COMMENT, derived
+# FROM judge._JUDGE_INSTRUCTION so it cannot drift from the judge's actual rule.
+
+
+def test_header_carries_the_judge_credit_rule_verbatim() -> None:
+    rendered = render_labeling_sheet(build_labeling_sheet(_item(), answer_text="x"))
+    # The exact credit-rule sentence of the judge instruction — the construct the
+    # human must grade — appears verbatim in the sheet so both raters share it.
+    assert "Credit a point only when the answer actually makes that claim" in rendered
+    assert "not merely the topic" in rendered
+
+
+def test_header_credit_rule_is_a_substring_of_the_judge_instruction() -> None:
+    # The drift guard: the criterion the sheet shows is a literal slice of
+    # judge._JUDGE_INSTRUCTION, so a future edit to the judge's rule FORCES the sheet
+    # to follow (the criterion can never silently diverge from the judge's actual
+    # credit decision — the human would otherwise grade a different construct).
+    rendered = render_labeling_sheet(build_labeling_sheet(_item(), answer_text="x"))
+    credit_rule = (
+        "Credit a point only when the answer actually makes that claim — not merely the topic."
+    )
+    assert credit_rule in _JUDGE_INSTRUCTION  # pins the substring to the live source
+    assert credit_rule in rendered  # and the sheet carries that exact source slice
+
+
+def test_header_credit_rule_lives_in_a_comment_not_a_row_key() -> None:
+    # The criterion rides in the YAML comment header, never as a row field — so
+    # parse_labels' closed key set is unaffected and blinding of the per-item verdict
+    # is intact. Every emitted row still carries exactly the closed label key set.
+    rendered = render_labeling_sheet(build_labeling_sheet(_item(), answer_text="x"))
+    parsed = yaml.safe_load(rendered)  # comments are dropped by the YAML parse
+    for entry in parsed["labels"]:
+        assert set(entry) == {
+            "item_id",
+            "point_id",
+            "question",
+            "answer",
+            "point_text",
+            "human_credited",
+        }
+
+
 # --- the strict loader -----------------------------------------------------
 
 
@@ -154,3 +200,15 @@ def test_loader_rejects_a_smuggled_judge_key() -> None:
     # unknown key and is rejected, so a leaked verdict can never enter the κ inputs.
     with pytest.raises(ValueError, match="unknown"):
         parse_labels(_filled_sheet(judge="credited"))
+
+
+def test_parse_labels_round_trips_a_sheet_rendered_with_the_credit_header() -> None:
+    # The new credit-criterion header lives in the YAML comment, so a sheet rendered
+    # with it (then filled) still round-trips through the strict loader unchanged —
+    # the header never reaches a row key, so parsing is unaffected (Codex-style guard).
+    blank = render_labeling_sheet(build_labeling_sheet(_item(), answer_text="repairs the unit"))
+    filled = blank.replace("human_credited: null", "human_credited: true")
+    rows = parse_labels(filled)
+    assert len(rows) == 2  # two answer points on the _item() fixture
+    assert all(row.human_credited is True for row in rows)
+    assert {row.point_id for row in rows} == {"duty", "covers-unit"}
