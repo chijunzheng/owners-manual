@@ -138,3 +138,26 @@ def test_table_marks_gemini_as_diagnostic_only() -> None:
     table = render_calibration_table(primary=primary, judge_judge=judge_judge)
     # Gemini is the same-family secondary — never averaged into the headline (Decision 6).
     assert "diagnostic" in table.lower()
+
+
+# --- the prevalence guard holds WITHOUT Gemini (Codex P2) -------------------
+# The `calibrate kappa` path without --gemini must not emit a bare κ: κ still
+# travels with its CI, observed agreement, prevalence, and the per-class headline.
+
+
+def test_table_without_gemini_still_carries_ci_prevalence_and_per_class() -> None:
+    primary = _primary()
+    table = render_calibration_table(primary=primary)  # judge_judge omitted
+
+    # The primary κ + its seeded-bootstrap CI still render…
+    assert f"{primary.kappa:.2f}" in table  # type: ignore[attr-defined]
+    assert f"{primary.kappa_ci.low:.2f}" in table  # type: ignore[attr-defined]
+    assert f"{primary.kappa_ci.high:.2f}" in table  # type: ignore[attr-defined]
+    # …the prevalence guard is still visible beside κ (ADR 0010 Decision 3)…
+    assert "revalence" in table
+    assert f"{primary.observed_agreement:.2f}" in table  # type: ignore[attr-defined]
+    # …and the per-behavior-class headline is still present.
+    assert "refuse-out-of-scope" in table
+    # The trust band is still printed; only the Gemini diagnostic rows are omitted.
+    assert trust_band(primary.kappa) in table  # type: ignore[attr-defined]
+    assert "Gemini" not in table

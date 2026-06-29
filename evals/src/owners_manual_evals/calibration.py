@@ -70,6 +70,33 @@ def _require_pairs(pairs: Sequence[Pair]) -> None:
         raise ValueError("Cohen's κ needs at least one paired decision")
 
 
+def require_verdict(
+    verdicts: Mapping[str, Mapping[str, object]],
+    *,
+    item_id: str,
+    point_id: str,
+) -> bool:
+    """Look up an external judge verdict for one point and require a JSON boolean.
+
+    The labels file is schema-validated (``calibration_labels.parse_labels``), but
+    the Claude / Gemini verdict files are external raw JSON. A non-boolean scalar —
+    notably the string ``"false"``, which :func:`bool` coerces to ``True`` — would
+    silently credit a negative verdict and inflate κ and prevalence. Fail loud on a
+    missing (item, point) or a non-``bool`` value instead of coercing. Ints (incl.
+    ``0`` / ``1``) are rejected too: a JSON boolean is the only honest credit signal.
+    """
+    try:
+        value = verdicts[item_id][point_id]
+    except (KeyError, TypeError) as error:
+        raise ValueError(f"judge verdict missing for ({item_id!r}, {point_id!r})") from error
+    if not isinstance(value, bool):
+        raise ValueError(
+            f"judge verdict for ({item_id!r}, {point_id!r}) must be a JSON boolean, "
+            f"got {type(value).__name__} {value!r}"
+        )
+    return value
+
+
 def observed_agreement(pairs: Sequence[Pair]) -> float:
     """The raw match rate ``p_o``: the fraction of points the two raters agree on."""
     _require_pairs(pairs)
@@ -198,4 +225,5 @@ __all__ = [
     "cohen_kappa",
     "bootstrap_kappa_ci",
     "compute_calibration",
+    "require_verdict",
 ]

@@ -27,6 +27,7 @@ from owners_manual_evals.calibration import (
     compute_calibration,
     observed_agreement,
     positive_prevalence,
+    require_verdict,
 )
 
 
@@ -159,3 +160,35 @@ def test_degenerate_single_category_does_not_crash() -> None:
     # convention returns 1.0 for perfect agreement rather than dividing by zero.
     pairs = _pairs(n11=10, n10=0, n01=0, n00=0)
     assert cohen_kappa(pairs) == pytest.approx(1.0)
+
+
+# --- require_verdict: external judge JSON must be a real boolean (Codex P2) ----
+# A non-bool external verdict that bool() would coerce silently flips a negative
+# verdict to credited and inflates κ/prevalence — the CLI must fail loud instead.
+
+
+def test_require_verdict_returns_a_real_boolean() -> None:
+    verdicts = {"item-1": {"p1": True, "p2": False}}
+    assert require_verdict(verdicts, item_id="item-1", point_id="p1") is True
+    assert require_verdict(verdicts, item_id="item-1", point_id="p2") is False
+
+
+def test_require_verdict_rejects_the_string_false() -> None:
+    # bool("false") is True — the exact silent-inflation footgun. Reject it loud.
+    with pytest.raises(ValueError, match="JSON boolean"):
+        require_verdict({"i": {"p": "false"}}, item_id="i", point_id="p")
+
+
+def test_require_verdict_rejects_an_int_zero_or_one() -> None:
+    # 0/1 are not JSON booleans; a credit signal must be a true/false, not a number.
+    with pytest.raises(ValueError, match="JSON boolean"):
+        require_verdict({"i": {"p": 1}}, item_id="i", point_id="p")
+    with pytest.raises(ValueError, match="JSON boolean"):
+        require_verdict({"i": {"p": 0}}, item_id="i", point_id="p")
+
+
+def test_require_verdict_fails_loud_on_a_missing_point() -> None:
+    with pytest.raises(ValueError, match="missing"):
+        require_verdict({"i": {"p": True}}, item_id="i", point_id="absent")
+    with pytest.raises(ValueError, match="missing"):
+        require_verdict({}, item_id="absent", point_id="p")

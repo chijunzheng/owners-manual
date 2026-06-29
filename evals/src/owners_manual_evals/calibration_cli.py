@@ -118,7 +118,7 @@ def _command_sheet(args) -> int:  # pragma: no cover - live wiring
 def _command_kappa(args) -> int:  # pragma: no cover - live wiring
     import json  # noqa: PLC0415
 
-    from .calibration import PointAgreement, compute_calibration  # noqa: PLC0415
+    from .calibration import PointAgreement, compute_calibration, require_verdict  # noqa: PLC0415
     from .calibration_labels import parse_labels  # noqa: PLC0415
     from .calibration_report import (  # noqa: PLC0415
         PointDecision,
@@ -135,15 +135,17 @@ def _command_kappa(args) -> int:  # pragma: no cover - live wiring
             item_id=row.item_id,
             point_id=row.point_id,
             behavior_class=behavior_class_by_item.get(row.item_id, "answer"),
-            human_credited=bool(row.human_credited),
-            judge_credited=bool(claude[row.item_id][row.point_id]),
+            human_credited=row.human_credited,
+            judge_credited=require_verdict(claude, item_id=row.item_id, point_id=row.point_id),
         )
         for row in labels
     )
     primary = compute_calibration(agreements, seed=args.seed)
 
     if args.gemini is None:
-        print(f"κ(Claude↔human) = {primary.kappa:.2f}  (provide --gemini for the full table)")
+        # No Gemini diagnostic, but κ still travels with its CI, observed agreement,
+        # prevalence, and the per-class headline (ADR 0010 Decision 3) — never a bare κ.
+        print(render_calibration_table(primary=primary))
         return 0
 
     gemini = json.loads(open(args.gemini, encoding="utf-8").read())
@@ -152,7 +154,7 @@ def _command_kappa(args) -> int:  # pragma: no cover - live wiring
             row.item_id,
             row.point_id,
             behavior_class_by_item.get(row.item_id, "answer"),
-            bool(row.human_credited),
+            row.human_credited,
         )
         for row in labels
     ]
@@ -161,7 +163,7 @@ def _command_kappa(args) -> int:  # pragma: no cover - live wiring
             row.item_id,
             row.point_id,
             behavior_class_by_item.get(row.item_id, "answer"),
-            bool(claude[row.item_id][row.point_id]),
+            require_verdict(claude, item_id=row.item_id, point_id=row.point_id),
         )
         for row in labels
     ]
@@ -170,7 +172,7 @@ def _command_kappa(args) -> int:  # pragma: no cover - live wiring
             row.item_id,
             row.point_id,
             behavior_class_by_item.get(row.item_id, "answer"),
-            bool(gemini[row.item_id][row.point_id]),
+            require_verdict(gemini, item_id=row.item_id, point_id=row.point_id),
         )
         for row in labels
     ]

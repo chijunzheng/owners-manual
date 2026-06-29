@@ -104,7 +104,7 @@ def _fmt(value: float) -> str:
 def render_calibration_table(
     *,
     primary: CalibrationResult,
-    judge_judge: JudgeJudgeKappa,
+    judge_judge: JudgeJudgeKappa | None = None,
 ) -> str:
     """Render the README calibration table (ADR 0010 Decisions 3 & 6).
 
@@ -112,6 +112,11 @@ def render_calibration_table(
     observed agreement, and prevalence; the two Gemini rows are diagnostic only and
     carry no CI (never averaged into the headline). The per-behavior-class κ — the
     Decision 1 headline — follows as its own small table.
+
+    ``judge_judge`` is optional: when Gemini has not been run, the two diagnostic
+    rows are omitted, but the primary κ STILL travels with its CI, observed
+    agreement, prevalence, and the per-class headline (Decision 3's prevalence guard
+    — a bare κ is never an output, with or without the Gemini diagnostic).
     """
     ci = primary.kappa_ci
     band = trust_band(primary.kappa)
@@ -123,8 +128,15 @@ def render_calibration_table(
         "| --- | --- | --- | --- |",
         f"| Claude ↔ human (primary) | {_fmt(primary.kappa)} "
         f"| [{_fmt(ci.low)}, {_fmt(ci.high)}] | {band} |",
-        f"| Gemini ↔ human (diagnostic) | {_fmt(judge_judge.gemini_vs_human)} | — | — |",
-        f"| Claude ↔ Gemini (diagnostic) | {_fmt(judge_judge.claude_vs_gemini)} | — | — |",
+    ]
+    if judge_judge is not None:
+        lines.append(
+            f"| Gemini ↔ human (diagnostic) | {_fmt(judge_judge.gemini_vs_human)} | — | — |"
+        )
+        lines.append(
+            f"| Claude ↔ Gemini (diagnostic) | {_fmt(judge_judge.claude_vs_gemini)} | — | — |"
+        )
+    lines += [
         "",
         (
             f"Observed agreement {_fmt(primary.observed_agreement)} · "
@@ -133,9 +145,14 @@ def render_calibration_table(
             f"n={primary.n_decisions} point-decisions."
         ),
         "",
-        "Gemini is the same-family secondary judge — diagnostic only, never averaged "
-        "into the headline (ADR 0005 cross-family split).",
-        "",
+    ]
+    if judge_judge is not None:
+        lines += [
+            "Gemini is the same-family secondary judge — diagnostic only, never averaged "
+            "into the headline (ADR 0005 cross-family split).",
+            "",
+        ]
+    lines += [
         "Per-behavior-class κ (Claude ↔ human):",
         "",
         "| Behavior class | Cohen's κ |",
