@@ -51,6 +51,8 @@ The decisions above settle WHAT calibration measures; this section pins HOW it i
 5. **Honest-default triage.** `judge-error` is the default bucket; a relabel (`rubric-wrong` / `human-error`) needs a WRITTEN justification (enforced by the strict `corrections.yaml` parser, for every correction); corrections are applied ONCE and κ is recomputed ONCE (never iterate-to-target). **Every `rubric-wrong` correction ALSO obliges a committed golden-point edit** on the dev split (the clarified gold label), since the finding is the golden set's own bug; the holdout stays sealed (ADR 0007).
 6. **The trust band is a published label, never a gate.** Landis–Koch bands (Decision 3) annotate the published κ; they never silently pass/fail a CI run.
 
+**Environment prerequisites** (live calibration only — the offline unit suite mocks every seam): `calibrate run` reads `JUDGE_CLAUDE_MODEL` (primary judge, ADR 0008) and `JUDGE_GEMINI_MODEL` (Gemini secondary, Decision 6), both fail-loud if unset and both documented in `.env.example` beside the RAGAS model; the Gemini judge needs the Vertex client + GCP credentials the product/RAGAS use (the `ragas` optional dependency group ships `langchain-google-vertexai`). Step 6's write-back additionally needs `LANGFUSE_CALIBRATION_QUEUE_ID` — a SEPARATE annotation queue from the #21 disposition queue (Decision 7: calibrate off the disposition gate).
+
 **The six-step procedure**
 
 1. `calibrate run --out-dir <dir>` — produce `answers.json` (the agent arm's answer per slice item), `claude.json` and `gemini.json` (the primary + secondary judge verdict maps over the SAME answers). `answers.json` is the single source of answer text fed to both judges and, next, to the sheet — so all three raters grade the identical answer.

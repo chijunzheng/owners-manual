@@ -168,3 +168,20 @@ def test_empty_corrections_list_is_allowed() -> None:
     # A run with zero mismatches has zero corrections — an empty (but present)
     # corrections list parses to an empty tuple, not an error (it is a valid triage).
     assert parse_corrections(yaml.safe_dump({"corrections": []})) == ()
+
+
+# --- a point is triaged exactly once (audit ⇄ recompute agreement) ---------
+
+
+def test_duplicate_item_point_rows_are_rejected() -> None:
+    # apply_corrections keys corrections by (item_id, point_id), so a duplicated point
+    # would silently keep only the LAST relabel while the printed audit trail still
+    # shows BOTH justifications — the committed reasons and the κ recompute would
+    # disagree. Each mismatch is triaged exactly once; reject the collision loud.
+    with pytest.raises(ValueError, match="duplicate"):
+        parse_corrections(
+            _doc(
+                _row(point_id="duty"),
+                _row(point_id="duty", corrected_human_credited=False),
+            )
+        )

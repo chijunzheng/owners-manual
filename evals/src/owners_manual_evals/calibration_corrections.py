@@ -26,7 +26,7 @@ and surfaced by the CLI; it is not a field on the pure :class:`Correction` value
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import get_args
 
@@ -91,7 +91,29 @@ def parse_corrections_with_justifications(text: str) -> tuple[ParsedCorrection, 
     if not isinstance(raw_rows, list):
         raise ValueError("corrections file requires a corrections list (may be empty)")
 
-    return tuple(_parse_row(entry) for entry in raw_rows)
+    parsed = tuple(_parse_row(entry) for entry in raw_rows)
+    _reject_duplicate_keys(parsed)
+    return parsed
+
+
+def _reject_duplicate_keys(parsed: Sequence[ParsedCorrection]) -> None:
+    """Reject two corrections for the same ``(item_id, point_id)``.
+
+    :func:`calibration_triage.apply_corrections` / ``_build_report`` key corrections
+    by ``(item, point)`` in a dict, so a duplicate would silently keep only the LAST
+    relabel while the printed audit trail still shows every justification — the
+    committed reasons and the κ recompute would then disagree. Each judge↔human
+    mismatch is triaged exactly once (ADR 0010 Decision 4); fail loud on a collision
+    rather than apply one row and report another."""
+    seen: set[tuple[str, str]] = set()
+    for entry in parsed:
+        key = (entry.correction.item_id, entry.correction.point_id)
+        if key in seen:
+            raise ValueError(
+                f"duplicate correction for {key[0]!r}/{key[1]!r}; each judge↔human "
+                "mismatch is triaged exactly once (ADR 0010 Decision 4)"
+            )
+        seen.add(key)
 
 
 def _parse_row(entry: object) -> ParsedCorrection:
