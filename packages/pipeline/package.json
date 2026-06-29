@@ -13,6 +13,7 @@
     "typecheck": "tsc --build",
     "build": "tsc --build",
     "naive-rag:ingest": "tsx src/ingest-cli.ts",
+    "enrich:build": "tsx src/enrich-cli.ts",
     "naive-rag:serve": "tsx src/serve-cli.ts"
   },
   "dependencies": {

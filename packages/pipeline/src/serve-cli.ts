@@ -78,6 +78,9 @@ import { createStuffCacheFileStore } from './live/stuff-cache-file.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
 import { createVertexSummarizer } from './live/vertex-summarizer.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
+import { loadEnrichmentArtifactFile } from './live/enrichment-artifact-reader.js'
+import { resolveAgentEnrichment } from './live/enrichment-resolver.js'
+import { ENRICHMENT_PIPELINE_CONFIG } from './live/enrichment-config.js'
 import { createCohereRerank } from './live/cohere-rerank.js'
 import { createLlmRerank } from './live/llm-rerank.js'
 import { createLangfuseTracer } from './live/langfuse-tracer.js'
@@ -197,14 +200,32 @@ async function main(): Promise<void> {
     llm: createLlmRerank({ model: config.runtime.model, location: live.vertexLocation }),
   })
 
-  // INTERIM (#16 / live-run milestone): the agent's query-time graph expansion and
-  // definitions attachment consume #13's tree-level sidecars, but loading the
-  // PERSISTED sidecars + an Atlas-backed expansion-target lookup is deferred to the
-  // live-run milestone (alongside live hybrid-arm ingestion and the `/stuff`
-  // context-cache lifecycle). Until then `enrichment` is left undefined, so the
-  // `xrefExpansion` / `definitionsInPrompt` flags fall back to their documented
-  // off-state (no expansion, no definitions) even if toggled on — the mechanism is
-  // unit-tested against `createAgentEnrichmentAccess`; only the live load is pending.
+  // #16 (live-run milestone): the agent's query-time graph expansion and
+  // definitions attachment consume #13's tree-level sidecars, now WIRED live —
+  // but GATED on the flags. `xrefExpansion` / `definitionsInPrompt` are
+  // default-off A/B flags, and the sidecars are built offline by a live Claude
+  // pass (`enrich:build`), so the persisted artifact is loaded ONLY when a flag
+  // requests it: an off run (the default agent, the naive-rag/stuff arms, the
+  // all-off ablation floor, the smoke gate) boots WITHOUT requiring the artifact,
+  // which is the correct off-state. When a flag IS on the resolver loads the
+  // artifact, FAILS LOUD if it was built against a different corpus than serve is
+  // answering over (vs `runRecord.corpusBuildHash`, ADR 0004), and resolves
+  // expansion targets from the SAME Atlas chunk store the agent retrieves over
+  // (`store.listChunks`, read once). The gating + guard are unit-tested against
+  // fakes; the load/list are the thin live seams (mirrors `createAgentRetrieve`).
+  // This replaces the old `undefined` path — the bug where flags-on still got no
+  // enrichment — while keeping flags-off + no-artifact a clean boot.
+  const enrichment = await resolveAgentEnrichment({
+    flags: agentFlags,
+    artifactPath: repoPath('corpus', 'enrichment', 'build.json'),
+    corpusBuildHash: runRecord.corpusBuildHash,
+    // The enrichment config the corpus hash is blind to (model + prompt versions):
+    // a stale artifact built by an old model fails loud here (Codex P2, PR #78).
+    expectedEnrichmentConfig: ENRICHMENT_PIPELINE_CONFIG,
+    loadArtifact: loadEnrichmentArtifactFile,
+    listChunks: () => store.listChunks(),
+  })
+
   const chatDeps: ChatServiceDeps = {
     model: createVertexAgentModel({ model: config.runtime.model, location: live.vertexLocation }),
     retrieve: createAgentRetrieve({
@@ -215,6 +236,9 @@ async function main(): Promise<void> {
       // levels become a true pre-filter pushed into the stages (#41 / ADR 0002).
       corpusDocumentIds: GOLDEN_V0_DOCUMENTS.map((d) => d.id),
     }),
+    // The query-time access to #13's sidecars (#16), gated on the flags above:
+    // undefined (the off-state) unless expansion/definitions is requested.
+    enrichment,
     rerank: agentRerank,
     flags: agentFlags,
     // The #17 stores + summarizer: the chat handler loads the owner profile and

@@ -14,6 +14,11 @@ corpus/raw/
 # Derived from the live build + a Vertex resource name — never committed.
 corpus/stuff-cache.json
 
+# --- enrichment artifact: produced offline by `enrich:build` (#16), loaded by
+# serve to power the agent's graph expansion + definitions. Derived from the
+# corpus + the pinned enrichment config — rebuilt, never committed. ---
+corpus/enrichment/
+
 # --- BYOD inbox: real personal documents (leases, declarations, policies)
 # dropped here as private reference for fixture design / future BYOD runs.
 # NEVER committed — fixtures are synthetic by design (see corpus/fixtures/FIXTURE-DESIGN.md)
