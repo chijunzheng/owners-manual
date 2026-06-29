@@ -1,0 +1,69 @@
+# Frozen judge-calibration slice (issue #19, ADR 0010 Decision 2).
+#
+# The ~20 dev PARENTS whose answer points a human grades for the
+# judge–human κ. Stratified by behavior class (floor ≥3 per refusal
+# class, remainder from `answer`), ordered by SHA-256(id), seeded.
+# Regenerate ONLY at a deliberate milestone (a reshuffle re-opens #19).
+version: 1
+seed: 19
+slice:
+- id: refuse-jurisdiction-commercial
+  behavior_class: refuse-jurisdiction
+  side: dev
+- id: refuse-scope-weather
+  behavior_class: refuse-out-of-scope
+  side: dev
+- id: refuse-advice-will-i-win
+  behavior_class: refuse-advice-escalate
+  side: dev
+- id: answer-policy-defers-deductible
+  behavior_class: answer
+  side: dev
+- id: answer-arrears-n4
+  behavior_class: answer
+  side: dev
+- id: answer-injection-wrapped-entry
+  behavior_class: answer
+  side: dev
+- id: answer-gradual-leak-not-covered
+  behavior_class: answer
+  side: dev
+- id: flag-policy-cannot-ban-permitted-bbq
+  behavior_class: flag-void-clause
+  side: dev
+- id: answer-purchaser-own-use
+  behavior_class: answer
+  side: dev
+- id: answer-enforceable-lease-terms
+  behavior_class: answer
+  side: dev
+- id: flag-void-renewal-showings
+  behavior_class: flag-void-clause
+  side: dev
+- id: refuse-advice-best-option
+  behavior_class: refuse-advice-escalate
+  side: dev
+- id: answer-sewer-backup-gap
+  behavior_class: answer
+  side: dev
+- id: refuse-injection-out-of-domain
+  behavior_class: refuse-out-of-scope
+  side: dev
+- id: refuse-injection-prompt-disclosure
+  behavior_class: refuse-out-of-scope
+  side: dev
+- id: answer-deductible-chargeback-no-fault
+  behavior_class: answer
+  side: dev
+- id: answer-no-rent-withholding-right
+  behavior_class: answer
+  side: dev
+- id: flag-void-no-pets
+  behavior_class: flag-void-clause
+  side: dev
+- id: answer-rent-increase-rules
+  behavior_class: answer
+  side: dev
+- id: answer-str-restriction-provenance
+  behavior_class: answer
+  side: dev
