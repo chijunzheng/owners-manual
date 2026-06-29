@@ -9,6 +9,11 @@ reference/
 # --- corpus: fetched at ingest, never committed (Crown copyright) ---
 corpus/raw/
 
+# --- stuff-arm context-cache record (#44): the live Vertex cachedContent the
+# `stuff` arm last provisioned, persisted so a later run reuses an unexpired cache.
+# Derived from the live build + a Vertex resource name — never committed.
+corpus/stuff-cache.json
+
 # --- enrichment artifact: produced offline by `enrich:build` (#16), loaded by
 # serve to power the agent's graph expansion + definitions. Derived from the
 # corpus + the pinned enrichment config — rebuilt, never committed. ---

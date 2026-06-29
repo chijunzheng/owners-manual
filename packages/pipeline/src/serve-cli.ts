@@ -54,7 +54,8 @@ import {
 import { chunkParsedDocuments, type CorpusChunk } from './chunk-corpus.js'
 import { corpusOfDocument } from './corpus-tag.js'
 import { STUFF_RUNTIME_CONFIG, buildChunksForArm } from './stuff-config.js'
-import { resolveStuffCachedContentName } from './stuff-cache.js'
+import { buildCachePrefix, resolveStuffCachedContentName } from './stuff-cache.js'
+import { withCachedPrefixStripped } from './stuff-send.js'
 import {
   handleStuffRequest,
   parseStuffOracleRequest,
@@ -72,6 +73,8 @@ import { connectMongoStore } from './live/mongo-store.js'
 import { connectProfileSessionStore } from './live/profile-session-store.js'
 import { createVertexLlm } from './live/vertex-llm.js'
 import { createVertexStuffLlm } from './live/vertex-stuff-llm.js'
+import { createVertexCacheProvisioner } from './live/vertex-cache-provisioner.js'
+import { createStuffCacheFileStore } from './live/stuff-cache-file.js'
 import { createVertexAgentModel } from './live/vertex-agent.js'
 import { createVertexSummarizer } from './live/vertex-summarizer.js'
 import { createAgentRetrieve } from './live/agent-retrieve.js'
@@ -283,45 +286,74 @@ async function main(): Promise<void> {
 
   // The stuffing-arm context-cache lifecycle (#44). The cache covers the canonical
   // `stuff` prefix (the whole corpus in fixed canonical order — the superset
-  // `stuff-oracle` routes a subset of, so both arms reference one cache), is keyed
-  // to the corpus build hash (ADR 0004), and recreates on a build/model change or
-  // TTL elapse. The DECISION logic, the canonical-prefix assembly, and this
-  // threading are pure and unit-tested (`stuff-cache.test.ts`) against a fake seam.
+  // `stuff-oracle` routes a subset of), is keyed to the corpus build hash (ADR 0004),
+  // and recreates on a build/model/location change or TTL elapse. The DECISION logic,
+  // the canonical-prefix assembly, the record persistence, and the suffix-send
+  // decomposition are pure and unit-tested (`stuff-cache.test.ts`,
+  // `stuff-cache-store.test.ts`, `stuff-send.test.ts`) against fakes.
   //
-  // INTERIM (#44 / live-run milestone): the live `CachedContentProvisioner` binding
-  // — the real Vertex cache-create REST/SDK call (`@langchain/google-vertexai`
-  // v0.2.x only *consumes* a provisioned `cachedContent` resource name, it exposes
-  // no cache-manager surface) — is deferred to the live-run milestone alongside live
-  // hybrid-arm ingestion, exactly like #16's persisted-sidecar load. Until it lands
-  // the provisioner is left undefined, so `resolveStuffCachedContentName` returns
-  // undefined and the arms run UNCACHED: the per-question cost stays honest (computed
-  // from real `usage_metadata`, reflecting no cache hit), the promised cache_read
-  // discount (AC3) and the live end-to-end exercise (AC4) arrive with that binding.
+  // now WIRED (#44 / live-run milestone): the live `CachedContentProvisioner` binds
+  // to the Vertex caching REST API with ADC-resolved auth (`vertex-cache-provisioner.ts`
+  // — `@langchain/google-vertexai` v0.2.x only *consumes* a provisioned
+  // `cachedContent` resource name, exposing no cache-manager surface, so the create
+  // call is a thin REST POST behind the seam). The created record is persisted to a
+  // gitignored JSON file (`corpus/stuff-cache.json`) so a later run reuses an
+  // unexpired cache. With the provisioner wired, `resolveStuffCachedContentName`
+  // returns the resource name and the `stuff` arm rides the cache: the per-question
+  // cost reflects the `cache_read` discount (AC3), exercised end-to-end live (AC4).
   //
-  // SEND CONTRACT for that binding (Codex PR #59): Vertex prepends a referenced
-  // `cachedContent`, so a cached call must send ONLY the variable suffix (the
-  // question) — `buildSynthesisPrompt(q, …) === buildCachePrefix(chunks) + q` — not
-  // the full prompt, or the SOURCES are sent twice. This one full-corpus cache fits
-  // `stuff` (prompt = prefix + question) but NOT `stuff-oracle` (a routed SUBSET, so
-  // its prompt is not prefix + suffix); oracle then needs its own cache or runs
-  // uncached. Both are part of that deferred live decision (tracked on #44).
+  // SEND CONTRACT (Codex PR #59): Vertex prepends a referenced `cachedContent`, so a
+  // cached call must send ONLY the variable suffix (the question) —
+  // `buildSynthesisPrompt(q, …) === buildCachePrefix(chunks) + q` — not the full
+  // prompt, or the SOURCES are sent twice. `withCachedPrefixStripped` strips the
+  // canonical prefix from the `stuff` prompt before the call. This one full-corpus
+  // cache fits `stuff` (prompt = prefix + question) but NOT `stuff-oracle` (a routed
+  // SUBSET, so its prompt is not prefix + suffix and cannot reference this cache);
+  // `stuff-oracle` therefore runs UNCACHED here — its own cache is a future decision
+  // (tracked on #44), and faking a cache_read for it would misreport its honest cost.
+  const stuffChunks = chunksForArm('stuff')
   const stuffCachedContentName = await resolveStuffCachedContentName({
-    provisioner: undefined,
-    chunks: chunksForArm('stuff'),
+    provisioner: createVertexCacheProvisioner(),
+    chunks: stuffChunks,
     corpusBuildHash: runRecord.corpusBuildHash,
     model: STUFF_RUNTIME_CONFIG.model,
     location: live.vertexLocation,
     nowMs: Date.now(),
+    ...createStuffCacheFileStore(repoPath('corpus', 'stuff-cache.json')),
   })
 
+  // The uncached completion (no `cachedContent`, full prompt) — the off-state and
+  // the `stuff-oracle` arm. When a cache resolved, the `stuff` arm gets a SECOND
+  // completion that references the cache and strips the canonical prefix so only the
+  // question suffix is sent; `completeForArm` routes each arm to the right one.
+  const uncachedStuffComplete = createVertexStuffLlm({
+    model: STUFF_RUNTIME_CONFIG.model,
+    location: live.vertexLocation,
+  })
+  const cachedStuffComplete = stuffCachedContentName
+    ? withCachedPrefixStripped(
+        createVertexStuffLlm({
+          model: STUFF_RUNTIME_CONFIG.model,
+          location: live.vertexLocation,
+          cachedContentName: stuffCachedContentName,
+        }),
+        buildCachePrefix(stuffChunks),
+      )
+    : undefined
+
   const stuffDeps: StuffServiceDeps = {
-    complete: createVertexStuffLlm({
-      model: STUFF_RUNTIME_CONFIG.model,
-      location: live.vertexLocation,
-      // Threaded from the lifecycle; undefined today (no live provisioner wired),
-      // so the adapter sends no `cachedContent` and the call runs uncached.
-      ...(stuffCachedContentName ? { cachedContentName: stuffCachedContentName } : {}),
-    }),
+    complete: uncachedStuffComplete,
+    // The cache serves ONLY canonical-order `stuff` (orderSeed 0) — its prompt is the
+    // cached prefix + the question. `stuff-oracle` runs uncached (its routed subset is
+    // not the cached full-corpus prefix), and so does the order-permutation probe
+    // (orderSeed > 0): its prompt is built over PERMUTED chunks, so it is not the
+    // cached canonical prefix and must bypass the cache rather than fail the
+    // prefix-strip (Codex P2 on #44). The probe runs uncached honestly — it measures
+    // order-sensitivity, not cache cost.
+    completeForArm: (arm, orderSeed) =>
+      arm === 'stuff' && orderSeed === 0 && cachedStuffComplete
+        ? cachedStuffComplete
+        : uncachedStuffComplete,
     runRecord,
     chunksForArm,
     costRates: STUFF_RUNTIME_CONFIG.costRates,

@@ -9,6 +9,7 @@ import {
   parseStuffRequest,
   type StuffServiceDeps,
 } from './stuff-service.js'
+import { type StuffArm } from './stuff.js'
 import { type StuffLlmComplete } from './stuff-synthesis.js'
 
 const RUN_RECORD: RunRecord = buildRunRecord({
@@ -148,5 +149,55 @@ describe('handleStuffRequest', () => {
     // four-arm dashboard leaves their RAGAS columns blank, never blended.
     const response = await handleStuffRequest({ question: 'q', itemId: 'x' }, deps())
     expect('retrievedContexts' in response).toBe(false)
+  })
+
+  // The #44 context-cache binding gives canonical-order `stuff` a cached completion
+  // (suffix-only send) but keeps `stuff-oracle` UNCACHED (its routed subset is not
+  // the cached prefix). The handler selects the completion through `completeForArm`
+  // by arm AND order seed; absent it, the single `complete` serves both arms.
+  it('selects the completion via completeForArm by arm and order seed when wired', async () => {
+    const seen: Array<[StuffArm, number]> = []
+    const completeForArm = (arm: StuffArm, orderSeed: number): StuffLlmComplete => {
+      return async () => {
+        seen.push([arm, orderSeed])
+        return llm('')
+      }
+    }
+    await handleStuffRequest({ question: 'q', itemId: 'x' }, deps({ completeForArm }))
+    await handleStuffRequest(
+      { question: 'q', itemId: 'x', arm: 'stuff-oracle', corpora: ['tenancy'] },
+      deps({ completeForArm }),
+    )
+    expect(seen).toEqual([
+      ['stuff', 0],
+      ['stuff-oracle', 0],
+    ])
+  })
+
+  // Regression (Codex P2 on #44): the order-permutation probe (orderSeed > 0) builds
+  // the prompt over PERMUTED chunks, so it is NOT the cached canonical prefix. The
+  // handler must hand the probe its order seed so the binding can route it AROUND the
+  // cache; routing it to the prefix-stripping cached completion would throw on the
+  // non-canonical prompt instead of running the probe.
+  it('forwards the order seed to completeForArm so a probe (orderSeed > 0) can bypass the cache', async () => {
+    const seen: Array<[StuffArm, number]> = []
+    const completeForArm = (arm: StuffArm, orderSeed: number): StuffLlmComplete => {
+      return async () => {
+        seen.push([arm, orderSeed])
+        return llm('')
+      }
+    }
+    await handleStuffRequest({ question: 'q', itemId: 'x', orderSeed: 3 }, deps({ completeForArm }))
+    expect(seen).toEqual([['stuff', 3]])
+  })
+
+  it('falls back to the single complete when completeForArm is not wired', async () => {
+    let calls = 0
+    const complete: StuffLlmComplete = async (prompt) => {
+      calls += 1
+      return llm(prompt)
+    }
+    await handleStuffRequest({ question: 'q', itemId: 'x' }, deps({ complete }))
+    expect(calls).toBe(1)
   })
 })
