@@ -17,6 +17,7 @@ from owners_manual_evals.judge import (
     build_judge_prompt,
     judge_item,
     no_op_judge,
+    parse_judge_response,
     scripted_judge,
 )
 
@@ -51,6 +52,44 @@ def test_build_judge_prompt_anchors_on_the_rubric_points_and_the_answer() -> Non
     assert "covers-unit" in prompt
     assert "Who repairs the unit?" in prompt
     assert "binary" in prompt.lower() or "credited" in prompt.lower()
+
+
+def _two_point_verdict_json() -> str:
+    return (
+        '{"verdicts": ['
+        '{"pointId": "duty", "credited": true, "rationale": "asserted"}, '
+        '{"pointId": "covers-unit", "credited": false, "rationale": "absent"}]}'
+    )
+
+
+def test_parse_judge_response_reads_a_clean_json_object() -> None:
+    verdicts = parse_judge_response(_two_point_verdict_json(), _item().answer_points)  # type: ignore[attr-defined]
+    assert {v.point_id: v.credited for v in verdicts} == {"duty": True, "covers-unit": False}
+
+
+def test_parse_judge_response_strips_a_json_code_fence() -> None:
+    fenced = "```json\n" + _two_point_verdict_json() + "\n```"
+    verdicts = parse_judge_response(fenced, _item().answer_points)  # type: ignore[attr-defined]
+    assert {v.point_id: v.credited for v in verdicts} == {"duty": True, "covers-unit": False}
+
+
+def test_parse_judge_response_recovers_an_object_wrapped_in_prose() -> None:
+    # `claude -p` (Opus) may prepend prose before the JSON despite the instruction;
+    # the balanced-brace scan recovers the verdict object rather than failing loud.
+    wrapped = "I'll respond with the requested JSON object.\n\n" + _two_point_verdict_json()
+    verdicts = parse_judge_response(wrapped, _item().answer_points)  # type: ignore[attr-defined]
+    assert {v.point_id: v.credited for v in verdicts} == {"duty": True, "covers-unit": False}
+
+
+def test_parse_judge_response_recovers_an_object_with_trailing_prose() -> None:
+    trailed = _two_point_verdict_json() + "\n\nLet me know if you need anything else."
+    verdicts = parse_judge_response(trailed, _item().answer_points)  # type: ignore[attr-defined]
+    assert {v.point_id: v.credited for v in verdicts} == {"duty": True, "covers-unit": False}
+
+
+def test_parse_judge_response_with_no_json_object_raises() -> None:
+    with pytest.raises(ValueError, match="valid JSON"):
+        parse_judge_response("No JSON here at all.", _item().answer_points)  # type: ignore[attr-defined]
 
 
 def test_judge_item_credits_points_the_scripted_judge_marks_true() -> None:

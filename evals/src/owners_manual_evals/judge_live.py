@@ -60,6 +60,17 @@ def parse_judge_cli_envelope(stdout: str) -> JudgeCliCall:
         envelope = json.loads(stdout)
     except json.JSONDecodeError as error:
         raise ValueError(f"claude CLI did not return valid JSON: {error}") from error
+    # `claude -p --output-format json` emits an ARRAY of session events
+    # ([system, assistant, …, result]) on the current CLI, not a single object;
+    # the run envelope is the (last) ``type == "result"`` event. Older/other CLI
+    # builds emit that result object directly, so accept both shapes.
+    if isinstance(envelope, list):
+        results = [
+            event for event in envelope if isinstance(event, dict) and event.get("type") == "result"
+        ]
+        if not results:
+            raise ValueError("claude CLI JSON array has no 'result' event")
+        envelope = results[-1]
     if not isinstance(envelope, dict):
         raise ValueError("claude CLI envelope is not a JSON object")
     if envelope.get("is_error"):

@@ -92,6 +92,37 @@ def build_judge_prompt(
     )
 
 
+def _extract_first_json_object(text: str) -> str | None:
+    """Return the first balanced ``{…}`` substring, or ``None`` if there is none.
+
+    A brace scan that respects string literals and escapes, so a verdict object
+    wrapped in surrounding prose (or trailing commentary) is still recovered."""
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    return None
+
+
 def parse_judge_response(text: str, points: Sequence[AnswerPoint]) -> tuple[JudgePointVerdict, ...]:
     """Parse the judge model's JSON into per-point verdicts.
 
@@ -108,7 +139,16 @@ def parse_judge_response(text: str, points: Sequence[AnswerPoint]) -> tuple[Judg
     try:
         parsed = json.loads(body)
     except json.JSONDecodeError as error:
-        raise ValueError(f"judge did not return valid JSON: {error}") from error
+        # A chat model (e.g. Claude via `claude -p`) may wrap the verdict object
+        # in prose ("I'll respond with the requested JSON object.\n\n{…}");
+        # fall back to the first balanced {…} object before failing loud.
+        extracted = _extract_first_json_object(body)
+        if extracted is None:
+            raise ValueError(f"judge did not return valid JSON: {error}") from error
+        try:
+            parsed = json.loads(extracted)
+        except json.JSONDecodeError as inner:
+            raise ValueError(f"judge did not return valid JSON: {inner}") from inner
     raw_verdicts = parsed.get("verdicts", []) if isinstance(parsed, dict) else []
     by_id: dict[str, JudgePointVerdict] = {}
     for entry in raw_verdicts:

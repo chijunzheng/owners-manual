@@ -57,7 +57,44 @@ def test_missing_result_field_raises() -> None:
 
 
 def test_non_object_envelope_raises() -> None:
-    # `claude -p --output-format json` always returns a JSON OBJECT; a parsed
-    # array (or any other non-object) is rejected, never silently mis-read.
+    # A bare scalar (neither the legacy single object nor the event array) is
+    # rejected, never silently mis-read.
     with pytest.raises(ValueError, match="JSON object"):
-        parse_judge_cli_envelope(json.dumps(["not", "an", "object"]))
+        parse_judge_cli_envelope(json.dumps("just a string"))
+
+
+def test_parses_result_event_from_json_array_envelope() -> None:
+    # The current `claude -p --output-format json` emits an ARRAY of session
+    # events ([system, assistant, …, result]); the run envelope is the
+    # ``type == "result"`` event, which must be found and parsed.
+    array = json.dumps(
+        [
+            {"type": "system", "subtype": "init"},
+            {"type": "assistant"},
+            {"type": "rate_limit_event"},
+            {
+                "type": "result",
+                "is_error": False,
+                "result": '{"verdicts": []}',
+                "total_cost_usd": 0.1584,
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
+        ]
+    )
+    call = parse_judge_cli_envelope(array)
+    assert call.result_text == '{"verdicts": []}'
+    assert call.total_cost_usd == pytest.approx(0.1584)
+
+
+def test_json_array_without_a_result_event_raises() -> None:
+    # An event array that never carries a result event is a failed call, not a
+    # silently empty verdict — fail loud.
+    with pytest.raises(ValueError, match="result"):
+        parse_judge_cli_envelope(json.dumps([{"type": "system"}, {"type": "assistant"}]))
+
+
+def test_error_result_event_in_array_still_raises() -> None:
+    # The error contract holds when the result arrives inside the event array too.
+    array = json.dumps([{"type": "system"}, {"type": "result", "is_error": True, "result": "boom"}])
+    with pytest.raises(ValueError, match="error"):
+        parse_judge_cli_envelope(array)
