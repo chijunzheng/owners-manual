@@ -11,7 +11,13 @@ This module owns the PURE side — no Langfuse, no live judge:
 
 * :func:`build_labeling_sheet` — turn a :class:`~.golden_item.GoldenItem` and the
   produced answer text into blind :class:`LabelRow`\\ s (``human_credited`` unset);
-* :func:`render_labeling_sheet` — emit ``labels.yaml`` for a human to fill in place;
+* :func:`render_labeling_sheet` — emit ``labels.yaml`` for a human to fill in place.
+  Its header comment carries the judge's VERBATIM credit rule, sliced live from
+  :data:`judge._JUDGE_INSTRUCTION` (the build's decision 2), so the human grades the
+  SAME construct the judge does — sharing the rule is not a blinding violation; only
+  the judge's per-item verdict/rationale stays hidden. Deriving it from the live
+  instruction is a drift guard: a change to the judge's rule forces the sheet to
+  follow, so the two can never silently diverge;
 * :func:`parse_labels` — read the filled sheet back, strictly (the
   ``golden_item.py`` philosophy): every row must carry a BOOLEAN decision, and an
   unknown key — e.g. a judge verdict pasted in — is rejected, never coerced. The
@@ -24,11 +30,35 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .golden_item import GoldenItem
+from .judge import _JUDGE_INSTRUCTION
 
 #: The keys a labeling-sheet row may carry. ``human_credited`` is the ONLY
 #: credited-bearing field; no ``judge``/``verdict``/``rationale``/pre-filled
 #: ``credited`` may appear — that closed set is the blinding contract (Decision 5).
 _ROW_KEYS = frozenset({"item_id", "point_id", "question", "answer", "point_text", "human_credited"})
+
+
+def _credit_criterion() -> str:
+    """The judge's VERBATIM credit rule, sliced live from :data:`judge._JUDGE_INSTRUCTION`.
+
+    The blind sheet states the SAME construct the judge grades, so the human grades
+    the same thing (the build's decision 2 — not a blinding violation: only the
+    per-item verdict/rationale stays hidden). Deriving the sentence from the live
+    judge instruction — rather than hardcoding a copy — is the drift guard: a future
+    edit to the judge's credit rule forces the sheet to follow, so the two can never
+    silently diverge. The slice is the credit-rule sentence only (it carries neither
+    "verdict" nor "rationale" vocabulary, so blinding of the per-item verdict holds).
+    Raises ``ValueError`` if the anchors are ever removed from the instruction — the
+    sheet must not ship a stale or empty criterion.
+    """
+    start = _JUDGE_INSTRUCTION.find("Credit a point only")
+    end = _JUDGE_INSTRUCTION.find("not merely the topic.")
+    if start < 0 or end < 0:
+        raise ValueError(
+            "could not locate the judge's credit rule in _JUDGE_INSTRUCTION; the blind "
+            "sheet's shared criterion is derived from it and must not drift (ADR 0010)"
+        )
+    return _JUDGE_INSTRUCTION[start : end + len("not merely the topic.")]
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +123,12 @@ def render_labeling_sheet(rows: Sequence[LabelRow]) -> str:
         "# Grade each point: set `human_credited` to true or false against the ANSWER\n"
         "# above it. Do NOT consult the judge's grade — blinding is load-bearing\n"
         "# (Decision 5): a sighted label measures suggestibility, not agreement.\n"
+        "#\n"
+        "# Apply the SAME credit criterion the judge applies, so judge–human κ measures\n"
+        "# agreement on one shared construct (not two different rubrics):\n"
+        f"#   {_credit_criterion()}\n"
+        "# (Verbatim from the judge instruction; only the judge's per-item grade is\n"
+        "# hidden — the rule it grades by is shared on purpose.)\n"
     )
     return header + yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
 
