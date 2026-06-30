@@ -35,9 +35,9 @@
       "title": "Rent increase guideline (ontario.ca currency micro-source)",
       "url": "https://www.ontario.ca/page/rent-increase-guideline",
       "file": "tenancy/rent-increase-guideline.html",
-      "sha256": "71cfd1367377ec0ad8ede0c9b64ed295af1e7bc6870ec9d0c64f210182438641",
-      "bytes": 100558,
-      "consolidationDate": "2025-06-01",
+      "sha256": "c80d78882f0dc9b324fcab5fc6f07a377921985787423c8ef15f77a02c356747",
+      "bytes": 100933,
+      "consolidationDate": "2026-06-29",
       "licence": {
         "holder": "Government of Ontario",
         "note": "Rent-increase guideline page © Government of Ontario. Currency micro-source: the page states the guideline for the current year and changes annually — re-record on each new guideline. Reproduced for personal research use; corpus/raw/ is gitignored."
